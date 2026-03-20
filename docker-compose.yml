@@ -1,0 +1,31 @@
+version: '3.8'
+
+services:
+  mox-api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+      - MINIMAX_GROUP_ID=${MINIMAX_GROUP_ID}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./.cache:/app/.cache
+    command: python -m mox api --host 0.0.0.0 --port 8000
+
+  mox-ui:
+    build: .
+    ports:
+      - "7860:7860"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
+      - LOG_LEVEL=INFO
+    volumes:
+      - ./.cache:/app/.cache
+    command: python -m mox ui
+    depends_on:
+      - mox-api
