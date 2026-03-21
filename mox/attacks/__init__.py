@@ -1,6 +1,33 @@
 """Attacks module exports"""
 
 from .base import BaseAttack, AttackConfig
+from .evaluation import (
+    AttackEvaluator,
+    EvaluationResult,
+    KeywordOverlapEvaluator,
+    RefusalPatternEvaluator,
+    LLMBasedEvaluator,
+    CompositeEvaluator,
+    get_default_evaluator,
+)
+from .config import (
+    EvaluationStrategy,
+    JudgeStrategy,
+    GCGConfig,
+    TAPConfig,
+    CrescendoConfig,
+    JailbreakConfig,
+    PromptInjectionConfig,
+    AgentAttackConfig,
+    RAGAttackConfig,
+    GradientAttackConfig,
+    MetaAdversarialConfig,
+    GOATConfig,
+    CodeSecurityConfig,
+    CONFIG_REGISTRY,
+    create_config,
+    get_default_config,
+)
 from .prompt_injection import (
     PromptInjectionAttack,
     AdvancedPromptInjection,
@@ -98,9 +125,47 @@ from mox.attacks.orchestrator import (
     UnifiedAttackType,
 )
 
+# 新增：攻击链和组合
+from mox.attacks.chain import (
+    AttackChain,
+    AttackChainResult,
+    AttackEnsemble,
+    EnsembleResult,
+    TargetModel,
+    LLMTargetModel,
+    RAGTargetModel,
+    MultimodalTargetModel,
+)
+
 __all__ = [
+    # 基础
     "BaseAttack",
     "AttackConfig",
+    # 评估器
+    "AttackEvaluator",
+    "EvaluationResult",
+    "KeywordOverlapEvaluator",
+    "RefusalPatternEvaluator",
+    "LLMBasedEvaluator",
+    "CompositeEvaluator",
+    "get_default_evaluator",
+    # 统一配置
+    "EvaluationStrategy",
+    "GCGConfig",
+    "TAPConfig",
+    "CrescendoConfig",
+    "JailbreakConfig",
+    "PromptInjectionConfig",
+    "AgentAttackConfig",
+    "RAGAttackConfig",
+    "GradientAttackConfig",
+    "MetaAdversarialConfig",
+    "GOATConfig",
+    "CodeSecurityConfig",
+    "CONFIG_REGISTRY",
+    "create_config",
+    "get_default_config",
+    # 攻击实现
     "PromptInjectionAttack",
     "AdvancedPromptInjection",
     "InjectionTemplate",
@@ -172,4 +237,13 @@ __all__ = [
     "AttackExecutionResult",
     "AttackReportGenerator",
     "UnifiedAttackType",
+    # 攻击链
+    "AttackChain",
+    "AttackChainResult",
+    "AttackEnsemble",
+    "EnsembleResult",
+    "TargetModel",
+    "LLMTargetModel",
+    "RAGTargetModel",
+    "MultimodalTargetModel",
 ]

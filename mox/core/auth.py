@@ -121,20 +121,38 @@ class AuthManager:
         self._init_default_users()
 
     def _init_default_users(self):
-        # Default passwords - in production, these should be changed immediately
-        default_users_with_passwords = [
-            ("admin", "admin@mox.ai", ["admin", "attack", "defense", "eval"], "admin123"),
-            ("user", "user@mox.ai", ["attack", "defense"], "user123"),
-            ("readonly", "readonly@mox.ai", ["read"], "readonly123"),
-        ]
-        for username, email, scopes, password in default_users_with_passwords:
-            user = User(
-                username=username,
-                email=email,
-                scopes=scopes,
-            )
-            self.users_db[username] = user
-            self._password_hashes[username] = PasswordManager.get_password_hash(password)
+        """初始化默认用户 - 仅当配置了默认用户密码时才创建"""
+        import warnings
+
+        # 从环境变量获取默认用户配置，格式: username:password:email:scopes
+        # 示例: admin:secure_password_here:admin@mox.ai:admin,attack,defense,eval
+        default_users_env = settings.DEFAULT_USERS
+
+        if not default_users_env:
+            # 没有配置默认用户，这是生产环境的推荐配置
+            return
+
+        for user_config in default_users_env:
+            try:
+                parts = user_config.split(":")
+                if len(parts) < 2:
+                    warnings.warn(f"Invalid default user config (need username:password): {user_config}")
+                    continue
+
+                username = parts[0]
+                password = parts[1]
+                email = parts[2] if len(parts) > 2 else f"{username}@mox.ai"
+                scopes = parts[3].split(",") if len(parts) > 3 else ["read"]
+
+                user = User(
+                    username=username,
+                    email=email,
+                    scopes=scopes,
+                )
+                self.users_db[username] = user
+                self._password_hashes[username] = PasswordManager.get_password_hash(password)
+            except Exception as e:
+                warnings.warn(f"Failed to initialize default user from config: {user_config}, error: {e}")
 
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.users_db.get(username)

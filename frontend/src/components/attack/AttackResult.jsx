@@ -87,6 +87,19 @@ export default function AttackResult({ result }) {
             />
           </div>
 
+          {/* Demo Mode Warning */}
+          {result._demo_mode && (
+            <div className="p-3.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
+              <span className="text-xs font-semibold text-amber-700 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4" />
+                演示模式 - 数据仅供参考
+              </span>
+              <p className="text-xs text-amber-600 mt-1">
+                {result._warning || '这是演示数据，因为API未连接。请确保后端服务正在运行。'}
+              </p>
+            </div>
+          )}
+
           {/* Adversarial Prompt */}
           {(result['对抗提示词'] || result.adversarial_prompt) && (
             <div className="p-3.5 bg-graphite-50/80 rounded-lg border border-graphite-200/60">

@@ -66,12 +66,18 @@ class Settings(BaseSettings):
     CACHE_TTL: int = 3600
 
     # ============ 安全配置 ============
-    REQUIRE_AUTH: bool = False
+    REQUIRE_AUTH: bool = True  # 生产环境默认启用认证
     RATE_LIMIT_PER_MINUTE: int = 60
     RATE_LIMIT_BURST: int = 10
     MAX_LOGIN_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_DURATION_MINUTES: int = 15
     ALLOWED_IPS: List[str] = Field(default_factory=list)
+
+    # ============ 默认用户配置 ============
+    # 格式: List["username:password:email:scopes"]
+    # 示例: ["admin:secure_pass:admin@mox.ai:admin,attack,defense,eval"]
+    # 生产环境建议通过环境变量配置，默认不创建任何用户
+    DEFAULT_USERS: List[str] = Field(default_factory=list)
 
     # ============ CORS 配置 ============
     # If CORS_ORIGINS is empty or not set, restrict to localhost only (not all origins)
@@ -124,6 +130,15 @@ class Settings(BaseSettings):
         if isinstance(v, str):
             return [header.strip() for header in v.split(',') if header.strip()]
         return v
+
+    @field_validator('DEFAULT_USERS', mode='before')
+    @classmethod
+    def parse_default_users(cls, v):
+        if isinstance(v, str):
+            # 使用 | 分隔多个用户配置
+            return [user.strip() for user in v.split('|') if user.strip()]
+        return v
+
 
     def get_database_config(self) -> dict:
         """获取数据库配置"""

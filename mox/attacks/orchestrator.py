@@ -120,7 +120,7 @@ class AttackOrchestrator:
             from mox.attacks.llm_driven import TAPAttack, MultiTurnJailbreakAttack, CrescendoAttack
             from mox.attacks.agent_attacks import ToolAbuseAttack, MemoryInjectionAttack
             from mox.attacks.gcg import GCGAttack
-            from mox.attacks.rag_attacks import RAGAttack
+            from mox.attacks.rag_attacks import RAGContextInjectionAttack
             from mox.attacks.code_security import CodeSecurityAttacker
             from mox.attacks.meta_adversarial import MetaAdversarialAttack
 
@@ -133,7 +133,7 @@ class AttackOrchestrator:
                 UnifiedAttackType.TOOL_ABUSE: ToolAbuseAttack,
                 UnifiedAttackType.MEMORY_INJECTION: MemoryInjectionAttack,
                 UnifiedAttackType.GCG: GCGAttack,
-                UnifiedAttackType.RAG_ATTACK: RAGAttack,
+                UnifiedAttackType.RAG_ATTACK: RAGContextInjectionAttack,
                 UnifiedAttackType.CODE_SECURITY: CodeSecurityAttacker,
                 UnifiedAttackType.META_ADVERSARIAL: MetaAdversarialAttack,
             }

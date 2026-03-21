@@ -31,6 +31,7 @@ except ImportError:
 class PerplexityConfig:
     """困惑度计算配置"""
     model_name: str = "gpt2"
+    model_revision: str = "v1.1"  # Fixed revision for security
     max_length: int = 1024
     stride: int = 512
     batch_size: int = 8
@@ -74,9 +75,13 @@ class AccuratePerplexityCalculator:
         try:
             self._model = AutoModelForCausalLM.from_pretrained(
                 self.config.model_name,
+                revision=self.config.model_revision,
                 torch_dtype=torch.float32,
             )
-            self._tokenizer = AutoTokenizer.from_pretrained(self.config.model_name)
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.config.model_name,
+                revision=self.config.model_revision,
+            )
             self._model.eval()
             
             if torch.cuda.is_available():

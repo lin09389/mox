@@ -35,11 +35,21 @@ class ConnectionManager:
         await websocket.send_json(message)
 
     async def broadcast(self, message: dict):
+        """广播消息到所有活跃连接"""
+        from mox.core.logging import get_logger
+        logger = get_logger("websocket")
+
+        failed_connections = []
         for connection in self.active_connections:
             try:
                 await connection.send_json(message)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to send to WebSocket connection: {e}")
+                failed_connections.append(connection)
+
+        # 清理失败的连接
+        for conn in failed_connections:
+            self.active_connections.discard(conn)
 
 
 manager = ConnectionManager()

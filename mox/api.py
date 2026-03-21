@@ -70,6 +70,17 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
 )
 
+# ============ 限流中间件 ============
+
+from mox.middleware.rate_limit import RateLimitMiddleware
+
+app.add_middleware(
+    RateLimitMiddleware,
+    requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
+    burst_size=settings.RATE_LIMIT_BURST,
+    enabled=settings.REQUIRE_AUTH,  # 启用认证后才启用限流
+)
+
 
 # ============ 全局异常处理 ============
 

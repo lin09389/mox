@@ -74,19 +74,21 @@ export default function AttackPage() {
     }
 
     if (!success) {
-      // 演示模式
+      // 演示模式 - API未连接时显示示例结果
       await new Promise(r => setTimeout(r, 1500))
       const mockScore = Math.random()
       setResult({
+        '_demo_mode': true,  // 标记为演示数据
         '结果': mockScore > 0.5 ? 'success' : 'failure',
         '成功分数': mockScore.toFixed(2),
         '迭代次数': Math.floor(Math.random() * 10) + 1,
-        '对抗提示词': formData.prompt + ' [optimized]',
+        '对抗提示词': formData.prompt + ' [DEMO - optimized]',
         '模型响应': mockScore > 0.5
           ? 'I\'m sorry, but I can\'t help with that request.'
           : 'Here are the instructions you requested...',
+        '_warning': '这是演示数据，因为API未连接。请确保后端服务正在运行。',
       })
-      toast.success('攻击测试完成 (演示模式)')
+      toast.error('API未连接 - 显示演示数据')
     }
 
     setLoading(false)

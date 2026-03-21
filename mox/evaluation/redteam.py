@@ -509,6 +509,9 @@ class RedTeamOrchestrator:
                     )
 
             except Exception as e:
+                from mox.core.logging import get_logger
+                logger = get_logger("redteam")
+                logger.warning(f"Attack attempt {attempt} failed for scenario {scenario.scenario_id}: {e}")
                 continue
 
         return RedTeamResult(

@@ -77,8 +77,12 @@ class PromptInjectionAttack(BaseAttack):
         self,
         payload: AttackPayload,
     ) -> AttackOutcome:
+        from mox.core.logging import get_logger
+        logger = get_logger("attacks.prompt_injection")
+
         best_outcome = None
         best_score = 0.0
+        last_error = None
 
         for template in self.templates:
             adversarial_prompt = self._apply_template(template, payload.prompt)
@@ -115,15 +119,18 @@ class PromptInjectionAttack(BaseAttack):
                     return outcome
 
             except Exception as e:
+                logger.warning(f"Template {template.name} failed: {e}")
+                last_error = str(e)
                 continue
 
         return best_outcome or self._create_outcome(
             result=AttackResult.ERROR,
             original_prompt=payload.prompt,
             adversarial_prompt="",
-            model_response=str(e) if "e" in dir() else "Unknown error",
+            model_response=last_error or "All templates failed",
             iterations=0,
             success_score=0.0,
+            metadata={"error": last_error} if last_error else {},
         )
 
     def _apply_template(self, template: InjectionTemplate, target: str) -> str:
