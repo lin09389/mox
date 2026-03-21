@@ -117,7 +117,6 @@ from mox.defense.llm_judge import (
 
 from mox.evaluation import (
     AttackEvaluator,
-    DefenseEvaluator,
     RobustnessEvaluator,
     BenchmarkRunner,
     BenchmarkDataset,

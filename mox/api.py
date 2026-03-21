@@ -12,9 +12,11 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
 from fastapi.responses import Response
+from pydantic import BaseModel
 
 from mox.core.config import settings
 from mox.core.exceptions import MoxException
+from mox.middleware.rate_limit import RateLimitMiddleware
 from mox.routes import (
     attack_router,
     defense_router,
@@ -71,8 +73,6 @@ app.add_middleware(
 )
 
 # ============ 限流中间件 ============
-
-from mox.middleware.rate_limit import RateLimitMiddleware
 
 app.add_middleware(
     RateLimitMiddleware,
@@ -312,8 +312,6 @@ async def clear_cache():
 
 
 # ============ OWASP 测试端点 ============
-
-from pydantic import BaseModel
 
 class OWASPRequest(BaseModel):
     model: str = "gpt-4"

@@ -9,6 +9,8 @@ from pathlib import Path
 
 from .logging import get_logger
 from .types import AttackType, DefenseType
+from mox.attacks.base import BaseAttack
+from mox.defense.base import BaseDefense
 
 logger = get_logger("plugin")
 
