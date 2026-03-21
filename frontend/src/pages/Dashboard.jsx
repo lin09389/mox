@@ -1,29 +1,29 @@
 import { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { 
-  PieChart, 
-  Pie, 
-  Cell, 
-  BarChart, 
-  Bar, 
-  XAxis, 
-  YAxis, 
-  Tooltip, 
-  ResponsiveContainer, 
-  LineChart, 
+import {
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  ResponsiveContainer,
+  LineChart,
   Line,
-  Legend
 } from 'recharts'
 import toast from 'react-hot-toast'
 import { statsApi } from '../api'
-import { 
-  Zap, 
-  AlertTriangle, 
-  ShieldCheck, 
-  CheckCircle2, 
+import {
+  Zap,
+  AlertTriangle,
+  ShieldCheck,
+  CheckCircle2,
   ArrowRight,
   TrendingUp,
-  TrendingDown
+  Clock,
+  History,
 } from 'lucide-react'
 
 const COLORS = ['#ef4444', '#22c55e', '#f59e0b', '#a855f7']
@@ -32,20 +32,20 @@ const container = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.12 }
+    transition: { staggerChildren: 0.1 }
   }
 }
 
 const item = {
-  hidden: { opacity: 0, y: 25 },
-  show: { opacity: 1, y: 0, transition: { duration: 0.5 } }
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] } }
 }
 
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="card-premium !p-3 !shadow-hard">
-        <p className="text-sm font-semibold text-dark-900 mb-1">{label}</p>
+      <div className="bg-white rounded-md border border-graphite-200/60 p-3 shadow-lifted">
+        <p className="text-sm font-semibold text-graphite-900 mb-1">{label}</p>
         {payload.map((entry, index) => (
           <p key={index} className="text-xs" style={{ color: entry.color }}>
             {entry.name}: <span className="font-bold">{entry.value}</span>
@@ -114,148 +114,118 @@ export default function Dashboard() {
       label: '总攻击次数',
       value: stats.total_attacks,
       icon: Zap,
-      color: 'danger',
-      gradient: 'from-danger-500 to-orange-500',
-      bg: 'bg-danger-100',
-      textColor: 'text-danger-600',
-      statType: 'danger'
+      color: 'lave',
+      percentage: `${((stats.successful_attacks / stats.total_attacks) * 100 || 0).toFixed(1)}% 成功率`
     },
     {
       label: '成功攻击',
       value: stats.successful_attacks,
       icon: AlertTriangle,
-      color: 'warning',
-      gradient: 'from-warning-500 to-danger-500',
-      bg: 'bg-warning-100',
-      textColor: 'text-warning-600',
-      statType: 'danger',
-      percentage: `${((stats.successful_attacks / stats.total_attacks) * 100 || 0).toFixed(1)}% 成功率`
+      color: 'amber',
+      percentage: '突破防护'
     },
     {
       label: '总防御次数',
       value: stats.total_defenses,
       icon: ShieldCheck,
-      color: 'primary',
-      gradient: 'from-primary-500 to-secondary-500',
-      bg: 'bg-primary-100',
-      textColor: 'text-primary-600',
-      statType: 'primary'
+      color: 'electric',
+      percentage: null
     },
     {
       label: '成功拦截',
       value: stats.blocked_attacks,
       icon: CheckCircle2,
-      color: 'success',
-      gradient: 'from-success-500 to-primary-500',
-      bg: 'bg-success-100',
-      textColor: 'text-success-600',
-      statType: 'success',
+      color: 'neon',
       percentage: `${((stats.blocked_attacks / stats.total_defenses) * 100 || 0).toFixed(1)}% 拦截率`
     }
   ]
 
+  const colorMap = {
+    lave: { bg: 'bg-lava-100', text: 'text-lava-600', border: 'border-lava-200/70' },
+    amber: { bg: 'bg-amber-100', text: 'text-amber-600', border: 'border-amber-200/70' },
+    electric: { bg: 'bg-electric-100', text: 'text-electric-600', border: 'border-electric-200/70' },
+    neon: { bg: 'bg-neon-100', text: 'text-neon-600', border: 'border-neon-200/70' },
+  }
+
   return (
-    <motion.div 
+    <motion.div
       variants={container}
       initial="hidden"
       animate="show"
-      className="space-y-8"
+      className="space-y-6"
     >
+      {/* 页面标题 */}
       <motion.div variants={item}>
-        <div className="flex items-center gap-3 mb-2">
-          <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-xl flex items-center justify-center shadow-glow-primary">
-            <TrendingUp className="w-6 h-6 text-white" />
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
+            <TrendingUp className="w-5.5 h-5.5 text-electric-600" />
           </div>
           <div>
-            <h1 className="text-3xl font-extrabold text-dark-900 tracking-tight">安全概览</h1>
-            <p className="text-dark-500">实时监控您的模型安全状态</p>
+            <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">安全概览</h1>
+            <p className="text-sm text-graphite-500">实时监控您的模型安全状态</p>
           </div>
         </div>
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      {/* 统计卡片 */}
+      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {statCards.map((stat, idx) => {
           const Icon = stat.icon
+          const colors = colorMap[stat.color]
           return (
             <motion.div
               key={idx}
-              whileHover={{ scale: 1.02, y: -4 }}
-              transition={{ type: 'spring', stiffness: 300 }}
-              className="card-premium card-hover glow"
+              variants={item}
+              className="card card-hover"
             >
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-14 h-14 ${stat.bg} rounded-2xl flex items-center justify-center shadow-soft`}>
-                  <Icon className={`w-7 h-7 ${stat.textColor}`} />
+              <div className="flex items-start justify-between mb-3">
+                <div className={`w-11 h-11 ${colors.bg} rounded-lg flex items-center justify-center border ${colors.border}`}>
+                  <Icon className={`w-5.5 h-5.5 ${colors.text}`} />
                 </div>
-                <motion.div
-                  animate={{ rotate: [0, 10, -10, 0] }}
-                  transition={{ duration: 2, repeat: Infinity, repeatDelay: 3 }}
-                >
-                  <TrendingUp className={`w-5 h-5 ${stat.textColor} opacity-60`} />
-                </motion.div>
+                <TrendingUp className={`w-4.5 h-4.5 ${colors.text} opacity-50`} />
               </div>
-              
               <div>
-                <p className="text-sm font-medium text-dark-500 mb-1">{stat.label}</p>
-                <p className={`text-4xl font-extrabold bg-gradient-to-r ${stat.gradient} bg-clip-text text-transparent`}>
-                  {stat.value.toLocaleString()}
-                </p>
+                <p className="text-xs text-graphite-500 mb-0.5">{stat.label}</p>
+                <p className="text-2xl font-bold font-display text-graphite-900">{stat.value.toLocaleString()}</p>
               </div>
-
               {stat.percentage && (
-                <div className="mt-4 pt-3 border-t border-dark-100/60">
-                  <div className="flex items-center gap-2">
-                    <div className={`w-2 h-2 rounded-full ${stat.statType === 'danger' ? 'bg-danger-500' : 'bg-success-500'}`} />
-                    <span className={`text-sm font-semibold ${stat.textColor}`}>
-                      {stat.percentage}
-                    </span>
-                  </div>
+                <div className="mt-3 pt-3 border-t border-graphite-200/60">
+                  <span className={`text-xs font-medium ${colors.text}`}>{stat.percentage}</span>
                 </div>
               )}
-
-              <div className="mt-4">
-                <div className="progress-bar">
-                  <div 
-                    className={`h-full bg-gradient-to-r ${stat.gradient} rounded-full transition-all duration-1000`}
-                    style={{ 
-                      width: stat.percentage 
-                        ? `${parseFloat(stat.percentage)}%` 
-                        : '100%' 
-                    }}
-                  />
-                </div>
-              </div>
             </motion.div>
           )
         })}
       </motion.div>
 
-      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div className="card-premium lg:col-span-1">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-dark-900">攻击成功率</h3>
-            <div className="w-8 h-8 bg-danger-100 rounded-lg flex items-center justify-center">
-              <AlertTriangle className="w-4 h-4 text-danger-600" />
+      {/* 图表区域 */}
+      <motion.div variants={item} className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* 攻击成功率 */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-graphite-900">攻击成功率</h3>
+            <div className={`w-8 h-8 ${colorMap.lave.bg} rounded-md flex items-center justify-center`}>
+              <AlertTriangle className={`w-4 h-4 ${colorMap.lave.text}`} />
             </div>
           </div>
-          <div className="relative h-64">
+          <div className="relative h-56">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={attackData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={65}
-                  outerRadius={95}
-                  paddingAngle={6}
+                  innerRadius={55}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
                 >
                   {attackData.map((_, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={COLORS[index]} 
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={COLORS[index]}
                       stroke="white"
-                      strokeWidth={3}
+                      strokeWidth={2}
                     />
                   ))}
                 </Pie>
@@ -264,150 +234,143 @@ export default function Dashboard() {
             </ResponsiveContainer>
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center">
-                <p className="text-3xl font-extrabold text-danger-600">
+                <p className="text-2xl font-bold text-graphite-900">
                   {((stats.successful_attacks / stats.total_attacks) * 100 || 0).toFixed(0)}%
                 </p>
-                <p className="text-xs text-dark-500 font-medium">成功率</p>
+                <p className="text-[11px] text-graphite-500">成功率</p>
               </div>
             </div>
           </div>
-          <div className="flex justify-center gap-6 mt-4">
+          <div className="flex justify-center gap-5 mt-3">
             {attackData.map((entry, idx) => (
-              <div key={idx} className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded-full" style={{ backgroundColor: COLORS[idx] }} />
-                <span className="text-sm font-semibold text-dark-700">
-                  {entry.name}: <span className="text-dark-900">{entry.value}</span>
+              <div key={idx} className="flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[idx] }} />
+                <span className="text-xs text-graphite-600">
+                  {entry.name}: <span className="font-medium text-graphite-900">{entry.value}</span>
                 </span>
               </div>
             ))}
           </div>
         </div>
 
-        <div className="card-premium lg:col-span-1">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-dark-900">防御拦截统计</h3>
-            <div className="w-8 h-8 bg-success-100 rounded-lg flex items-center justify-center">
-              <ShieldCheck className="w-4 h-4 text-success-600" />
+        {/* 防御拦截统计 */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-graphite-900">防御拦截统计</h3>
+            <div className={`w-8 h-8 ${colorMap.neon.bg} rounded-md flex items-center justify-center`}>
+              <ShieldCheck className={`w-4 h-4 ${colorMap.neon.text}`} />
             </div>
           </div>
-          <div className="h-64">
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={defenseData}>
-                <XAxis 
-                  dataKey="name" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 13, fontWeight: 600, fill: '#64748b' }}
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fontWeight: 600, fill: '#71717a' }}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  tick={{ fontSize: 12, fill: '#94a3b8' }}
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 11, fill: '#a1a1aa' }}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(14, 165, 233, 0.05)' }} />
-                <Bar 
-                  dataKey="value" 
-                  radius={[12, 12, 4, 4]}
-                  barSize={50}
+                <Bar
+                  dataKey="value"
+                  radius={[8, 8, 4, 4]}
+                  barSize={48}
                 >
                   {defenseData.map((_, index) => (
-                    <Cell 
-                      key={`cell-${index}`} 
-                      fill={index === 0 ? 'url(#colorBlocked)' : 'url(#colorAllowed)'} 
+                    <Cell
+                      key={`cell-${index}`}
+                      fill={index === 0 ? '#22c55e' : '#f59e0b'}
                     />
                   ))}
                 </Bar>
-                <defs>
-                  <linearGradient id="colorBlocked" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#22c55e" />
-                    <stop offset="100%" stopColor="#16a34a" />
-                  </linearGradient>
-                  <linearGradient id="colorAllowed" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#f59e0b" />
-                    <stop offset="100%" stopColor="#d97706" />
-                  </linearGradient>
-                </defs>
               </BarChart>
             </ResponsiveContainer>
           </div>
         </div>
 
-        <div className="card-premium lg:col-span-1">
-          <div className="flex items-center justify-between mb-5">
-            <h3 className="text-lg font-bold text-dark-900">7天趋势</h3>
-            <div className="w-8 h-8 bg-primary-100 rounded-lg flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-primary-600" />
+        {/* 7天趋势 */}
+        <div className="card">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-semibold text-graphite-900">7天趋势</h3>
+            <div className={`w-8 h-8 ${colorMap.electric.bg} rounded-md flex items-center justify-center`}>
+              <TrendingUp className={`w-4 h-4 ${colorMap.electric.text}`} />
             </div>
           </div>
-          <div className="h-64">
+          <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={trendData}>
-                <XAxis 
-                  dataKey="day" 
-                  axisLine={false} 
-                  tickLine={false} 
-                  fontSize={12} 
-                  tick={{ fill: '#64748b', fontWeight: 500 }}
+                <XAxis
+                  dataKey="day"
+                  axisLine={false}
+                  tickLine={false}
+                  fontSize={11}
+                  tick={{ fill: '#71717a', fontWeight: 500 }}
                 />
-                <YAxis 
-                  axisLine={false} 
-                  tickLine={false} 
-                  fontSize={12}
-                  tick={{ fill: '#94a3b8' }}
+                <YAxis
+                  axisLine={false}
+                  tickLine={false}
+                  fontSize={11}
+                  tick={{ fill: '#a1a1aa' }}
                 />
                 <Tooltip content={<CustomTooltip />} />
-                <Line 
-                  type="monotone" 
-                  dataKey="attacks" 
-                  stroke="#ef4444" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 6, fill: '#ef4444' }}
+                <Line
+                  type="monotone"
+                  dataKey="attacks"
+                  stroke="#ef4444"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#ef4444', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 5, fill: '#ef4444' }}
                 />
-                <Line 
-                  type="monotone" 
-                  dataKey="defenses" 
-                  stroke="#22c55e" 
-                  strokeWidth={3} 
-                  dot={{ r: 4, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }}
-                  activeDot={{ r: 6, fill: '#22c55e' }}
+                <Line
+                  type="monotone"
+                  dataKey="defenses"
+                  stroke="#22c55e"
+                  strokeWidth={2.5}
+                  dot={{ r: 3, fill: '#22c55e', strokeWidth: 2, stroke: '#fff' }}
+                  activeDot={{ r: 5, fill: '#22c55e' }}
                 />
               </LineChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex justify-center gap-6 mt-3">
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-danger-500" />
-              <span className="text-sm font-semibold text-dark-600">攻击</span>
+          <div className="flex justify-center gap-5 mt-2">
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-lava-500" />
+              <span className="text-xs text-graphite-600">攻击</span>
             </div>
-            <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-success-500" />
-              <span className="text-sm font-semibold text-dark-600">防御</span>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-neon-500" />
+              <span className="text-xs text-graphite-600">防御</span>
             </div>
           </div>
         </div>
       </motion.div>
 
-      <motion.div variants={item} className="card-premium">
-        <div className="flex items-center justify-between mb-6">
+      {/* 最近活动 */}
+      <motion.div variants={item} className="card">
+        <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-secondary-600 rounded-xl flex items-center justify-center">
-              <Clock className="w-5 h-5 text-white" />
+            <div className="w-10 h-10 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
+              <Clock className="w-5 h-5 text-electric-600" />
             </div>
             <div>
-              <h3 className="text-lg font-bold text-dark-900">最近活动</h3>
-              <p className="text-sm text-dark-500">最新的安全事件记录</p>
+              <h3 className="text-sm font-semibold text-graphite-900">最近活动</h3>
+              <p className="text-xs text-graphite-500">最新的安全事件记录</p>
             </div>
           </div>
-          <a 
-            href="/history" 
-            className="inline-flex items-center gap-2 text-sm font-semibold text-primary-600 hover:text-primary-700 transition-colors group"
+          <a
+            href="/history"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-electric-600 hover:text-electric-700 transition-colors"
           >
-            查看全部 
-            <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            查看全部
+            <ArrowRight className="w-3.5 h-3.5" />
           </a>
         </div>
-        
+
         <div className="table-container">
           <table className="table">
             <thead>
@@ -423,34 +386,34 @@ export default function Dashboard() {
                 <tr>
                   <td colSpan={4} className="text-center py-12">
                     <div className="flex flex-col items-center gap-2">
-                      <div className="w-16 h-16 bg-dark-100 rounded-full flex items-center justify-center">
-                        <History className="w-8 h-8 text-dark-400" />
+                      <div className="w-14 h-14 bg-graphite-100 rounded-full flex items-center justify-center">
+                        <History className="w-7 h-7 text-graphite-400" />
                       </div>
-                      <p className="text-dark-500 font-medium">暂无活动记录</p>
+                      <p className="text-sm text-graphite-500">暂无活动记录</p>
                     </div>
                   </td>
                 </tr>
               ) : (
                 stats.recent_attacks.map((attack) => (
                   <tr key={attack.id || attack.created_at} className="group">
-                    <td className="text-dark-500 font-medium">
+                    <td className="text-graphite-500 text-xs font-medium">
                       {new Date(attack.created_at).toLocaleString('zh-CN')}
                     </td>
                     <td>
-                      <span className="badge-info">
+                      <span className="badge badge-info">
                         {attack.attack_type.replace('_', ' ')}
                       </span>
                     </td>
-                    <td className="font-semibold text-dark-800">{attack.model_name}</td>
+                    <td className="font-medium text-graphite-800 text-xs">{attack.model_name}</td>
                     <td>
                       {attack.result === 'success' ? (
-                        <span className="badge-danger flex items-center gap-1.5">
-                          <AlertTriangle className="w-3.5 h-3.5" />
+                        <span className="badge badge-danger flex items-center gap-1">
+                          <AlertTriangle className="w-3 h-3" />
                           攻击成功
                         </span>
                       ) : (
-                        <span className="badge-success flex items-center gap-1.5">
-                          <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span className="badge badge-success flex items-center gap-1">
+                          <CheckCircle2 className="w-3 h-3" />
                           攻击失败
                         </span>
                       )}

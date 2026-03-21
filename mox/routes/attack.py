@@ -63,7 +63,15 @@ def get_llm(model: str) -> BaseLLM:
     return _llm_cache[model]
 
 
-_db = Database()
+_db: Optional[Database] = None
+
+
+def get_db() -> Database:
+    """获取数据库实例（懒加载）"""
+    global _db
+    if _db is None:
+        _db = Database()
+    return _db
 
 
 # ============ 辅助函数 ============
@@ -342,7 +350,7 @@ async def get_attack_history(
 ) -> Dict[str, Any]:
     """获取攻击历史"""
     try:
-        records = await _db.get_attack_records(limit=limit)
+        records = await get_db().get_attack_records(limit=limit)
         return {
             "records": [
                 {

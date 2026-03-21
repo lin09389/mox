@@ -1,6 +1,27 @@
 import { useState, useEffect } from 'react'
-import { Play, Pause, RotateCcw, CheckCircle, XCircle, Clock, Loader } from 'lucide-react'
+import { motion, AnimatePresence } from 'framer-motion'
+import { Play, CheckCircle, XCircle, Clock, Loader, ListTodo, Eye } from 'lucide-react'
 import { api } from '../api'
+
+const statusConfig = {
+  running: { icon: Loader, color: 'text-electric-600', bgColor: 'bg-electric-100', borderColor: 'border-electric-200/70', label: '运行中' },
+  completed: { icon: CheckCircle, color: 'text-neon-600', bgColor: 'bg-neon-100', borderColor: 'border-neon-200/70', label: '已完成' },
+  failed: { icon: XCircle, color: 'text-lava-600', bgColor: 'bg-lava-100', borderColor: 'border-lava-200/70', label: '失败' },
+  pending: { icon: Clock, color: 'text-amber-600', bgColor: 'bg-amber-100', borderColor: 'border-amber-200/70', label: '等待中' },
+}
+
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
+}
 
 export default function TaskProgressPage() {
   const [tasks, setTasks] = useState([])
@@ -37,173 +58,266 @@ export default function TaskProgressPage() {
     setSelectedTask(task)
   }
 
-  const getStatusIcon = (status) => {
-    switch (status) {
-      case 'running': return <Loader className="animate-spin text-blue-500" size={18} />
-      case 'completed': return <CheckCircle className="text-green-500" size={18} />
-      case 'failed': return <XCircle className="text-red-500" size={18} />
-      case 'pending': return <Clock className="text-yellow-500" size={18} />
-      default: return <Clock className="text-gray-500" size={18} />
-    }
-  }
-
-  const getStatusText = (status) => {
-    const config = { running: '运行中', completed: '已完成', failed: '失败', pending: '等待中' }
-    return config[status] || status
-  }
-
-  const getStatusColor = (status) => {
-    const config = { running: 'bg-blue-100 text-blue-800', completed: 'bg-green-100 text-green-800', failed: 'bg-red-100 text-red-800', pending: 'bg-yellow-100 text-yellow-800' }
-    return config[status] || 'bg-gray-100'
-  }
-
-  const runningTasks = tasks.filter(t => t.status === 'running')
+  const runningTasks = tasks.filter((t) => t.status === 'running')
   const stats = {
-    running: tasks.filter(t => t.status === 'running').length,
-    pending: tasks.filter(t => t.status === 'pending').length,
-    completed: tasks.filter(t => t.status === 'completed').length,
-    failed: tasks.filter(t => t.status === 'failed').length,
+    running: tasks.filter((t) => t.status === 'running').length,
+    pending: tasks.filter((t) => t.status === 'pending').length,
+    completed: tasks.filter((t) => t.status === 'completed').length,
+    failed: tasks.filter((t) => t.status === 'failed').length,
+  }
+
+  const getStatusIcon = (status) => {
+    const config = statusConfig[status] || statusConfig.pending
+    const Icon = config.icon
+    return <Icon className={`w-4 h-4 ${config.color} ${status === 'running' ? 'animate-spin' : ''}`} />
   }
 
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-gray-800 mb-6">任务中心</h1>
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      {/* 页面标题 */}
+      <motion.div variants={item} className="flex items-center gap-3">
+        <div className="w-11 h-11 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
+          <ListTodo className="w-5.5 h-5.5 text-electric-600" />
+        </div>
+        <div>
+          <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">
+            任务中心
+          </h1>
+          <p className="text-sm text-graphite-500">管理和监控所有安全测试任务</p>
+        </div>
+      </motion.div>
 
-      <div className="grid grid-cols-4 gap-4 mb-6">
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-2">
-            <Loader className="animate-spin text-blue-500" size={20} />
-            <div>
-              <div className="text-sm text-gray-500">运行中</div>
-              <div className="text-2xl font-bold">{stats.running}</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-2">
-            <Clock className="text-yellow-500" size={20} />
-            <div>
-              <div className="text-sm text-gray-500">等待中</div>
-              <div className="text-2xl font-bold">{stats.pending}</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-2">
-            <CheckCircle className="text-green-500" size={20} />
-            <div>
-              <div className="text-sm text-gray-500">已完成</div>
-              <div className="text-2xl font-bold">{stats.completed}</div>
-            </div>
-          </div>
-        </div>
-        <div className="bg-white p-4 rounded-xl shadow-sm border border-gray-200">
-          <div className="flex items-center gap-2">
-            <XCircle className="text-red-500" size={20} />
-            <div>
-              <div className="text-sm text-gray-500">失败</div>
-              <div className="text-2xl font-bold">{stats.failed}</div>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* 统计卡片 */}
+      <motion.div variants={item} className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        {Object.entries(stats).map(([key, value]) => {
+          const config = statusConfig[key] || statusConfig.pending
+          const Icon = config.icon
+          return (
+            <motion.div key={key} variants={item} className="card flex items-center gap-3">
+              <div className={`w-10 h-10 ${config.bgColor} rounded-lg flex items-center justify-center border ${config.borderColor}`}>
+                <Icon className={`w-5 h-5 ${config.color} ${key === 'running' ? 'animate-spin' : ''}`} />
+              </div>
+              <div>
+                <p className="text-xs text-graphite-500">{config.label}</p>
+                <p className="text-2xl font-bold font-display text-graphite-900">{value}</p>
+              </div>
+            </motion.div>
+          )
+        })}
+      </motion.div>
 
+      {/* 正在执行的任务 */}
       {runningTasks.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-          <h2 className="font-semibold mb-4">正在执行</h2>
+        <motion.div variants={item} className="card">
+          <h3 className="text-sm font-semibold text-graphite-900 mb-4 flex items-center gap-2">
+            <Play className="w-4 h-4 text-electric-500" />
+            正在执行
+          </h3>
           <div className="space-y-3">
-            {runningTasks.map(task => (
-              <div key={task.id} className="flex items-center gap-4 p-3 bg-gray-50 rounded-lg">
-                <Loader className="animate-spin text-blue-500" size={20} />
+            {runningTasks.map((task) => (
+              <div
+                key={task.id}
+                className="flex items-center gap-4 p-3 bg-graphite-50/50 rounded-lg border border-graphite-200/60"
+              >
+                <Loader className="w-5 h-5 text-electric-500 animate-spin" />
                 <div className="flex-1">
-                  <div className="font-medium">{task.name}</div>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className="flex-1 bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-500 h-2 rounded-full transition-all" style={{ width: `${task.progress}%` }} />
-                    </div>
-                    <span className="text-sm text-gray-600">{task.completed}/{task.total}</span>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="font-medium text-sm text-graphite-900">{task.name}</span>
+                    <span className="text-xs text-graphite-500">
+                      {task.completed}/{task.total}
+                    </span>
+                  </div>
+                  <div className="h-2 bg-graphite-200 rounded-full overflow-hidden">
+                    <motion.div
+                      className="h-full bg-electric-500 rounded-full"
+                      initial={{ width: 0 }}
+                      animate={{ width: `${task.progress}%` }}
+                      transition={{ duration: 0.3 }}
+                    />
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+      {/* 任务列表 */}
+      <motion.div variants={item} className="card p-0 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-gray-500">加载中...</div>
+          <div className="p-8 text-center text-graphite-500">
+            <div className="spinner mx-auto mb-2" />
+            加载中...
+          </div>
         ) : tasks.length === 0 ? (
-          <div className="p-8 text-center text-gray-500">暂无任务</div>
+          <div className="p-8 text-center text-graphite-500">暂无任务</div>
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead className="bg-gray-50">
+          <div className="table-container">
+            <table className="table">
+              <thead>
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">任务ID</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">任务名称</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">类型</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">状态</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">进度</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">完成/总计</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">失败</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">开始时间</th>
+                  <th>任务ID</th>
+                  <th>任务名称</th>
+                  <th>类型</th>
+                  <th>状态</th>
+                  <th>进度</th>
+                  <th>完成/总计</th>
+                  <th>失败</th>
+                  <th>开始时间</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-gray-200">
-                {tasks.map(task => (
-                  <tr key={task.id} className="hover:bg-gray-50 cursor-pointer" onClick={() => viewTaskDetail(task)}>
-                    <td className="px-6 py-4 text-gray-600 font-mono text-sm">{task.id}</td>
-                    <td className="px-6 py-4 font-medium text-gray-900">{task.name}</td>
-                    <td className="px-6 py-4"><span className="px-2 py-1 bg-gray-100 text-gray-800 rounded text-xs">{task.type}</span></td>
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-2">
-                        {getStatusIcon(task.status)}
-                        <span className={`px-2 py-1 rounded text-xs ${getStatusColor(task.status)}`}>{getStatusText(task.status)}</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 w-40">
-                      <div className="flex items-center gap-2">
-                        <div className="flex-1 bg-gray-200 rounded-full h-2">
-                          <div className={`h-2 rounded-full ${task.status === 'failed' ? 'bg-red-500' : task.status === 'completed' ? 'bg-green-500' : 'bg-blue-500'}`} style={{ width: `${task.progress}%` }} />
+              <tbody>
+                {tasks.map((task) => {
+                  const status = statusConfig[task.status] || statusConfig.pending
+                  return (
+                    <tr
+                      key={task.id}
+                      className="cursor-pointer group"
+                      onClick={() => viewTaskDetail(task)}
+                    >
+                      <td className="font-mono text-xs text-graphite-600">{task.id}</td>
+                      <td className="font-medium text-graphite-900 text-sm">{task.name}</td>
+                      <td>
+                        <span className="badge bg-graphite-100 text-graphite-700 border border-graphite-200/60">
+                          {task.type}
+                        </span>
+                      </td>
+                      <td>
+                        <div className="flex items-center gap-2">
+                          {getStatusIcon(task.status)}
+                          <span className={`text-xs font-medium ${status.color}`}>
+                            {status.label}
+                          </span>
                         </div>
-                        <span className="text-sm">{task.progress}%</span>
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-gray-600">{task.completed}/{task.total}</td>
-                    <td className="px-6 py-4"><span className={task.failed > 0 ? 'text-red-600 font-medium' : 'text-green-600'}>{task.failed}</span></td>
-                    <td className="px-6 py-4 text-gray-600 text-sm">{task.start_time}</td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="w-32">
+                        <div className="flex items-center gap-2">
+                          <div className="flex-1 h-1.5 bg-graphite-200 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full ${
+                                task.status === 'failed'
+                                  ? 'bg-lava-500'
+                                  : task.status === 'completed'
+                                  ? 'bg-neon-500'
+                                  : 'bg-electric-500'
+                              }`}
+                              style={{ width: `${task.progress}%` }}
+                            />
+                          </div>
+                          <span className="text-xs text-graphite-500">{task.progress}%</span>
+                        </div>
+                      </td>
+                      <td className="text-graphite-600 text-sm">
+                        {task.completed}/{task.total}
+                      </td>
+                      <td>
+                        <span className={task.failed > 0 ? 'text-lava-600 font-medium' : 'text-neon-600'}>
+                          {task.failed}
+                        </span>
+                      </td>
+                      <td className="text-graphite-500 text-xs">{task.start_time}</td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
         )}
-      </div>
+      </motion.div>
 
-      {selectedTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50" onClick={() => setSelectedTask(null)}>
-          <div className="bg-white rounded-xl p-6 w-full max-w-lg" onClick={e => e.stopPropagation()}>
-            <h2 className="text-xl font-bold mb-4">任务详情</h2>
-            <div className="space-y-3">
-              <div className="flex justify-between"><span className="text-gray-500">任务ID:</span><span className="font-mono">{selectedTask.id}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">任务名称:</span><span>{selectedTask.name}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">类型:</span><span>{selectedTask.type}</span></div>
-              <div className="flex justify-between items-center"><span className="text-gray-500">状态:</span>{getStatusIcon(selectedTask.status)} <span>{getStatusText(selectedTask.status)}</span></div>
-              <div className="mt-4">
-                <div className="text-sm text-gray-500 mb-1">进度: {selectedTask.progress}%</div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
-                  <div className={`h-3 rounded-full ${selectedTask.status === 'failed' ? 'bg-red-500' : 'bg-blue-500'}`} style={{ width: `${selectedTask.progress}%` }} />
+      {/* 任务详情模态框 */}
+      <AnimatePresence>
+        {selectedTask && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-graphite-900/30 backdrop-blur-sm flex items-center justify-center z-50"
+            onClick={() => setSelectedTask(null)}
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 10 }}
+              className="bg-white rounded-lg p-6 w-full max-w-md shadow-modal"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <h2 className="text-lg font-semibold text-graphite-900 mb-4 flex items-center gap-2">
+                <Eye className="w-5 h-5 text-electric-500" />
+                任务详情
+              </h2>
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">任务ID:</span>
+                  <span className="font-mono text-sm">{selectedTask.id}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">任务名称:</span>
+                  <span className="font-medium">{selectedTask.name}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">类型:</span>
+                  <span className="badge badge-info">{selectedTask.type}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-graphite-500">状态:</span>
+                  <div className="flex items-center gap-2">
+                    {getStatusIcon(selectedTask.status)}
+                    <span className={`font-medium ${statusConfig[selectedTask.status]?.color}`}>
+                      {statusConfig[selectedTask.status]?.label}
+                    </span>
+                  </div>
+                </div>
+                <div className="mt-4">
+                  <div className="flex justify-between text-sm mb-1.5">
+                    <span className="text-graphite-500">进度:</span>
+                    <span className="font-medium">{selectedTask.progress}%</span>
+                  </div>
+                  <div className="w-full h-3 bg-graphite-200 rounded-full overflow-hidden">
+                    <div
+                      className={`h-full rounded-full ${
+                        selectedTask.status === 'failed'
+                          ? 'bg-lava-500'
+                          : selectedTask.status === 'completed'
+                          ? 'bg-neon-500'
+                          : 'bg-electric-500'
+                      }`}
+                      style={{ width: `${selectedTask.progress}%` }}
+                    />
+                  </div>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">完成:</span>
+                  <span>
+                    {selectedTask.completed} / {selectedTask.total}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">失败:</span>
+                  <span className={selectedTask.failed > 0 ? 'text-lava-600' : 'text-neon-600'}>
+                    {selectedTask.failed}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-graphite-500">开始时间:</span>
+                  <span className="text-sm">{selectedTask.start_time}</span>
                 </div>
               </div>
-              <div className="flex justify-between mt-4"><span className="text-gray-500">完成:</span><span>{selectedTask.completed} / {selectedTask.total}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">失败:</span><span className={selectedTask.failed > 0 ? 'text-red-600' : 'text-green-600'}>{selectedTask.failed}</span></div>
-              <div className="flex justify-between"><span className="text-gray-500">开始时间:</span><span>{selectedTask.start_time}</span></div>
-            </div>
-            <button onClick={() => setSelectedTask(null)} className="mt-4 w-full px-4 py-2 border rounded-lg">关闭</button>
-          </div>
-        </div>
-      )}
-    </div>
+              <button
+                onClick={() => setSelectedTask(null)}
+                className="btn-secondary w-full mt-5"
+              >
+                关闭
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
   )
 }

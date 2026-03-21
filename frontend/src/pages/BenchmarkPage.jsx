@@ -6,7 +6,7 @@ import { benchmarkApi } from '../api'
 import {
   BarChart3,
   Play,
-  Loader2,
+  Loader,
   Database,
   Target,
   Cpu,
@@ -22,21 +22,21 @@ import {
 } from 'lucide-react'
 
 const DATASETS = [
-  { 
-    value: 'advbench', 
-    label: 'AdvBench', 
-    desc: '对抗性基准测试集', 
+  {
+    value: 'advbench',
+    label: 'AdvBench',
+    desc: '对抗性基准测试集',
     count: 150,
     icon: Shield,
-    color: 'from-blue-500 to-cyan-500'
+    color: 'electric'
   },
-  { 
-    value: 'harmbench', 
-    label: 'HarmBench', 
-    desc: '安全危害基准集', 
+  {
+    value: 'harmbench',
+    label: 'HarmBench',
+    desc: '安全危害基准集',
     count: 200,
     icon: Target,
-    color: 'from-rose-500 to-pink-500'
+    color: 'lave'
   },
 ]
 
@@ -50,58 +50,21 @@ const MODELS = [
 ]
 
 const ATTACK_TYPES = [
-  { 
-    value: 'prompt_injection', 
-    label: '提示词注入', 
+  {
+    value: 'prompt_injection',
+    label: '提示词注入',
     desc: '通过注入恶意指令覆盖系统提示',
     icon: Target,
-    color: 'from-amber-500 to-orange-500'
+    color: 'lave'
   },
-  { 
-    value: 'jailbreak', 
-    label: '越狱攻击', 
+  {
+    value: 'jailbreak',
+    label: '越狱攻击',
     desc: '尝试绕过安全限制获取敏感信息',
     icon: Zap,
-    color: 'from-rose-500 to-red-500'
+    color: 'crimson'
   },
 ]
-
-const containerVariants = {
-  hidden: { opacity: 0 },
-  show: { 
-    opacity: 1, 
-    transition: { 
-      staggerChildren: 0.08,
-      delayChildren: 0.1
-    } 
-  }
-}
-
-const itemVariants = {
-  hidden: { opacity: 0, y: 20 },
-  show: { 
-    opacity: 1, 
-    y: 0,
-    transition: {
-      type: 'spring',
-      stiffness: 100,
-      damping: 15
-    }
-  }
-}
-
-const cardVariants = {
-  hidden: { opacity: 0, scale: 0.95 },
-  show: { 
-    opacity: 1, 
-    scale: 1,
-    transition: {
-      type: 'spring',
-      stiffness: 100,
-      damping: 15
-    }
-  }
-}
 
 export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false)
@@ -121,7 +84,6 @@ export default function BenchmarkPage() {
     setProgress(0)
     setActiveStep(1)
 
-    // Simulate progress with steps
     const steps = [
       { progress: 15, message: '正在加载数据集...' },
       { progress: 30, message: '初始化测试环境...' },
@@ -145,7 +107,6 @@ export default function BenchmarkPage() {
       setActiveStep(2)
       toast.success('基准测试完成')
     } catch (error) {
-      // Mock result
       setTimeout(() => {
         setProgress(100)
         const successCount = Math.floor(form.max_cases * 0.35)
@@ -182,7 +143,7 @@ export default function BenchmarkPage() {
     return acc
   }, [
     { name: '攻击成功', value: 0, color: '#ef4444' },
-    { name: '攻击失败', value: 0, color: '#10b981' },
+    { name: '攻击失败', value: 0, color: '#22c55e' },
   ]) || []
 
   const pieData = chartData.filter(d => d.value > 0)
@@ -194,567 +155,467 @@ export default function BenchmarkPage() {
   }
 
   return (
-    <motion.div 
-      className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950"
-      initial="hidden"
-      animate="show"
-      variants={containerVariants}
-    >
-      {/* Header Section */}
-      <div className="relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-violet-500/10 via-purple-500/10 to-pink-500/10" />
-        <div className="absolute top-0 left-1/3 w-96 h-96 bg-violet-500/20 rounded-full blur-3xl" />
-        <div className="absolute bottom-0 right-1/3 w-96 h-96 bg-purple-500/20 rounded-full blur-3xl" />
-        
-        <motion.div 
-          className="relative max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12"
-          variants={itemVariants}
-        >
-          <div className="text-center">
-            <motion.div
-              initial={{ scale: 0, rotate: -180 }}
-              animate={{ scale: 1, rotate: 0 }}
-              transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-              className="inline-flex items-center justify-center w-20 h-20 mb-6 rounded-2xl bg-gradient-to-br from-violet-500 to-purple-600 shadow-2xl shadow-violet-500/30"
-            >
-              <BarChart3 className="w-10 h-10 text-white" />
-            </motion.div>
-            
-            <h1 className="text-4xl sm:text-5xl font-bold bg-gradient-to-r from-white via-slate-200 to-slate-400 bg-clip-text text-transparent mb-4">
+    <div className="space-y-6">
+      {/* 页面标题 */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
+            <BarChart3 className="w-6 h-6 text-electric-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">
               基准测试中心
             </h1>
-            <p className="text-lg text-slate-400 max-w-2xl mx-auto">
-              使用标准数据集评估模型安全性能，生成详细的测试报告
-            </p>
+            <p className="text-sm text-graphite-500 mt-0.5">使用标准数据集评估模型安全性能</p>
           </div>
-        </motion.div>
-      </div>
+        </div>
+      </motion.div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">
-        {/* Progress Steps */}
-        <motion.div 
-          className="mb-12"
-          variants={itemVariants}
-        >
-          <div className="flex items-center justify-center">
-            {[
-              { id: 0, label: '配置测试', icon: Settings2 },
-              { id: 1, label: '执行测试', icon: Loader2 },
-              { id: 2, label: '查看结果', icon: FileBarChart },
-            ].map((step, index) => (
-              <div key={step.id} className="flex items-center">
-                <motion.div
-                  className={`flex items-center gap-3 px-6 py-3 rounded-xl transition-all duration-300 ${
-                    activeStep === step.id
-                      ? 'bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/25'
-                      : activeStep > step.id
-                      ? 'bg-emerald-500/20 text-emerald-400'
-                      : 'bg-slate-800/50 text-slate-500'
-                  }`}
-                  animate={activeStep === step.id ? { scale: 1.05 } : { scale: 1 }}
-                >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${
-                    activeStep === step.id ? 'bg-white/20' : 'bg-slate-700/50'
-                  }`}>
-                    {activeStep > step.id ? (
-                      <CheckCircle2 className="w-5 h-5" />
-                    ) : (
-                      <step.icon className={`w-5 h-5 ${activeStep === step.id && step.id === 1 ? 'animate-spin' : ''}`} />
-                    )}
-                  </div>
-                  <span className="font-medium hidden sm:block">{step.label}</span>
-                </motion.div>
-                {index < 2 && (
-                  <div className={`w-12 sm:w-20 h-0.5 mx-2 ${
-                    activeStep > step.id ? 'bg-emerald-500/50' : 'bg-slate-700/50'
-                  }`} />
+      {/* 步骤指示器 */}
+      <div className="flex items-center justify-center gap-3">
+        {[
+          { id: 0, label: '配置测试', icon: Settings2 },
+          { id: 1, label: '执行测试', icon: Loader },
+          { id: 2, label: '查看结果', icon: FileBarChart },
+        ].map((step, index) => (
+          <div key={step.id} className="flex items-center">
+            <motion.div
+              className={`flex items-center gap-2 px-4 py-2.5 rounded-lg transition-all duration-200 ${
+                activeStep === step.id
+                  ? 'bg-electric-600 text-white shadow-lifted'
+                  : activeStep > step.id
+                  ? 'bg-neon-50 text-neon-700 border border-neon-200/70'
+                  : 'bg-graphite-100 text-graphite-500'
+              }`}
+            >
+              <div className={`w-7 h-7 rounded-md flex items-center justify-center ${
+                activeStep === step.id ? 'bg-white/20' : activeStep > step.id ? 'bg-neon-100' : 'bg-graphite-200'
+              }`}>
+                {activeStep > step.id ? (
+                  <CheckCircle2 className="w-4 h-4" />
+                ) : (
+                  <step.icon className={`w-4 h-4 ${activeStep === step.id && step.id === 1 ? 'animate-spin' : ''}`} />
                 )}
               </div>
-            ))}
+              <span className="text-sm font-medium hidden sm:block">{step.label}</span>
+            </motion.div>
+            {index < 2 && (
+              <div className={`w-10 h-0.5 mx-1 ${activeStep > step.id ? 'bg-neon-300' : 'bg-graphite-200'}`} />
+            )}
           </div>
-        </motion.div>
+        ))}
+      </div>
 
-        {/* Configuration Card */}
-        <AnimatePresence mode="wait">
-          {!result && (
-            <motion.div
-              key="config"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              transition={{ duration: 0.3 }}
-            >
-              <motion.div 
-                className="p-8 rounded-3xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm"
-                variants={cardVariants}
-              >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                  {/* Left Column */}
-                  <div className="space-y-6">
-                    {/* Dataset Selection */}
-                    <div>
-                      <label className="flex items-center gap-2 text-slate-300 font-medium mb-4">
-                        <Database className="w-5 h-5 text-violet-400" />
-                        选择数据集
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {DATASETS.map((dataset) => (
-                          <motion.button
-                            key={dataset.value}
-                            onClick={() => setForm({ ...form, dataset: dataset.value })}
-                            className={`relative p-4 rounded-xl border-2 text-left transition-all duration-300 ${
-                              form.dataset === dataset.value
-                                ? 'border-violet-500/50 bg-violet-500/10'
-                                : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600/50'
-                            }`}
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${dataset.color} flex items-center justify-center mb-3`}>
-                              <dataset.icon className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="font-medium text-slate-200">{dataset.label}</div>
-                            <div className="text-sm text-slate-500 mt-1">{dataset.desc}</div>
-                            <div className="text-xs text-slate-600 mt-2">{dataset.count} 条测试用例</div>
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Attack Type Selection */}
-                    <div>
-                      <label className="flex items-center gap-2 text-slate-300 font-medium mb-4">
-                        <Target className="w-5 h-5 text-rose-400" />
-                        攻击类型
-                      </label>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        {ATTACK_TYPES.map((attack) => (
-                          <motion.button
-                            key={attack.value}
-                            onClick={() => setForm({ ...form, attack_type: attack.value })}
-                            className={`relative p-4 rounded-xl border-2 text-left transition-all duration-300 ${
-                              form.attack_type === attack.value
-                                ? 'border-rose-500/50 bg-rose-500/10'
-                                : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600/50'
-                            }`}
-                            whileHover={{ scale: 1.02, y: -2 }}
-                            whileTap={{ scale: 0.98 }}
-                          >
-                            <div className={`w-10 h-10 rounded-lg bg-gradient-to-br ${attack.color} flex items-center justify-center mb-3`}>
-                              <attack.icon className="w-5 h-5 text-white" />
-                            </div>
-                            <div className="font-medium text-slate-200">{attack.label}</div>
-                            <div className="text-sm text-slate-500 mt-1">{attack.desc}</div>
-                          </motion.button>
-                        ))}
-                      </div>
+      {/* 配置区域 */}
+      <AnimatePresence mode="wait">
+        {!result && (
+          <motion.div
+            key="config"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            transition={{ duration: 0.25 }}
+          >
+            <div className="card">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* 左侧 */}
+                <div className="space-y-5">
+                  {/* 数据集选择 */}
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <Database className="w-4 h-4 text-electric-600" />
+                      选择数据集
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {DATASETS.map((dataset) => (
+                        <button
+                          key={dataset.value}
+                          onClick={() => setForm({ ...form, dataset: dataset.value })}
+                          className={`p-4 rounded-lg border text-left transition-all duration-150 ${
+                            form.dataset === dataset.value
+                              ? 'border-electric-500 bg-electric-50/50'
+                              : 'border-graphite-200/70 bg-white hover:border-graphite-300'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-md flex items-center justify-center mb-2.5 ${
+                            form.dataset === dataset.value ? 'bg-electric-100' : 'bg-graphite-100'
+                          }`}>
+                            <dataset.icon className={`w-5 h-5 ${form.dataset === dataset.value ? 'text-electric-600' : 'text-graphite-500'}`} />
+                          </div>
+                          <div className={`font-medium text-sm ${form.dataset === dataset.value ? 'text-electric-700' : 'text-graphite-700'}`}>
+                            {dataset.label}
+                          </div>
+                          <div className="text-xs text-graphite-400 mt-0.5">{dataset.desc}</div>
+                          <div className="text-[11px] text-graphite-400 mt-1">{dataset.count} 条测试用例</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
 
-                  {/* Right Column */}
-                  <div className="space-y-6">
-                    {/* Model Selection */}
-                    <div>
-                      <label className="flex items-center gap-2 text-slate-300 font-medium mb-4">
-                        <Cpu className="w-5 h-5 text-cyan-400" />
-                        测试模型
-                      </label>
-                      <div className="space-y-2 max-h-48 overflow-y-auto pr-2 custom-scrollbar">
-                        {MODELS.map((model) => (
-                          <motion.button
-                            key={model.value}
-                            onClick={() => setForm({ ...form, model: model.value })}
-                            className={`w-full flex items-center gap-4 p-3 rounded-xl border-2 transition-all duration-300 ${
-                              form.model === model.value
-                                ? 'border-cyan-500/50 bg-cyan-500/10'
-                                : 'border-slate-700/50 bg-slate-800/30 hover:border-slate-600/50'
-                            }`}
-                            whileHover={{ scale: 1.01, x: 4 }}
-                            whileTap={{ scale: 0.99 }}
-                          >
-                            <div 
-                              className="w-3 h-3 rounded-full"
-                              style={{ backgroundColor: model.color }}
-                            />
-                            <div className="flex-1 text-left">
-                              <div className="font-medium text-slate-200">{model.label}</div>
-                              <div className="text-xs text-slate-500">{model.provider}</div>
-                            </div>
-                            {form.model === model.value && (
-                              <CheckCircle2 className="w-5 h-5 text-cyan-400" />
-                            )}
-                          </motion.button>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Test Cases Slider */}
-                    <div>
-                      <label className="flex items-center gap-2 text-slate-300 font-medium mb-4">
-                        <Settings2 className="w-5 h-5 text-amber-400" />
-                        测试用例数
-                      </label>
-                      <div className="p-4 rounded-xl bg-slate-800/50 border border-slate-700/50">
-                        <div className="flex items-center justify-between mb-4">
-                          <span className="text-slate-400">数量</span>
-                          <span className="text-2xl font-bold text-amber-400">{form.max_cases}</span>
-                        </div>
-                        <input
-                          type="range"
-                          min={1}
-                          max={50}
-                          value={form.max_cases}
-                          onChange={(e) => setForm({ ...form, max_cases: parseInt(e.target.value) })}
-                          className="w-full h-2 rounded-lg bg-slate-700 appearance-none cursor-pointer accent-amber-500"
-                          style={{
-                            background: `linear-gradient(to right, #f59e0b 0%, #f59e0b ${(form.max_cases / 50) * 100}%, #334155 ${(form.max_cases / 50) * 100}%, #334155 100%)`
-                          }}
-                        />
-                        <div className="flex justify-between mt-2 text-xs text-slate-500">
-                          <span>1</span>
-                          <span>25</span>
-                          <span>50</span>
-                        </div>
-                      </div>
+                  {/* 攻击类型 */}
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <Target className="w-4 h-4 text-lava-600" />
+                      攻击类型
+                    </label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {ATTACK_TYPES.map((attack) => (
+                        <button
+                          key={attack.value}
+                          onClick={() => setForm({ ...form, attack_type: attack.value })}
+                          className={`p-4 rounded-lg border text-left transition-all duration-150 ${
+                            form.attack_type === attack.value
+                              ? 'border-lava-500 bg-lava-50/50'
+                              : 'border-graphite-200/70 bg-white hover:border-graphite-300'
+                          }`}
+                        >
+                          <div className={`w-9 h-9 rounded-md flex items-center justify-center mb-2.5 ${
+                            form.attack_type === attack.value ? 'bg-lava-100' : 'bg-graphite-100'
+                          }`}>
+                            <attack.icon className={`w-5 h-5 ${form.attack_type === attack.value ? 'text-lava-600' : 'text-graphite-500'}`} />
+                          </div>
+                          <div className={`font-medium text-sm ${form.attack_type === attack.value ? 'text-lava-700' : 'text-graphite-700'}`}>
+                            {attack.label}
+                          </div>
+                          <div className="text-xs text-graphite-400 mt-0.5">{attack.desc}</div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
 
-                {/* Run Button */}
-                <motion.div 
-                  className="mt-8 flex justify-center"
-                  variants={itemVariants}
-                >
-                  <motion.button
-                    onClick={handleRun}
-                    disabled={loading}
-                    className="flex items-center gap-3 px-10 py-5 rounded-2xl bg-gradient-to-r from-violet-500 to-purple-600 text-white font-bold text-lg shadow-2xl shadow-violet-500/30 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-violet-500/50 transition-all duration-300"
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                  >
-                    {loading ? (
-                      <>
-                        <Loader2 className="w-6 h-6 animate-spin" />
-                        <span>测试中... {progress}%</span>
-                      </>
-                    ) : (
-                      <>
-                        <Play className="w-6 h-6" />
-                        <span>开始基准测试</span>
-                      </>
-                    )}
-                  </motion.button>
-                </motion.div>
+                {/* 右侧 */}
+                <div className="space-y-5">
+                  {/* 模型选择 */}
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <Cpu className="w-4 h-4 text-electric-600" />
+                      测试模型
+                    </label>
+                    <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                      {MODELS.map((model) => (
+                        <button
+                          key={model.value}
+                          onClick={() => setForm({ ...form, model: model.value })}
+                          className={`w-full flex items-center gap-3 p-3 rounded-lg border transition-all duration-150 ${
+                            form.model === model.value
+                              ? 'border-electric-500 bg-electric-50/50'
+                              : 'border-graphite-200/70 bg-white hover:border-graphite-300'
+                          }`}
+                        >
+                          <div
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ backgroundColor: model.color }}
+                          />
+                          <div className="flex-1 text-left">
+                            <div className={`text-sm font-medium ${form.model === model.value ? 'text-electric-700' : 'text-graphite-700'}`}>
+                              {model.label}
+                            </div>
+                            <div className="text-[11px] text-graphite-400">{model.provider}</div>
+                          </div>
+                          {form.model === model.value && (
+                            <CheckCircle2 className="w-4 h-4 text-electric-500 flex-shrink-0" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-                {/* Progress Bar */}
-                <AnimatePresence>
-                  {loading && (
-                    <motion.div
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="mt-6"
-                    >
-                      <div className="h-3 rounded-full bg-slate-800 overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full bg-gradient-to-r from-violet-500 to-purple-600"
-                          initial={{ width: 0 }}
-                          animate={{ width: `${progress}%` }}
-                          transition={{ duration: 0.3 }}
-                        />
+                  {/* 测试用例数 */}
+                  <div>
+                    <label className="label flex items-center gap-2">
+                      <Settings2 className="w-4 h-4 text-amber-600" />
+                      测试用例数
+                    </label>
+                    <div className="card bg-graphite-50/60">
+                      <div className="flex items-center justify-between mb-3">
+                        <span className="text-sm text-graphite-600">数量</span>
+                        <span className="text-2xl font-bold font-display text-amber-600">{form.max_cases}</span>
                       </div>
-                      <div className="flex justify-between mt-2 text-sm">
-                        <span className="text-slate-400">测试进度</span>
-                        <span className="text-violet-400 font-medium">{progress}%</span>
+                      <input
+                        type="range"
+                        min={1}
+                        max={50}
+                        value={form.max_cases}
+                        onChange={(e) => setForm({ ...form, max_cases: parseInt(e.target.value) })}
+                        className="w-full accent-amber-500"
+                      />
+                      <div className="flex justify-between mt-2 text-[11px] text-graphite-400">
+                        <span>1</span>
+                        <span>25</span>
+                        <span>50</span>
                       </div>
-                    </motion.div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* 运行按钮 */}
+              <div className="mt-6 flex justify-center">
+                <button
+                  onClick={handleRun}
+                  disabled={loading}
+                  className="btn-primary px-8 py-3"
+                >
+                  {loading ? (
+                    <>
+                      <div className="spinner" />
+                      <span>测试中... {progress}%</span>
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4" />
+                      <span>开始基准测试</span>
+                    </>
                   )}
-                </AnimatePresence>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+                </button>
+              </div>
 
-        {/* Results */}
-        <AnimatePresence>
-          {result && (
-            <motion.div
-              key="results"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -20 }}
-              className="space-y-6"
-            >
-              {/* Action Bar */}
-              <motion.div 
-                className="flex justify-between items-center"
-                variants={itemVariants}
-              >
-                <h2 className="text-2xl font-bold text-white flex items-center gap-3">
-                  <Award className="w-7 h-7 text-amber-400" />
-                  测试结果
-                </h2>
-                <motion.button
-                  onClick={resetTest}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-slate-800/50 text-slate-300 hover:text-white hover:bg-slate-700/50 transition-colors"
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <Settings2 className="w-4 h-4" />
-                  重新测试
-                </motion.button>
-              </motion.div>
-
-              {/* Stats Cards */}
-              <motion.div 
-                className="grid grid-cols-2 lg:grid-cols-4 gap-4"
-                variants={containerVariants}
-              >
-                {[
-                  { 
-                    label: '总测试数', 
-                    value: result['总测试数'], 
-                    icon: Database,
-                    color: 'from-blue-500 to-cyan-500',
-                    textColor: 'text-cyan-400'
-                  },
-                  { 
-                    label: '成功攻击', 
-                    value: result['成功攻击数'], 
-                    icon: XCircle,
-                    color: 'from-rose-500 to-red-500',
-                    textColor: 'text-rose-400'
-                  },
-                  { 
-                    label: '攻击成功率', 
-                    value: result['攻击成功率'], 
-                    icon: TrendingUp,
-                    color: 'from-amber-500 to-orange-500',
-                    textColor: 'text-amber-400'
-                  },
-                  { 
-                    label: '平均响应', 
-                    value: result['平均响应时间'], 
-                    icon: Clock,
-                    color: 'from-emerald-500 to-teal-500',
-                    textColor: 'text-emerald-400'
-                  },
-                ].map((stat, index) => (
+              {/* 进度条 */}
+              <AnimatePresence>
+                {loading && (
                   <motion.div
-                    key={stat.label}
-                    variants={itemVariants}
-                    className="relative p-6 rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm overflow-hidden group"
-                    whileHover={{ scale: 1.02, y: -4 }}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    className="mt-4"
                   >
-                    <div className={`absolute top-0 right-0 w-24 h-24 bg-gradient-to-br ${stat.color} opacity-10 rounded-full blur-2xl group-hover:opacity-20 transition-opacity`} />
-                    <div className="relative">
-                      <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${stat.color} flex items-center justify-center mb-4`}>
-                        <stat.icon className="w-5 h-5 text-white" />
-                      </div>
-                      <div className="text-sm text-slate-400 mb-1">{stat.label}</div>
-                      <div className={`text-3xl font-bold ${stat.textColor}`}>{stat.value}</div>
+                    <div className="progress-bar">
+                      <motion.div
+                        className="progress-bar-fill"
+                        initial={{ width: 0 }}
+                        animate={{ width: `${progress}%` }}
+                        transition={{ duration: 0.3 }}
+                      />
+                    </div>
+                    <div className="flex justify-between mt-1.5 text-[11px] text-graphite-400">
+                      <span>测试进度</span>
+                      <span className="text-electric-600 font-medium">{progress}%</span>
                     </div>
                   </motion.div>
-                ))}
-              </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-              {/* Charts */}
-              <motion.div 
-                className="grid grid-cols-1 lg:grid-cols-2 gap-6"
-                variants={containerVariants}
-              >
-                {/* Bar Chart */}
-                <motion.div 
-                  variants={cardVariants}
-                  className="p-6 rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm"
-                >
-                  <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-violet-400" />
-                    攻击结果分布
-                  </h3>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <BarChart data={chartData} layout="vertical">
-                      <XAxis 
-                        type="number" 
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: '#64748b', fontSize: 12 }}
-                      />
-                      <YAxis 
-                        type="category" 
-                        dataKey="name" 
-                        axisLine={false} 
-                        tickLine={false}
-                        tick={{ fill: '#94a3b8', fontSize: 13 }}
-                        width={80}
-                      />
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
-                          borderRadius: '12px',
-                          color: '#f1f5f9'
-                        }}
-                      />
-                      <Bar dataKey="value" radius={[0, 8, 8, 0]}>
-                        {chartData.map((entry, index) => (
-                          <Cell key={index} fill={entry.color} />
-                        ))}
-                      </Bar>
-                    </BarChart>
-                  </ResponsiveContainer>
-                </motion.div>
+      {/* 结果展示 */}
+      <AnimatePresence>
+        {result && (
+          <motion.div
+            key="results"
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="space-y-5"
+          >
+            {/* 顶部操作栏 */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-semibold text-graphite-900 flex items-center gap-2">
+                <Award className="w-5 h-5 text-amber-500" />
+                测试结果
+              </h2>
+              <button onClick={resetTest} className="btn-secondary text-sm">
+                <Settings2 className="w-4 h-4" />
+                重新测试
+              </button>
+            </div>
 
-                {/* Pie Chart */}
-                <motion.div 
-                  variants={cardVariants}
-                  className="p-6 rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm"
-                >
-                  <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                    <Target className="w-5 h-5 text-rose-400" />
-                    成功率分析
-                  </h3>
-                  <ResponsiveContainer width="100%" height={280}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={60}
-                        outerRadius={100}
-                        paddingAngle={5}
-                        dataKey="value"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <Tooltip 
-                        contentStyle={{ 
-                          backgroundColor: '#1e293b', 
-                          border: '1px solid #334155',
-                          borderRadius: '12px',
-                          color: '#f1f5f9'
-                        }}
-                      />
-                    </PieChart>
-                  </ResponsiveContainer>
-                  <div className="flex justify-center gap-6 mt-4">
-                    {pieData.map((item) => (
-                      <div key={item.name} className="flex items-center gap-2">
-                        <div 
-                          className="w-3 h-3 rounded-full"
-                          style={{ backgroundColor: item.color }}
-                        />
-                        <span className="text-sm text-slate-400">{item.name}</span>
-                        <span className="text-sm font-medium text-white">{item.value}</span>
-                      </div>
-                    ))}
+            {/* 统计卡片 */}
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              {[
+                { label: '总测试数', value: result['总测试数'], icon: Database, color: 'electric' },
+                { label: '成功攻击', value: result['成功攻击数'], icon: XCircle, color: 'lave' },
+                { label: '攻击成功率', value: result['攻击成功率'], icon: TrendingUp, color: 'amber' },
+                { label: '平均响应', value: result['平均响应时间'], icon: Clock, color: 'neon' },
+              ].map((stat) => (
+                <div key={stat.label} className="card">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-md flex items-center justify-center ${
+                      stat.color === 'electric' ? 'bg-electric-100 text-electric-600' :
+                      stat.color === 'lave' ? 'bg-lava-100 text-lava-600' :
+                      stat.color === 'amber' ? 'bg-amber-100 text-amber-600' :
+                      'bg-neon-100 text-neon-600'
+                    }`}>
+                      <stat.icon className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs text-graphite-500">{stat.label}</p>
+                      <p className="text-xl font-bold text-graphite-900">{stat.value}</p>
+                    </div>
                   </div>
-                </motion.div>
-              </motion.div>
+                </div>
+              ))}
+            </div>
 
-              {/* Test Summary */}
-              <motion.div 
-                variants={cardVariants}
-                className="p-6 rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm"
-              >
-                <h3 className="text-lg font-semibold text-white mb-6 flex items-center gap-2">
-                  <FileBarChart className="w-5 h-5 text-cyan-400" />
-                  测试摘要
+            {/* 图表区域 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+              {/* 柱状图 */}
+              <div className="card">
+                <h3 className="text-sm font-semibold text-graphite-800 flex items-center gap-2 mb-4">
+                  <BarChart3 className="w-4 h-4 text-electric-500" />
+                  攻击结果分布
                 </h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                  {[
-                    { label: '数据集', value: result['数据集'], icon: Database },
-                    { label: '攻击类型', value: result['攻击类型'], icon: Target },
-                    { label: '测试模型', value: result['测试模型'], icon: Cpu },
-                    { label: '失败攻击', value: result['失败攻击数'], icon: CheckCircle2, color: 'text-emerald-400' },
-                  ].map((item) => (
-                    <div 
-                      key={item.label}
-                      className="flex items-center gap-3 p-4 rounded-xl bg-slate-900/50"
+                <ResponsiveContainer width="100%" height={240}>
+                  <BarChart data={chartData} layout="vertical">
+                    <XAxis
+                      type="number"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#71717a', fontSize: 12 }}
+                    />
+                    <YAxis
+                      type="category"
+                      dataKey="name"
+                      axisLine={false}
+                      tickLine={false}
+                      tick={{ fill: '#a1a1aa', fontSize: 13 }}
+                      width={80}
+                    />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e4e4e7',
+                        borderRadius: '8px',
+                        color: '#18181b'
+                      }}
+                    />
+                    <Bar dataKey="value" radius={[0, 4, 4, 0]}>
+                      {chartData.map((entry, index) => (
+                        <Cell key={index} fill={entry.color} />
+                      ))}
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* 饼图 */}
+              <div className="card">
+                <h3 className="text-sm font-semibold text-graphite-800 flex items-center gap-2 mb-4">
+                  <Target className="w-4 h-4 text-lava-500" />
+                  成功率分析
+                </h3>
+                <ResponsiveContainer width="100%" height={240}>
+                  <PieChart>
+                    <Pie
+                      data={pieData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={50}
+                      outerRadius={85}
+                      paddingAngle={5}
+                      dataKey="value"
                     >
-                      <div className="w-10 h-10 rounded-lg bg-slate-800 flex items-center justify-center">
-                        <item.icon className={`w-5 h-5 ${item.color || 'text-slate-400'}`} />
-                      </div>
-                      <div>
-                        <div className="text-xs text-slate-500">{item.label}</div>
-                        <div className="font-medium text-slate-200">{item.value}</div>
-                      </div>
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: '#ffffff',
+                        border: '1px solid #e4e4e7',
+                        borderRadius: '8px',
+                        color: '#18181b'
+                      }}
+                    />
+                  </PieChart>
+                </ResponsiveContainer>
+                <div className="flex justify-center gap-6 mt-2">
+                  {pieData.map((item) => (
+                    <div key={item.name} className="flex items-center gap-1.5">
+                      <div
+                        className="w-2.5 h-2.5 rounded-full"
+                        style={{ backgroundColor: item.color }}
+                      />
+                      <span className="text-xs text-graphite-600">{item.name}</span>
+                      <span className="text-xs font-medium text-graphite-900">{item.value}</span>
                     </div>
                   ))}
                 </div>
-              </motion.div>
+              </div>
+            </div>
 
-              {/* Detailed Results Table */}
-              <motion.div 
-                variants={cardVariants}
-                className="rounded-2xl bg-slate-800/30 border border-slate-700/50 backdrop-blur-sm overflow-hidden"
-              >
-                <div className="p-6 border-b border-slate-700/50">
-                  <h3 className="text-lg font-semibold text-white flex items-center gap-2">
-                    <BarChart3 className="w-5 h-5 text-violet-400" />
-                    详细结果
-                  </h3>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="bg-slate-900/50">
-                        <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">#</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">结果</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">分数</th>
-                        <th className="text-left px-6 py-4 text-sm font-medium text-slate-400">响应时间</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-700/50">
-                      {result['详细结果'].map((item, idx) => (
-                        <motion.tr 
-                          key={idx}
-                          initial={{ opacity: 0, x: -20 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: idx * 0.03 }}
-                          className="hover:bg-slate-800/30 transition-colors"
-                        >
-                          <td className="px-6 py-4 text-slate-300 font-medium">用例 {item.case}</td>
-                          <td className="px-6 py-4">
-                            {item.result === 'success' ? (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-rose-500/20 text-rose-400 text-sm font-medium">
-                                <XCircle className="w-4 h-4" />
-                                攻击成功
-                              </span>
-                            ) : (
-                              <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-500/20 text-emerald-400 text-sm font-medium">
-                                <CheckCircle2 className="w-4 h-4" />
-                                攻击失败
-                              </span>
-                            )}
-                          </td>
-                          <td className="px-6 py-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-16 h-2 rounded-full bg-slate-700 overflow-hidden">
-                                <div 
-                                  className={`h-full rounded-full ${item.result === 'success' ? 'bg-rose-500' : 'bg-emerald-500'}`}
-                                  style={{ width: `${parseFloat(item.score) * 100}%` }}
-                                />
-                              </div>
-                              <span className="text-slate-400 font-mono text-sm">{item.score}</span>
+            {/* 测试摘要 */}
+            <div className="card">
+              <h3 className="text-sm font-semibold text-graphite-800 flex items-center gap-2 mb-4">
+                <FileBarChart className="w-4 h-4 text-electric-500" />
+                测试摘要
+              </h3>
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                {[
+                  { label: '数据集', value: result['数据集'], icon: Database },
+                  { label: '攻击类型', value: result['攻击类型'], icon: Target },
+                  { label: '测试模型', value: result['测试模型'], icon: Cpu },
+                  { label: '失败攻击', value: result['失败攻击数'], icon: CheckCircle2, textColor: 'text-neon-600' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-3 p-3 bg-graphite-50/60 rounded-lg">
+                    <div className="w-9 h-9 rounded-md bg-white flex items-center justify-center">
+                      <item.icon className={`w-5 h-5 ${item.textColor || 'text-graphite-500'}`} />
+                    </div>
+                    <div>
+                      <div className="text-[11px] text-graphite-400">{item.label}</div>
+                      <div className="text-sm font-medium text-graphite-900">{item.value}</div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* 详细结果表格 */}
+            <div className="card p-0 overflow-hidden">
+              <div className="px-5 py-4 border-b border-graphite-200/60">
+                <h3 className="text-sm font-semibold text-graphite-800 flex items-center gap-2">
+                  <BarChart3 className="w-4 h-4 text-electric-500" />
+                  详细结果
+                </h3>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="table">
+                  <thead>
+                    <tr>
+                      <th className="text-left">#</th>
+                      <th className="text-left">结果</th>
+                      <th className="text-left">分数</th>
+                      <th className="text-left">响应时间</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result['详细结果'].map((item, idx) => (
+                      <tr key={idx}>
+                        <td className="font-medium">用例 {item.case}</td>
+                        <td>
+                          {item.result === 'success' ? (
+                            <span className="badge badge-danger">攻击成功</span>
+                          ) : (
+                            <span className="badge badge-success">攻击失败</span>
+                          )}
+                        </td>
+                        <td>
+                          <div className="flex items-center gap-2">
+                            <div className="w-16 h-1.5 bg-graphite-200 rounded-full overflow-hidden">
+                              <div
+                                className={`h-full rounded-full ${item.result === 'success' ? 'bg-lava-500' : 'bg-neon-500'}`}
+                                style={{ width: `${parseFloat(item.score) * 100}%` }}
+                              />
                             </div>
-                          </td>
-                          <td className="px-6 py-4 text-slate-400 font-mono text-sm">
-                            {item.response_time}s
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </motion.div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
-    </motion.div>
+                            <span className="text-xs text-graphite-500 font-mono">{item.score}</span>
+                          </div>
+                        </td>
+                        <td className="text-graphite-500 font-mono text-xs">{item.response_time}s</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }

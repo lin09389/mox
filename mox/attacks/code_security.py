@@ -215,7 +215,7 @@ class CodeSecurityAttacker:
 {{
     "vulnerabilities": [
         {{
-            "cwe_id": "CWE-XXX",
+            "cwe_id": "CWE-89",
             "name": "漏洞名称",
             "severity": "critical/high/medium/low",
             "line": 行号,

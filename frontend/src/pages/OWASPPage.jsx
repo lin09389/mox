@@ -1,5 +1,17 @@
 import { useState } from 'react'
-import { Play, CheckCircle, XCircle, Shield, AlertTriangle, Lock, Info, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  Play,
+  CheckCircle,
+  XCircle,
+  Shield,
+  AlertTriangle,
+  Lock,
+  Info,
+  ChevronDown,
+  ChevronUp,
+  MessageSquare
+} from 'lucide-react'
 import { runOWASPTests } from '../api/security'
 
 const categories = [
@@ -14,6 +26,13 @@ const categories = [
   { id: 'LLM09', name: '过度依赖', description: '盲目信任模型输出导致错误', severity: 'medium' },
   { id: 'LLM10', name: '向量嵌入弱点', description: 'RAG系统被注入恶意上下文', severity: 'high' },
 ]
+
+const severityConfig = {
+  critical: { label: '严重', bg: 'bg-crimson-50', text: 'text-crimson-700', border: 'border-crimson-200/70' },
+  high: { label: '高危', bg: 'bg-lava-50', text: 'text-lava-700', border: 'border-lava-200/70' },
+  medium: { label: '中危', bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200/70' },
+  low: { label: '低危', bg: 'bg-neon-50', text: 'text-neon-700', border: 'border-neon-200/70' },
+}
 
 export default function OWASPPage() {
   const [results, setResults] = useState([])
@@ -33,28 +52,33 @@ export default function OWASPPage() {
     }
   }
 
-  const severityColors = {
-    critical: 'bg-red-100 text-red-800 border-red-200',
-    high: 'bg-orange-100 text-orange-800 border-orange-200',
-    medium: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-    low: 'bg-green-100 text-green-800 border-green-200',
-  }
-
   const passedCount = results.filter(r => r.passed).length
   const passRate = results.length > 0 ? (passedCount / results.length * 100).toFixed(1) : 0
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">OWASP LLM Top 10 安全测试</h1>
-          <p className="text-gray-500">全面评估大语言模型应用的安全性</p>
-        </div>
+      {/* 页面标题 */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
+            <Shield className="w-6 h-6 text-electric-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">
+              OWASP LLM Top 10 安全测试
+            </h1>
+            <p className="text-sm text-graphite-500 mt-0.5">全面评估大语言模型应用的安全性</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
           <select
             value={model}
             onChange={(e) => setModel(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+            className="select-field w-40"
           >
             <option value="qwen3:4b">Qwen3:4B (本地)</option>
             <option value="gemma3:4b">Gemma3:4B (本地)</option>
@@ -66,93 +90,113 @@ export default function OWASPPage() {
           <button
             onClick={handleRunTests}
             disabled={running}
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+            className="btn-primary"
           >
-            <Play className={`w-4 h-4 ${running ? 'animate-spin' : ''}`} />
-            {running ? '测试中...' : '开始测试'}
+            {running ? (
+              <>
+                <div className="spinner" />
+                测试中...
+              </>
+            ) : (
+              <>
+                <Play className="w-4 h-4" />
+                开始测试
+              </>
+            )}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* 统计卡片 */}
       {results.length > 0 && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="text-3xl font-bold">{results.length}</div>
-            <div className="text-gray-500">总测试项</div>
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="grid grid-cols-2 lg:grid-cols-4 gap-4"
+        >
+          <div className="card text-center">
+            <p className="text-3xl font-bold font-display text-graphite-900">{results.length}</p>
+            <p className="text-xs text-graphite-500 mt-1">总测试项</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="text-3xl font-bold text-green-600">{passedCount}</div>
-            <div className="text-gray-500">通过</div>
+          <div className="card text-center">
+            <p className="text-3xl font-bold font-display text-neon-600">{passedCount}</p>
+            <p className="text-xs text-graphite-500 mt-1">通过</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="text-3xl font-bold text-red-600">{results.length - passedCount}</div>
-            <div className="text-gray-500">失败</div>
+          <div className="card text-center">
+            <p className="text-3xl font-bold font-display text-lava-600">{results.length - passedCount}</p>
+            <p className="text-xs text-graphite-500 mt-1">失败</p>
           </div>
-          <div className="bg-white rounded-xl shadow-sm border p-6">
-            <div className="text-3xl font-bold text-indigo-600">{passRate}%</div>
-            <div className="text-gray-500">通过率</div>
+          <div className="card text-center">
+            <p className="text-3xl font-bold font-display text-electric-600">{passRate}%</p>
+            <p className="text-xs text-graphite-500 mt-1">通过率</p>
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* 测试类别 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <Shield className="w-5 h-5 text-indigo-500" />
+      <div className="card p-0 overflow-hidden">
+        <div className="px-5 py-4 border-b border-graphite-200/60">
+          <h2 className="text-base font-semibold text-graphite-900 flex items-center gap-2">
+            <Shield className="w-4.5 h-4.5 text-electric-500" />
             安全测试类别
           </h2>
         </div>
-        <div className="divide-y divide-gray-200">
-          {categories.map((cat) => {
+        <div className="divide-y divide-graphite-200/60">
+          {categories.map((cat, catIdx) => {
             const catResults = results.filter(r => r.category === cat.id)
             const catPassed = catResults.filter(r => r.passed).length
             const catTotal = catResults.length
-            
+            const sev = severityConfig[cat.severity]
+
             return (
-              <div key={cat.id} className="p-6">
+              <motion.div
+                key={cat.id}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: catIdx * 0.05 }}
+                className="p-5"
+              >
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className={`px-2 py-1 rounded text-xs font-bold ${severityColors[cat.severity]}`}>
-                      {cat.severity.toUpperCase()}
-                    </div>
+                    <span className={`px-2.5 py-1 rounded-sm text-xs font-bold ${sev.bg} ${sev.text} ${sev.border} border`}>
+                      {sev.label}
+                    </span>
                     <div>
-                      <h3 className="font-semibold">{cat.id}: {cat.name}</h3>
-                      <p className="text-sm text-gray-500">{cat.description}</p>
+                      <h3 className="font-semibold text-sm text-graphite-900">{cat.id}: {cat.name}</h3>
+                      <p className="text-xs text-graphite-500">{cat.description}</p>
                     </div>
                   </div>
                   {catTotal > 0 && (
                     <div className="flex items-center gap-2">
                       {catPassed === catTotal ? (
-                        <CheckCircle className="w-5 h-5 text-green-500" />
+                        <CheckCircle className="w-5 h-5 text-neon-500" />
                       ) : (
-                        <XCircle className="w-5 h-5 text-red-500" />
+                        <XCircle className="w-5 h-5 text-lava-500" />
                       )}
-                      <span>{catPassed}/{catTotal}</span>
+                      <span className="text-sm font-medium text-graphite-700">{catPassed}/{catTotal}</span>
                     </div>
                   )}
                 </div>
-                
+
                 {catResults.length > 0 && (
-                  <div className="ml-8 space-y-2">
+                  <div className="ml-6 space-y-2">
                     {catResults.map((result, i) => {
                       const testKey = `${result.category}-${result.test}-${i}`
                       const isExpanded = expandedTest === testKey
-                      
+
                       return (
-                        <div key={i} className="border border-gray-200 rounded-lg overflow-hidden">
-                          <div 
-                            className="flex items-center justify-between p-3 bg-gray-50 cursor-pointer hover:bg-gray-100"
+                        <div key={i} className="border border-graphite-200/60 rounded-md overflow-hidden">
+                          <div
+                            className="flex items-center justify-between p-3 bg-graphite-50/60 cursor-pointer hover:bg-graphite-100/60 transition-colors"
                             onClick={() => setExpandedTest(isExpanded ? null : testKey)}
                           >
                             <div className="flex items-center gap-3">
-                              <span className="text-sm font-medium">{result.test}</span>
+                              <span className="text-sm font-medium text-graphite-800">{result.test}</span>
                               {result.severity && (
-                                <span className={`text-xs px-2 py-0.5 rounded ${
-                                  result.severity === 'critical' ? 'bg-red-100 text-red-700' :
-                                  result.severity === 'high' ? 'bg-orange-100 text-orange-700' :
-                                  'bg-yellow-100 text-yellow-700'
+                                <span className={`text-[11px] px-2 py-0.5 rounded ${
+                                  result.severity === 'critical' ? 'bg-crimson-50 text-crimson-700' :
+                                  result.severity === 'high' ? 'bg-lava-50 text-lava-700' :
+                                  'bg-amber-50 text-amber-700'
                                 }`}>
                                   {result.severity}
                                 </span>
@@ -160,42 +204,42 @@ export default function OWASPPage() {
                             </div>
                             <div className="flex items-center gap-2">
                               {result.passed ? (
-                                <span className="flex items-center gap-1 text-green-600 text-sm">
-                                  <CheckCircle className="w-4 h-4" /> 已防护
+                                <span className="flex items-center gap-1 text-neon-600 text-xs font-medium">
+                                  <CheckCircle className="w-3.5 h-3.5" /> 已防护
                                 </span>
                               ) : (
-                                <span className="flex items-center gap-1 text-red-600 text-sm">
-                                  <XCircle className="w-4 h-4" /> 存在漏洞
+                                <span className="flex items-center gap-1 text-lava-600 text-xs font-medium">
+                                  <XCircle className="w-3.5 h-3.5" /> 存在漏洞
                                 </span>
                               )}
-                              {isExpanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+                              {isExpanded ? <ChevronUp className="w-4 h-4 text-graphite-400" /> : <ChevronDown className="w-4 h-4 text-graphite-400" />}
                             </div>
                           </div>
-                          
+
                           {isExpanded && (
-                            <div className="p-4 bg-white border-t border-gray-200 space-y-3">
+                            <div className="p-4 bg-white border-t border-graphite-200/60 space-y-3">
                               {result.description && (
                                 <div>
-                                  <div className="text-xs font-semibold text-gray-500 mb-1">漏洞描述</div>
-                                  <p className="text-sm text-red-600">{result.description}</p>
+                                  <div className="text-[11px] font-semibold text-graphite-500 mb-1">漏洞描述</div>
+                                  <p className="text-sm text-lava-700">{result.description}</p>
                                 </div>
                               )}
-                              
+
                               {result.model_response && (
                                 <div>
-                                  <div className="text-xs font-semibold text-gray-500 mb-1 flex items-center gap-1">
+                                  <div className="text-[11px] font-semibold text-graphite-500 mb-1 flex items-center gap-1">
                                     <MessageSquare className="w-3 h-3" /> 模型响应
                                   </div>
-                                  <div className="text-sm bg-gray-50 p-2 rounded font-mono text-gray-700 max-h-24 overflow-y-auto">
+                                  <div className="text-xs bg-graphite-50 p-3 rounded font-mono text-graphite-700 max-h-20 overflow-y-auto leading-relaxed">
                                     {result.model_response}
                                   </div>
                                 </div>
                               )}
-                              
+
                               {result.recommendation && (
                                 <div>
-                                  <div className="text-xs font-semibold text-gray-500 mb-1">修复建议</div>
-                                  <p className="text-sm text-green-700 bg-green-50 p-2 rounded">{result.recommendation}</p>
+                                  <div className="text-[11px] font-semibold text-graphite-500 mb-1">修复建议</div>
+                                  <p className="text-sm text-neon-700 bg-neon-50/50 p-3 rounded border border-neon-200/60">{result.recommendation}</p>
                                 </div>
                               )}
                             </div>
@@ -205,7 +249,7 @@ export default function OWASPPage() {
                     })}
                   </div>
                 )}
-              </div>
+              </motion.div>
             )
           })}
         </div>
@@ -213,15 +257,27 @@ export default function OWASPPage() {
 
       {/* 空状态 */}
       {results.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <Shield className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">点击开始运行 OWASP 测试</h3>
-          <p className="text-gray-500 mb-4">系统将对您的 LLM 进行全面的安全评估</p>
-          <div className="flex justify-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-1"><Lock className="w-4 h-4" /> 10个安全类别</span>
-            <span className="flex items-center gap-1"><Info className="w-4 h-4" /> 详细漏洞分析</span>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="card flex flex-col items-center justify-center min-h-[300px] text-center"
+        >
+          <div className="w-16 h-16 rounded-xl bg-graphite-100 flex items-center justify-center mb-4">
+            <Shield className="w-8 h-8 text-graphite-400" />
           </div>
-        </div>
+          <h3 className="text-base font-semibold text-graphite-700 mb-2">点击开始运行 OWASP 测试</h3>
+          <p className="text-sm text-graphite-500 mb-5">系统将对您的 LLM 进行全面的安全评估</p>
+          <div className="flex justify-center gap-6 text-xs text-graphite-400">
+            <span className="flex items-center gap-1.5">
+              <Lock className="w-3.5 h-3.5" />
+              10个安全类别
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5" />
+              详细漏洞分析
+            </span>
+          </div>
+        </motion.div>
       )}
     </div>
   )

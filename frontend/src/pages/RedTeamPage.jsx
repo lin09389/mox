@@ -1,5 +1,15 @@
 import { useState } from 'react'
-import { Play, Target, Zap, AlertTriangle, CheckCircle, XCircle, Shield, Skull } from 'lucide-react'
+import { motion } from 'framer-motion'
+import {
+  Play,
+  Target,
+  Zap,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Shield,
+  Skull
+} from 'lucide-react'
 import { runRedTeam } from '../api/security'
 
 const techniques = [
@@ -32,7 +42,7 @@ export default function RedTeamPage() {
   }
 
   const toggleTechnique = (id) => {
-    setSelectedTechniques(prev => 
+    setSelectedTechniques(prev =>
       prev.includes(id) ? prev.filter(t => t !== id) : [...prev, id]
     )
   }
@@ -42,16 +52,28 @@ export default function RedTeamPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">红队演练模拟器</h1>
-          <p className="text-gray-500">模拟真实攻击场景测试您的LLM安全性</p>
-        </div>
+      {/* 页面标题 */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex items-center justify-between"
+      >
         <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-lava-100 rounded-lg flex items-center justify-center border border-lava-200/70">
+            <Skull className="w-6 h-6 text-lava-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">
+              红队演练模拟器
+            </h1>
+            <p className="text-sm text-graphite-500 mt-0.5">模拟真实攻击场景测试您的 LLM 安全性</p>
+          </div>
+        </div>
+        <div className="flex items-center gap-3">
           <select
             value={targetModel}
             onChange={(e) => setTargetModel(e.target.value)}
-            className="px-4 py-2 border border-gray-300 rounded-lg"
+            className="select-field w-40"
           >
             <option value="qwen3:4b">Qwen3:4B (本地)</option>
             <option value="gemma3:4b">Gemma3:4B (本地)</option>
@@ -62,34 +84,52 @@ export default function RedTeamPage() {
           <button
             onClick={handleRun}
             disabled={running || selectedTechniques.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50"
+            className="btn-primary"
           >
-            <Zap className={`w-4 h-4 ${running ? 'animate-pulse' : ''}`} />
-            {running ? '攻击中...' : '开始攻击'}
+            {running ? (
+              <>
+                <div className="spinner" />
+                攻击中...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                开始攻击
+              </>
+            )}
           </button>
         </div>
-      </div>
+      </motion.div>
 
       {/* 统计卡片 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="text-3xl font-bold">{results.length}</div>
-          <div className="text-gray-500">攻击场景总数</div>
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="grid grid-cols-1 md:grid-cols-3 gap-4"
+      >
+        <div className="card text-center">
+          <p className="text-3xl font-bold font-display text-graphite-900">{results.length}</p>
+          <p className="text-xs text-graphite-500 mt-1">攻击场景总数</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="text-3xl font-bold text-red-600">{successCount}</div>
-          <div className="text-gray-500">成功突破</div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold font-display text-lava-600">{successCount}</p>
+          <p className="text-xs text-graphite-500 mt-1">成功突破</p>
         </div>
-        <div className="bg-white rounded-xl shadow-sm border p-6">
-          <div className="text-3xl font-bold text-orange-600">{successRate}%</div>
-          <div className="text-gray-500">突破成功率</div>
+        <div className="card text-center">
+          <p className="text-3xl font-bold font-display text-amber-600">{successRate}%</p>
+          <p className="text-xs text-graphite-500 mt-1">突破成功率</p>
         </div>
-      </div>
+      </motion.div>
 
       {/* 攻击技术选择 */}
-      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-        <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
-          <Target className="w-5 h-5 text-red-500" />
+      <motion.div
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 0.1 }}
+        className="card"
+      >
+        <h2 className="text-base font-semibold text-graphite-900 mb-4 flex items-center gap-2">
+          <Target className="w-4.5 h-4.5 text-lava-500" />
           选择攻击技术
         </h2>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
@@ -97,73 +137,101 @@ export default function RedTeamPage() {
             <button
               key={tech.id}
               onClick={() => toggleTechnique(tech.id)}
-              className={`p-4 rounded-lg border-2 text-left transition-all ${
+              className={`p-4 rounded-lg border text-left transition-all duration-150 ${
                 selectedTechniques.includes(tech.id)
-                  ? 'border-red-500 bg-red-50'
-                  : 'border-gray-200 hover:border-gray-300'
+                  ? 'border-lava-500 bg-lava-50/50'
+                  : 'border-graphite-200/70 bg-white hover:border-graphite-300'
               }`}
             >
-              <div className="font-medium">{tech.name}</div>
-              <div className="text-xs text-gray-500 mt-1">{tech.description}</div>
+              <div className={`font-medium text-sm mb-1 ${selectedTechniques.includes(tech.id) ? 'text-lava-700' : 'text-graphite-700'}`}>
+                {tech.name}
+              </div>
+              <div className="text-[11px] text-graphite-400">{tech.description}</div>
             </button>
           ))}
         </div>
-      </div>
+      </motion.div>
 
       {/* 攻击结果 */}
       {results.length > 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200">
-          <div className="p-6 border-b border-gray-200">
-            <h2 className="text-lg font-semibold flex items-center gap-2">
-              <Skull className="w-5 h-5 text-red-500" />
+        <motion.div
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card p-0 overflow-hidden"
+        >
+          <div className="px-5 py-4 border-b border-graphite-200/60">
+            <h2 className="text-base font-semibold text-graphite-900 flex items-center gap-2">
+              <Skull className="w-4.5 h-4.5 text-lava-500" />
               攻击结果详情
             </h2>
           </div>
-          <div className="divide-y divide-gray-200">
+          <div className="divide-y divide-graphite-200/60">
             {results.map((result, i) => (
-              <div key={i} className="p-6">
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: i * 0.05 }}
+                className="p-5"
+              >
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     {result.success ? (
-                      <XCircle className="w-6 h-6 text-red-500" />
+                      <div className="w-10 h-10 rounded-lg bg-lava-100 flex items-center justify-center">
+                        <XCircle className="w-5 h-5 text-lava-600" />
+                      </div>
                     ) : (
-                      <CheckCircle className="w-6 h-6 text-green-500" />
+                      <div className="w-10 h-10 rounded-lg bg-neon-100 flex items-center justify-center">
+                        <CheckCircle className="w-5 h-5 text-neon-600" />
+                      </div>
                     )}
                     <div>
-                      <h3 className="font-semibold">{result.scenario}</h3>
-                      <p className="text-sm text-gray-500">{result.technique}</p>
+                      <h3 className="font-semibold text-sm text-graphite-900">{result.scenario}</h3>
+                      <p className="text-xs text-graphite-500">{result.technique}</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className={`font-bold ${result.success ? 'text-red-600' : 'text-green-600'}`}>
-                      {result.success ? '⚠️ 突破成功' : '✅ 成功防御'}
+                    <div className={`font-bold text-sm ${result.success ? 'text-lava-600' : 'text-neon-600'}`}>
+                      {result.success ? '突破成功' : '成功防御'}
                     </div>
-                    <div className="text-sm text-gray-500">尝试次数: {result.attempts}</div>
+                    <div className="text-[11px] text-graphite-400">尝试次数: {result.attempts}</div>
                   </div>
                 </div>
                 {result.final_prompt && (
-                  <div className="mt-4 p-3 bg-gray-50 rounded-lg">
-                    <div className="text-xs text-gray-500 mb-1">攻击提示词:</div>
-                    <div className="text-sm font-mono text-gray-700">{result.final_prompt.substring(0, 100)}...</div>
+                  <div className="mt-3 p-3 bg-graphite-50/80 rounded-md">
+                    <div className="text-[11px] font-semibold text-graphite-500 mb-1">攻击提示词:</div>
+                    <div className="text-xs font-mono text-graphite-700">{result.final_prompt.substring(0, 100)}...</div>
                   </div>
                 )}
-              </div>
+              </motion.div>
             ))}
           </div>
-        </div>
+        </motion.div>
       )}
 
       {/* 空状态 */}
       {results.length === 0 && (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-12 text-center">
-          <Skull className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-          <h3 className="text-lg font-semibold text-gray-600 mb-2">点击开始红队演练</h3>
-          <p className="text-gray-500 mb-4">选择攻击技术并开始模拟真实攻击场景</p>
-          <div className="flex justify-center gap-4 text-sm text-gray-400">
-            <span className="flex items-center gap-1"><Zap className="w-4 h-4" /> 8种攻击技术</span>
-            <span className="flex items-center gap-1"><Target className="w-4 h-4" /> 真实场景模拟</span>
+        <motion.div
+          initial={{ opacity: 0, scale: 0.98 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="card flex flex-col items-center justify-center min-h-[300px] text-center"
+        >
+          <div className="w-16 h-16 rounded-xl bg-graphite-100 flex items-center justify-center mb-4">
+            <Skull className="w-8 h-8 text-graphite-400" />
           </div>
-        </div>
+          <h3 className="text-base font-semibold text-graphite-700 mb-2">点击开始红队演练</h3>
+          <p className="text-sm text-graphite-500 mb-5">选择攻击技术并开始模拟真实攻击场景</p>
+          <div className="flex justify-center gap-6 text-xs text-graphite-400">
+            <span className="flex items-center gap-1.5">
+              <Zap className="w-3.5 h-3.5" />
+              8种攻击技术
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Target className="w-3.5 h-3.5" />
+              真实场景模拟
+            </span>
+          </div>
+        </motion.div>
       )}
     </div>
   )

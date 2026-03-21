@@ -1,6 +1,6 @@
 """防御相关路由"""
 
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
@@ -25,7 +25,15 @@ class DefenseRequest(BaseModel):
 
 # ============ 依赖 ============
 
-_db = Database()
+_db: Optional[Database] = None
+
+
+def get_db() -> Database:
+    """获取数据库实例（懒加载）"""
+    global _db
+    if _db is None:
+        _db = Database()
+    return _db
 
 
 # ============ 辅助函数 ============
@@ -222,7 +230,7 @@ async def get_defense_history(
 ) -> Dict[str, Any]:
     """获取防御历史"""
     try:
-        records = await _db.get_defense_records(limit=limit)
+        records = await get_db().get_defense_records(limit=limit)
         return {
             "records": [
                 {

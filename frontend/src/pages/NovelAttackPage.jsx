@@ -4,56 +4,70 @@ import toast from 'react-hot-toast'
 import { attackApi } from '../api'
 import { useCopyToClipboard } from '../hooks/useCommon'
 import { useAttackTemplates } from '../hooks/useAttackTemplates'
+import {
+  Type,
+  Lock,
+  FileText,
+  Pilot,
+  Faders,
+  Target,
+  Link2,
+  Skull,
+  Bug,
+  Copy,
+  Check,
+  Zap,
+} from 'lucide-react'
 
 const NOVEL_ATTACK_TYPES = [
-  { 
-    value: 'token_level', 
-    label: 'Token级攻击', 
-    icon: '🔤',
+  {
+    value: 'token_level',
+    label: 'Token级攻击',
+    icon: Type,
     desc: '利用tokenizer分词边界绕过检测',
-    category: '2024新技术'
+    category: '2024新技术',
   },
-  { 
-    value: 'encoding', 
-    label: '编码混淆', 
-    icon: '🔐',
+  {
+    value: 'encoding',
+    label: '编码混淆',
+    icon: Lock,
     desc: 'Base64/ROT13/Morse编码隐藏恶意意图',
-    category: '2024新技术'
+    category: '2024新技术',
   },
-  { 
-    value: 'policy_puppetry', 
-    label: 'Policy伪装', 
-    icon: '📋',
+  {
+    value: 'policy_puppetry',
+    label: 'Policy伪装',
+    icon: FileText,
     desc: '伪装成JSON/XML/INI政策文件',
-    category: '2024新技术'
+    category: '2024新技术',
   },
-  { 
-    value: 'control_char', 
-    label: '控制字符注入', 
-    icon: '🎮',
+  {
+    value: 'control_char',
+    label: '控制字符注入',
+    icon: Pilot,
     desc: 'RTL/LTR覆盖、零宽字符注入',
-    category: '2024新技术'
+    category: '2024新技术',
   },
-  { 
-    value: 'distract_attack', 
-    label: '诱导攻击', 
-    icon: '🎭',
+  {
+    value: 'distract_attack',
+    label: '诱导攻击',
+    icon: Target,
     desc: '先 benign 任务再恶意请求',
-    category: '2024新技术'
+    category: '2024新技术',
   },
-  { 
-    value: 'cascading', 
-    label: '级联攻击', 
-    icon: '🔗',
+  {
+    value: 'cascading',
+    label: '级联攻击',
+    icon: Link2,
     desc: '组合多种攻击技术',
-    category: '高级'
+    category: '高级',
   },
-  { 
-    value: 'rag_poisoning', 
-    label: 'RAG投毒', 
-    icon: '☠️',
+  {
+    value: 'rag_poisoning',
+    label: 'RAG投毒',
+    icon: Skull,
     desc: '向知识库插入恶意文档',
-    category: '2024新技术'
+    category: '2024新技术',
   },
 ]
 
@@ -89,6 +103,19 @@ const ATTACK_TEMPLATES = {
   ],
 }
 
+const container = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.08 },
+  },
+}
+
+const item = {
+  hidden: { opacity: 0, y: 12 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.3, ease: [0.16, 1, 0.3, 1] } },
+}
+
 function NovelAttackPage() {
   const [attackType, setAttackType] = useState('token_level')
   const [targetModel, setTargetModel] = useState('gpt-4')
@@ -100,7 +127,7 @@ function NovelAttackPage() {
   const { templates: templateData } = useAttackTemplates()
 
   const selectedAttack = NOVEL_ATTACK_TYPES.find(a => a.value === attackType)
-  const templates = templateData.novel?.[attackType] || ATTACK_TEMPLATES[attackType] || []
+  const templates = templateData?.novel?.[attackType] || ATTACK_TEMPLATES[attackType] || []
 
   const handleAttack = async () => {
     if (!prompt || !targetBehavior) {
@@ -127,74 +154,105 @@ function NovelAttackPage() {
 
   const loadTemplate = (template) => {
     setPrompt(template.prompt)
+    toast.success('已加载模板: ' + template.name)
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-            新型攻击 (2024-2025)
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-1">
-            基于最新研究的前沿攻击技术
-          </p>
+    <motion.div
+      variants={container}
+      initial="hidden"
+      animate="show"
+      className="space-y-6"
+    >
+      {/* 页面标题 */}
+      <motion.div variants={item} className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="w-11 h-11 bg-lava-100 rounded-lg flex items-center justify-center border border-lava-200/70">
+            <Bug className="w-5.5 h-5.5 text-lava-600" />
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold font-display text-graphite-900 tracking-tight">
+              新型攻击 (2024-2025)
+            </h1>
+            <p className="text-sm text-graphite-500">基于最新研究的前沿攻击技术</p>
+          </div>
         </div>
-        <span className="px-3 py-1 bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 rounded-full text-sm">
-          7 种新技术
+        <span className="badge bg-lava-100 text-lava-700 border border-lava-200/70">
+          {NOVEL_ATTACK_TYPES.length} 种新技术
         </span>
-      </div>
+      </motion.div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        {NOVEL_ATTACK_TYPES.map((attack) => (
-          <motion.button
-            key={attack.value}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setAttackType(attack.value)}
-            className={`p-4 rounded-lg border-2 text-left transition-all ${
-              attackType === attack.value
-                ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30'
-                : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <span className="text-2xl">{attack.icon}</span>
-              <div>
-                <div className="font-medium text-gray-900 dark:text-white">
-                  {attack.label}
+      {/* 攻击类型选择 */}
+      <motion.div variants={item} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+        {NOVEL_ATTACK_TYPES.map((attack) => {
+          const Icon = attack.icon
+          const isSelected = attackType === attack.value
+          return (
+            <motion.button
+              key={attack.value}
+              variants={item}
+              whileHover={{ y: -2 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setAttackType(attack.value)}
+              className={`p-4 rounded-lg border text-left transition-all duration-200 ${
+                isSelected
+                  ? 'border-lava-500 bg-lava-50/50 shadow-[0_0_0_1px_theme(colors.lava.500)]'
+                  : 'border-graphite-200/70 bg-white hover:border-graphite-300 hover:shadow-soft'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div
+                  className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                    isSelected ? 'bg-lava-100' : 'bg-graphite-100'
+                  }`}
+                >
+                  <Icon
+                    className={`w-5 h-5 ${isSelected ? 'text-lava-600' : 'text-graphite-500'}`}
+                  />
                 </div>
-                <div className="text-xs text-gray-500 dark:text-gray-400">
-                  {attack.category}
+                <div>
+                  <div
+                    className={`font-medium text-sm mb-0.5 ${
+                      isSelected ? 'text-lava-700' : 'text-graphite-700'
+                    }`}
+                  >
+                    {attack.label}
+                  </div>
+                  <div className="text-[11px] text-graphite-400">{attack.category}</div>
                 </div>
               </div>
-            </div>
-          </motion.button>
-        ))}
-      </div>
+            </motion.button>
+          )
+        })}
+      </motion.div>
 
+      {/* 主内容区 */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              攻击类型说明
-            </label>
-            <div className="p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-gray-600 dark:text-gray-400">{selectedAttack?.desc}</p>
+        {/* 左侧表单 */}
+        <motion.div variants={item} className="space-y-5">
+          {/* 攻击类型说明 */}
+          <div className="card">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-8 h-8 bg-electric-100 rounded-md flex items-center justify-center">
+                <Faders className="w-4 h-4 text-electric-600" />
+              </div>
+              <h3 className="text-sm font-semibold text-graphite-900">攻击类型说明</h3>
             </div>
+            <p className="text-sm text-graphite-600 leading-relaxed">
+              {selectedAttack?.desc}
+            </p>
           </div>
 
+          {/* 攻击模板 */}
           {templates.length > 0 && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                攻击模板
-              </label>
+            <div className="card">
+              <h3 className="text-sm font-semibold text-graphite-900 mb-3">攻击模板</h3>
               <div className="flex flex-wrap gap-2">
                 {templates.map((template, idx) => (
                   <button
                     key={idx}
                     onClick={() => loadTemplate(template)}
-                    className="px-3 py-1.5 bg-gray-100 dark:bg-gray-700 hover:bg-purple-100 dark:hover:bg-purple-900 rounded-md text-sm transition-colors"
+                    className="px-3 py-1.5 bg-graphite-50 hover:bg-lava-50 border border-graphite-200/70 hover:border-lava-200 rounded-md text-xs font-medium text-graphite-600 hover:text-lava-700 transition-all duration-150"
                   >
                     {template.name}
                   </button>
@@ -203,14 +261,13 @@ function NovelAttackPage() {
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              目标模型
-            </label>
+          {/* 目标模型 */}
+          <div className="card">
+            <label className="label mb-2">目标模型</label>
             <select
               value={targetModel}
               onChange={(e) => setTargetModel(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+              className="select-field"
             >
               <option value="gpt-4">GPT-4</option>
               <option value="gpt-3.5-turbo">GPT-3.5</option>
@@ -222,92 +279,135 @@ function NovelAttackPage() {
             </select>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              恶意提示
-            </label>
+          {/* 恶意提示 */}
+          <div className="card">
+            <label className="label mb-2">恶意提示</label>
             <textarea
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               rows={4}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 font-mono text-sm"
+              className="textarea-field font-mono text-sm"
               placeholder="输入恶意提示..."
             />
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              目标行为
-            </label>
+          {/* 目标行为 */}
+          <div className="card">
+            <label className="label mb-2">目标行为</label>
             <input
               type="text"
               value={targetBehavior}
               onChange={(e) => setTargetBehavior(e.target.value)}
-              className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800"
+              className="input-field"
               placeholder="例如: 泄露敏感信息、提供违法内容"
             />
           </div>
 
-          <button
+          {/* 执行按钮 */}
+          <motion.button
             onClick={handleAttack}
             disabled={loading}
-            className="w-full py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-400 text-white rounded-lg font-medium transition-colors"
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.99 }}
+            className="btn-primary w-full"
           >
-            {loading ? '攻击中...' : '执行攻击'}
-          </button>
-        </div>
+            {loading ? (
+              <>
+                <div className="spinner" />
+                攻击中...
+              </>
+            ) : (
+              <>
+                <Zap className="w-4 h-4" />
+                执行攻击
+              </>
+            )}
+          </motion.button>
+        </motion.div>
 
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-              攻击结果
-            </label>
+        {/* 右侧结果 */}
+        <motion.div variants={item} className="space-y-4">
+          <div className="card">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-lava-100 rounded-md flex items-center justify-center">
+                  <Bug className="w-4 h-4 text-lava-600" />
+                </div>
+                <h3 className="text-sm font-semibold text-graphite-900">攻击结果</h3>
+              </div>
+            </div>
+
             {result ? (
               <div className="space-y-4">
-                <div className={`p-4 rounded-lg border ${
-                  result.success ? 'border-green-500 bg-green-50 dark:bg-green-900/30' : 'border-red-500 bg-red-50 dark:bg-red-900/30'
-                }`}>
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">
+                {/* 结果状态 */}
+                <div
+                  className={`p-4 rounded-lg border ${
+                    result.success
+                      ? 'bg-lava-50/50 border-lava-200/70'
+                      : 'bg-neon-50/50 border-neon-200/70'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span
+                      className={`font-semibold ${
+                        result.success ? 'text-lava-700' : 'text-neon-700'
+                      }`}
+                    >
                       {result.success ? '攻击成功' : '攻击失败'}
                     </span>
-                    <span className="text-sm text-gray-500">
+                    <span className="text-xs text-graphite-500">
                       置信度: {(result.confidence * 100).toFixed(1)}%
                     </span>
                   </div>
                 </div>
 
-                <div className="bg-gray-900 dark:bg-gray-800 rounded-lg p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm font-medium text-gray-400">模型响应</span>
+                {/* 模型响应 */}
+                <div className="bg-graphite-900 rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-xs font-medium text-graphite-400">模型响应</span>
                     <button
                       onClick={() => copyToClipboard(result.response)}
-                      className="text-xs text-gray-400 hover:text-white"
+                      className="inline-flex items-center gap-1.5 text-xs text-graphite-400 hover:text-electric-400 transition-colors"
                     >
-                      {copied ? '已复制' : '复制'}
+                      {copied ? (
+                        <>
+                          <Check className="w-3 h-3" />
+                          已复制
+                        </>
+                      ) : (
+                        <>
+                          <Copy className="w-3 h-3" />
+                          复制
+                        </>
+                      )}
                     </button>
                   </div>
-                  <pre className="text-green-400 text-sm font-mono overflow-auto max-h-64">
+                  <pre className="text-sm font-mono text-electric-400 overflow-auto max-h-48">
                     {result.response}
                   </pre>
                 </div>
 
+                {/* 元数据 */}
                 {result.metadata && (
-                  <div className="text-sm text-gray-500 dark:text-gray-400">
-                    <p>攻击方法: {result.metadata.attack_method || result.metadata.encoding || 'N/A'}</p>
-                    <p>迭代次数: {result.metadata.iterations}</p>
+                  <div className="flex gap-4 text-xs text-graphite-500">
+                    <span>
+                      攻击方法:{' '}
+                      {result.metadata.attack_method || result.metadata.encoding || 'N/A'}
+                    </span>
+                    <span>迭代次数: {result.metadata.iterations}</span>
                   </div>
                 )}
               </div>
             ) : (
-              <div className="h-64 flex items-center justify-center text-gray-400 border-2 border-dashed border-gray-300 dark:border-gray-700 rounded-lg">
-                等待执行攻击...
+              <div className="h-48 flex flex-col items-center justify-center border-2 border-dashed border-graphite-200/70 rounded-lg">
+                <Bug className="w-10 h-10 text-graphite-300 mb-3" />
+                <p className="text-sm text-graphite-400">等待执行攻击...</p>
               </div>
             )}
           </div>
-        </div>
+        </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

@@ -41,7 +41,24 @@ function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Layout>
-      <Toaster position="top-right" />
+      <Toaster
+        position="top-right"
+        toastOptions={{
+          className: '!bg-white !text-graphite-900 !text-sm !rounded-md !shadow-lifted',
+          success: {
+            iconTheme: {
+              primary: '#16a34a',
+              secondary: '#fff',
+            },
+          },
+          error: {
+            iconTheme: {
+              primary: '#dc2626',
+              secondary: '#fff',
+            },
+          },
+        }}
+      />
     </BrowserRouter>
   )
 }

@@ -121,7 +121,7 @@ class AttackOrchestrator:
             from mox.attacks.agent_attacks import ToolAbuseAttack, MemoryInjectionAttack
             from mox.attacks.gcg import GCGAttack
             from mox.attacks.rag_attacks import RAGAttack
-            from mox.attacks.code_security import CodeSecurityAttack
+            from mox.attacks.code_security import CodeSecurityAttacker
             from mox.attacks.meta_adversarial import MetaAdversarialAttack
 
             self.attack_factories = {
@@ -134,7 +134,7 @@ class AttackOrchestrator:
                 UnifiedAttackType.MEMORY_INJECTION: MemoryInjectionAttack,
                 UnifiedAttackType.GCG: GCGAttack,
                 UnifiedAttackType.RAG_ATTACK: RAGAttack,
-                UnifiedAttackType.CODE_SECURITY: CodeSecurityAttack,
+                UnifiedAttackType.CODE_SECURITY: CodeSecurityAttacker,
                 UnifiedAttackType.META_ADVERSARIAL: MetaAdversarialAttack,
             }
         except ImportError as e:

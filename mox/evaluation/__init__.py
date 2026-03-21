@@ -19,6 +19,8 @@ from mox.evaluation.benchmarks import (
     BenchmarkCase,
     HarmBenchCase,
     BenchmarkDataset,
+    ADVBENCH_CASES,
+    HARMBENCH_CASES,
 )
 
 # 从可视化导入
@@ -93,6 +95,8 @@ __all__ = [
     "BenchmarkCase",
     "HarmBenchCase",
     "BenchmarkDataset",
+    "ADVBENCH_CASES",
+    "HARMBENCH_CASES",
 
     # 可视化
     "ChartData",

@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from mox.evaluation import BenchmarkRunner, BenchmarkDataset
 from mox.attacks import PromptInjectionAttack, JailbreakAttack
