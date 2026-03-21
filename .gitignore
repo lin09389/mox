@@ -1,55 +1,46 @@
+# Bytecode
 __pycache__/
 *.py[cod]
 *$py.class
-
 *.so
+*.pyc
 
-.Python
+# Python
 build/
-develop-eggs/
 dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
 *.egg-info/
-.installed.cfg
-*.egg
-
 .pytest_cache/
-.coverage
-htmlcov/
-.tox/
-.nox/
-
-.env
-.venv
-env/
-venv/
-ENV/
-env.bak/
-venv.bak/
-
+.ruff_cache/
 .mypy_cache/
-.ruff_cache/
-.ruff_cache/
 *.log
 
-.DS_Store
+# Virtual environments
+.env
+venv/
+env/
+.venv
+
+# IDE
 .idea/
 .vscode/
 *.swp
 *.swo
 *~
 
+# OS
+.DS_Store
 .cache/
+
+# Claude Code
+.claude/
+
+# Junk
+nul
+
+# Data (database files)
 data/
 *.db
 *.db-journal
 
-.vscode/
+# Frontend dependencies
+frontend/node_modules/
