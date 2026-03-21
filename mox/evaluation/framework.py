@@ -18,6 +18,8 @@ from typing import Any, Dict, List, Optional, Callable, Union
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from mox.evaluation.redteam import RedTeamOrchestrator
+from mox.defense.orchestrator import DefenseOrchestrator
 
 
 class EvaluationType(Enum):
@@ -527,10 +529,6 @@ class UnifiedEvaluator:
         with open(output_path, "w", encoding="utf-8") as f:
             f.write(content)
 
-
-# 兼容旧接口 - 导入必要的类
-from mox.evaluation.redteam import RedTeamOrchestrator
-from mox.defense.orchestrator import DefenseOrchestrator
 
 __all__ = [
     "UnifiedEvaluator",

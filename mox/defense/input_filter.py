@@ -1,5 +1,7 @@
 """输入过滤器 - 检测恶意输入"""
 
+import base64
+import urllib.parse
 import re
 import math
 from typing import Optional, List, Set, TYPE_CHECKING
@@ -444,11 +446,6 @@ class RealPerplexityFilter(BaseDefense):
             "std_perplexity": self._std_ppl,
             "history_size": len(self._ppl_history),
         }
-
-
-import base64
-import urllib.parse
-import re
 
 
 class EncodingDetector:
