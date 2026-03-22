@@ -14,8 +14,8 @@ class TestSettings:
         assert s.LOG_LEVEL == "INFO"
 
     def test_custom_values(self, monkeypatch):
-        monkeypatch.setenv("DEFAULT_MODEL", "gpt-4")
-        monkeypatch.setenv("MAX_TOKENS", "4096")
+        monkeypatch.setenv("MOX_DEFAULT_MODEL", "gpt-4")
+        monkeypatch.setenv("MOX_MAX_TOKENS", "4096")
         s = Settings()
         assert s.DEFAULT_MODEL == "gpt-4"
         assert s.MAX_TOKENS == 4096

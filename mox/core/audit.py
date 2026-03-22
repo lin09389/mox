@@ -63,7 +63,7 @@ class SensitiveDataMasker:
         ),
         "phone": (
             re.compile(r"(1[3-9]\d{9})"),
-            r"\1[:masked]",
+            r"***********",
         ),
         "ip_address": (
             re.compile(r"\b(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})\b"),
