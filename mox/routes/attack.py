@@ -44,6 +44,25 @@ class AdvancedAttackRequest(BaseModel):
     max_templates: int = Field(default=5, ge=1, le=100)  # Upper bound to prevent DoS
 
 
+class BatchAttackRequest(BaseModel):
+    attacks: List[AttackRequest] = Field(..., min_length=1, max_length=50)
+    parallel: bool = Field(default=True, description="并行执行攻击")
+    max_concurrency: int = Field(default=5, ge=1, le=20, description="最大并发数")
+
+
+class BatchAttackItem(BaseModel):
+    id: str
+    attack: AttackRequest
+
+
+class StreamingAttackRequest(BaseModel):
+    prompt: str
+    target_behavior: str
+    attack_type: str = "prompt_injection"
+    model: str = "abab2.5-chat"
+    max_iterations: int = Field(default=100, ge=1, le=1000)
+
+
 # ============ 依赖注入 ============
 
 _llm_cache: Dict[str, BaseLLM] = {}
@@ -428,6 +447,177 @@ async def run_attack(
 
     except Exception:
         raise HTTPException(status_code=500, detail="Attack execution failed")
+
+
+@router.post("/batch")
+async def run_batch_attacks(
+    request: BatchAttackRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """批量执行攻击测试"""
+    import asyncio
+    from datetime import datetime
+    from uuid import uuid4
+
+    results = []
+    task_id = str(uuid4())
+
+    async def run_single_attack(index: int, attack_req: AttackRequest) -> Dict[str, Any]:
+        """执行单个攻击"""
+        try:
+            llm = get_llm(attack_req.model)
+
+            attack_type_map = {
+                "prompt_injection": PromptInjectionAttack,
+                "jailbreak": JailbreakAttack,
+                "gcg": GCGAttack,
+                "autodan": AutoDANAttack,
+            }
+
+            attack_class = attack_type_map.get(attack_req.attack_type, PromptInjectionAttack)
+            config = AttackConfig(max_iterations=attack_req.max_iterations)
+            attack = attack_class(target_llm=llm, config=config)
+
+            payload = AttackPayload(
+                attack_type=AttackType(attack_req.attack_type),
+                prompt=attack_req.prompt,
+                target_behavior=attack_req.target_behavior,
+            )
+
+            outcome = await attack.generate_attack(payload)
+
+            return {
+                "id": f"{task_id}_{index}",
+                "success": True,
+                "attack_type": attack_req.attack_type,
+                "result": outcome.result.value,
+                "success_score": round(outcome.success_score, 4),
+                "iterations": outcome.iterations,
+                "model_response": outcome.model_response[:500] + "..."
+                if len(outcome.model_response) > 500
+                else outcome.model_response,
+                "timestamp": outcome.timestamp.isoformat(),
+            }
+        except Exception as e:
+            return {
+                "id": f"{task_id}_{index}",
+                "success": False,
+                "attack_type": attack_req.attack_type,
+                "error": str(e),
+            }
+
+    if request.parallel:
+        semaphore = asyncio.Semaphore(request.max_concurrency)
+
+        async def bounded_attack(index: int, attack_req: AttackRequest):
+            async with semaphore:
+                return await run_single_attack(index, attack_req)
+
+        tasks = [bounded_attack(i, req) for i, req in enumerate(request.attacks)]
+        results = await asyncio.gather(*tasks)
+    else:
+        for i, attack_req in enumerate(request.attacks):
+            results.append(await run_single_attack(i, attack_req))
+
+    success_count = sum(1 for r in results if r.get("success"))
+    avg_score = sum(r.get("success_score", 0) for r in results if r.get("success")) / max(
+        success_count, 1
+    )
+
+    return {
+        "task_id": task_id,
+        "total": len(request.attacks),
+        "success_count": success_count,
+        "failed_count": len(request.attacks) - success_count,
+        "avg_success_score": round(avg_score, 4),
+        "results": results,
+        "timestamp": datetime.now().isoformat(),
+    }
+
+
+@router.post("/stream")
+async def stream_attack(
+    request: StreamingAttackRequest,
+    current_user: User = Depends(get_current_active_user),
+):
+    """流式攻击测试 - 实时返回进度"""
+    from fastapi.responses import StreamingResponse
+    from datetime import datetime
+    import json
+
+    async def event_generator():
+        """生成 SSE 事件流"""
+        start_data = {
+            "event": "start",
+            "attack_type": request.attack_type,
+            "timestamp": datetime.now().isoformat(),
+        }
+        yield f"data: {json.dumps(start_data)}\n\n"
+
+        try:
+            llm = get_llm(request.model)
+
+            attack_type_map = {
+                "prompt_injection": PromptInjectionAttack,
+                "jailbreak": JailbreakAttack,
+                "gcg": GCGAttack,
+                "autodan": AutoDANAttack,
+            }
+
+            attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
+            config = AttackConfig(max_iterations=request.max_iterations)
+            attack = attack_class(target_llm=llm, config=config)
+
+            payload = AttackPayload(
+                attack_type=AttackType(request.attack_type),
+                prompt=request.prompt,
+                target_behavior=request.target_behavior,
+            )
+
+            generating_data = {
+                "event": "generating",
+                "message": "执行攻击中...",
+                "timestamp": datetime.now().isoformat(),
+            }
+            yield f"data: {json.dumps(generating_data)}\n\n"
+
+            outcome = await attack.generate_attack(payload)
+
+            result_analysis = _analyze_attack_result(
+                outcome.result.value, outcome.success_score, outcome.model_response
+            )
+
+            result_data = {
+                "event": "complete",
+                "result": outcome.result.value,
+                "success_score": round(outcome.success_score, 4),
+                "iterations": outcome.iterations,
+                "response_preview": outcome.model_response[:500] + "..."
+                if len(outcome.model_response) > 500
+                else outcome.model_response,
+                "analysis": result_analysis,
+                "timestamp": outcome.timestamp.isoformat(),
+            }
+
+            yield f"data: {json.dumps(result_data)}\n\n"
+
+        except Exception as e:
+            error_json = {
+                "event": "error",
+                "error": str(e),
+                "timestamp": datetime.now().isoformat(),
+            }
+            yield f"data: {error_json}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.post("/advanced")

@@ -12,6 +12,7 @@ router = APIRouter(tags=["WebSocket"])
 
 # ============ 连接管理器 ============
 
+
 class ConnectionManager:
     """WebSocket连接管理器"""
 
@@ -19,6 +20,8 @@ class ConnectionManager:
 
     def __init__(self):
         self.active_connections: Set[WebSocket] = set()
+        self.channel_subscriptions: Dict[str, Set[WebSocket]] = {}
+        self.task_listeners: Dict[str, Set[WebSocket]] = {}
 
     async def connect(self, websocket: WebSocket):
         if len(self.active_connections) >= self.MAX_CONNECTIONS:
@@ -30,6 +33,10 @@ class ConnectionManager:
 
     def disconnect(self, websocket: WebSocket):
         self.active_connections.discard(websocket)
+        for channel in self.channel_subscriptions:
+            self.channel_subscriptions[channel].discard(websocket)
+        for task_id in self.task_listeners:
+            self.task_listeners[task_id].discard(websocket)
 
     async def send_personal_message(self, message: dict, websocket: WebSocket):
         await websocket.send_json(message)
@@ -37,6 +44,7 @@ class ConnectionManager:
     async def broadcast(self, message: dict):
         """广播消息到所有活跃连接"""
         from mox.core.logging import get_logger
+
         logger = get_logger("websocket")
 
         failed_connections = []
@@ -47,15 +55,34 @@ class ConnectionManager:
                 logger.warning(f"Failed to send to WebSocket connection: {e}")
                 failed_connections.append(connection)
 
-        # 清理失败的连接
         for conn in failed_connections:
             self.active_connections.discard(conn)
+
+    async def broadcast_to_channel(self, channel: str, message: dict):
+        """广播到指定频道"""
+        if channel not in self.channel_subscriptions:
+            return
+        for websocket in list(self.channel_subscriptions[channel]):
+            try:
+                await websocket.send_json(message)
+            except Exception:
+                self.channel_subscriptions[channel].discard(websocket)
+
+    async def notify_task_update(self, task_id: str, data: dict):
+        """通知任务更新"""
+        if task_id in self.task_listeners:
+            for websocket in list(self.task_listeners[task_id]):
+                try:
+                    await websocket.send_json({"type": "task_update", "task_id": task_id, **data})
+                except Exception:
+                    self.task_listeners[task_id].discard(websocket)
 
 
 manager = ConnectionManager()
 
 
 # ============ 请求模型 ============
+
 
 class WebSocketMessage(BaseModel):
     type: str
@@ -64,6 +91,7 @@ class WebSocketMessage(BaseModel):
 
 
 # ============ 路由端点 ============
+
 
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
@@ -80,8 +108,26 @@ async def websocket_endpoint(websocket: WebSocket):
                     await manager.send_personal_message({"type": "pong"}, websocket)
                 elif msg_type == "subscribe":
                     channel = message.get("channel")
+                    if channel not in manager.channel_subscriptions:
+                        manager.channel_subscriptions[channel] = set()
+                    manager.channel_subscriptions[channel].add(websocket)
                     await manager.send_personal_message(
                         {"type": "subscribed", "channel": channel}, websocket
+                    )
+                elif msg_type == "unsubscribe":
+                    channel = message.get("channel")
+                    if channel in manager.channel_subscriptions:
+                        manager.channel_subscriptions[channel].discard(websocket)
+                    await manager.send_personal_message(
+                        {"type": "unsubscribed", "channel": channel}, websocket
+                    )
+                elif msg_type == "listen_task":
+                    task_id = message.get("task_id")
+                    if task_id not in manager.task_listeners:
+                        manager.task_listeners[task_id] = set()
+                    manager.task_listeners[task_id].add(websocket)
+                    await manager.send_personal_message(
+                        {"type": "listening", "task_id": task_id}, websocket
                     )
                 else:
                     await manager.send_personal_message(
@@ -126,13 +172,16 @@ async def broadcast_message(
     """广播消息到所有WebSocket客户端"""
     if "admin" not in (current_user.scopes or []):
         from fastapi import HTTPException
+
         raise HTTPException(status_code=403, detail="Admin scope required")
 
-    await manager.broadcast({
-        "type": message.type,
-        "channel": message.channel,
-        "data": message.data,
-    })
+    await manager.broadcast(
+        {
+            "type": message.type,
+            "channel": message.channel,
+            "data": message.data,
+        }
+    )
     return {"success": True, "clients": len(manager.active_connections)}
 
 
