@@ -164,8 +164,8 @@ ENHANCED_MALICIOUS_PATTERNS = [
     MaliciousPattern(
         name="prompt_leak",
         patterns=[
-            r"(?i)(show|tell|reveal|display)\s+me\s+your\s+(prompt|instructions|system\s+message)",
-            r"(?i)what\s+(are|is)\s+your\s+(instructions?|prompt|system\s+message)",
+            r"(?i)(show|tell|reveal|display)\s+me\s+your\s+(prompt|instructions|system)",
+            r"(?i)what\s+(are|is)\s+your\s+(instructions?|prompt|system)",
             r"(?i)repeat\s+your\s+(instructions?|prompt)",
             r"(?i)output\s+your\s+(instructions?|prompt)",
         ],
