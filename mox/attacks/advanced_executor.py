@@ -8,7 +8,7 @@ import random
 from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
-from mox.core import BaseLLM, Message, AttackPayload
+from mox.core import BaseLLM, Message
 from mox.evaluation import AttackEvaluator
 
 from .advanced_templates import (

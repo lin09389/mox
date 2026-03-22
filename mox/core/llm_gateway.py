@@ -7,7 +7,7 @@ import asyncio
 import random
 from datetime import datetime, timedelta
 
-from .llm import BaseLLM, LLMFactory, ModelProvider, Message, LLMResponse
+from .llm import LLMFactory, ModelProvider, Message, LLMResponse
 from .logging import get_logger
 
 logger = get_logger("llm_gateway")

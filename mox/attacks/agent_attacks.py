@@ -4,7 +4,7 @@ Agent 攻击模块
 针对 Agent 系统的攻击：Tool滥用、Memory注入、角色劫持等
 """
 
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict
 from dataclasses import dataclass
 from enum import Enum
 

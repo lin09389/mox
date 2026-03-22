@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
-from mox.defense import InputFilter, OutputFilter, SystemPromptHardening
+from mox.defense import InputFilter, OutputFilter
 from mox.core.database import Database
 from mox.core.auth import get_current_active_user, User
 
@@ -193,7 +193,7 @@ async def scan_input(
             },
         }
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Defense scan failed")
 
 
@@ -219,7 +219,7 @@ async def sanitize_input(
             "detected_patterns": result.detected_patterns,
         }
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Sanitization failed")
 
 
@@ -245,7 +245,7 @@ async def get_defense_history(
                 for r in records
             ]
         }
-    except Exception as e:
+    except Exception:
         return {"records": []}
 
 
@@ -266,7 +266,7 @@ async def detect_injection(
             "confidence": result.confidence,
             "detected_patterns": result.detected_patterns,
         }
-    except Exception as e:
+    except Exception:
         return {"is_malicious": False, "confidence": 0, "error": "Injection detection failed"}
 
 

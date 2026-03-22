@@ -3,8 +3,8 @@
 """
 
 import asyncio
-from typing import List, Optional, Dict, Any
-from dataclasses import dataclass, field
+from typing import List, Optional
+from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig

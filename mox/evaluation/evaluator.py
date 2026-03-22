@@ -1,7 +1,7 @@
 """评估模块 - 攻防效果评估"""
 
-from typing import List, Dict, Any, Optional
-from dataclasses import dataclass, field
+from typing import List, Dict, Any
+from dataclasses import dataclass
 from datetime import datetime
 import json
 

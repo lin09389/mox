@@ -7,20 +7,16 @@
 4. 健康检查端点
 """
 
-import os
 import json
 import time
 import logging
 import traceback
-from typing import Any, Dict, Optional, List
+from typing import Any, Dict, Optional
 from datetime import datetime, timezone
 from dataclasses import dataclass, field, asdict
 from enum import Enum
 from contextlib import contextmanager
 from functools import wraps
-import uuid
-
-from .config import settings
 
 
 class LogLevel(Enum):
@@ -96,7 +92,6 @@ class StructuredLogger:
         self.logger.addHandler(handler)
 
     def _setup_file_handler(self, log_dir: str):
-        import aiofiles
         from pathlib import Path
 
         log_path = Path(log_dir)
@@ -276,7 +271,6 @@ try:
     from opentelemetry.sdk.trace import TracerProvider
     from opentelemetry.sdk.trace.export import BatchSpanProcessor, ConsoleSpanExporter
     from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
-    from opentelemetry.exporter.prometheus import PrometheusMetricsExporter
     from opentelemetry.sdk.resources import Resource, SERVICE_NAME
     from opentelemetry.instrumentation.logging import LoggingInstrumentor
     from opentelemetry.trace import Status, StatusCode
@@ -343,9 +337,7 @@ class ObservabilityManager:
 
         from opentelemetry import metrics
         from opentelemetry.sdk.metrics import MeterProvider
-        from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
-        reader = PeriodicExportingMetricReader(PrometheusMetricsExporter(port=9090))
         provider = MeterProvider(resource=Resource.create({SERVICE_NAME: self.service_name}))
         metrics.set_meter_provider(provider)
         self._meter = metrics.get_meter(self.service_name)
@@ -477,7 +469,7 @@ def observability_span(name: str, attributes: Optional[Dict[str, Any]] = None):
         @wraps(func)
         async def async_wrapper(*args, **kwargs):
             manager = get_observability_manager()
-            with manager.span(name, attributes) as span:
+            with manager.span(name, attributes):
                 start_time = time.time()
                 try:
                     result = await func(*args, **kwargs)
@@ -485,7 +477,7 @@ def observability_span(name: str, attributes: Optional[Dict[str, Any]] = None):
                     if "attack" in name.lower():
                         manager.record_attack(name, True, duration)
                     return result
-                except Exception as e:
+                except Exception:
                     duration = time.time() - start_time
                     if "attack" in name.lower():
                         manager.record_attack(name, False, duration)
@@ -494,7 +486,7 @@ def observability_span(name: str, attributes: Optional[Dict[str, Any]] = None):
         @wraps(func)
         def sync_wrapper(*args, **kwargs):
             manager = get_observability_manager()
-            with manager.span(name, attributes) as span:
+            with manager.span(name, attributes):
                 start_time = time.time()
                 try:
                     result = func(*args, **kwargs)
@@ -502,7 +494,7 @@ def observability_span(name: str, attributes: Optional[Dict[str, Any]] = None):
                     if "attack" in name.lower():
                         manager.record_attack(name, True, duration)
                     return result
-                except Exception as e:
+                except Exception:
                     duration = time.time() - start_time
                     if "attack" in name.lower():
                         manager.record_attack(name, False, duration)
@@ -602,7 +594,7 @@ def register_default_health_checks():
         try:
             from mox.core.llm import LLMFactory
 
-            llm = LLMFactory.create_from_model_name("gpt-3.5-turbo")
+            LLMFactory.create_from_model_name("gpt-3.5-turbo")
             return {"healthy": True, "model": "gpt-3.5-turbo"}
         except Exception as e:
             return {"healthy": False, "error": str(e)}

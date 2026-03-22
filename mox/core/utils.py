@@ -9,13 +9,6 @@ from typing import Any, Callable, Optional, TypeVar, Coroutine, List
 from datetime import datetime, timedelta
 from collections.abc import AsyncIterator
 
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-    before_sleep_log,
-)
 
 from .logging import get_logger
 
@@ -207,7 +200,7 @@ class CircuitBreaker:
             result = await coro
             self._on_success()
             return result
-        except Exception as e:
+        except Exception:
             self._on_failure()
             raise
 
@@ -272,9 +265,12 @@ async def batch_process(
     return results
 
 
-def async_generator_to_list(agen: AsyncIterator[T]) -> List[T]:
+async def async_generator_to_list(agen: AsyncIterator[T]) -> List[T]:
     """将异步生成器转换为列表"""
-    return []  # 需要在 async 上下文中使用 list_comprehension
+    result = []
+    async for item in agen:
+        result.append(item)
+    return result
 
 
 async def gather_with_limit(

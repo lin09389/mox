@@ -2,9 +2,8 @@
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Type, TypeVar, Callable
+from typing import Any, Dict, List, Optional, Type, TypeVar
 import importlib
-import logging
 from pathlib import Path
 
 from .logging import get_logger

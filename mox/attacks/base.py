@@ -6,12 +6,10 @@ from dataclasses import dataclass
 
 from mox.core import (
     BaseLLM,
-    Message,
     AttackType,
     AttackPayload,
     AttackOutcome,
     AttackResult,
-    settings,
 )
 from mox.core.logging import get_logger
 from mox.attacks.evaluation import (

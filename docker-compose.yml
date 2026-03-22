@@ -1,31 +1,117 @@
-version: '3.8'
-
 services:
-  mox-api:
-    build: .
+  # Mox API Server
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mox-api
     ports:
       - "8000:8000"
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
-      - MINIMAX_GROUP_ID=${MINIMAX_GROUP_ID}
-      - LOG_LEVEL=INFO
+      - MOX_HOST=0.0.0.0
+      - MOX_PORT=8000
+      - MOX_DEBUG=false
+      - MOX_DATABASE_URL=sqlite+aiosqlite:///data/mox.db
+      - MOX_REDIS_URL=redis://redis:6379
+      - MOX_REDIS_ENABLED=true
     volumes:
-      - ./.cache:/app/.cache
-    command: python -m mox api --host 0.0.0.0 --port 8000
+      - mox-data:/data
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mox-network
 
-  mox-ui:
-    build: .
+  # Mox Web UI
+  ui:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: mox-ui
+    command: ["python", "-m", "mox", "ui"]
     ports:
       - "7860:7860"
+    env_file:
+      - .env
     environment:
-      - OPENAI_API_KEY=${OPENAI_API_KEY}
-      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
-      - MINIMAX_API_KEY=${MINIMAX_API_KEY}
-      - LOG_LEVEL=INFO
-    volumes:
-      - ./.cache:/app/.cache
-    command: python -m mox ui
+      - MOX_API_URL=http://api:8000
     depends_on:
-      - mox-api
+      - api
+    restart: unless-stopped
+    networks:
+      - mox-network
+
+  # Redis Cache
+  redis:
+    image: redis:7-alpine
+    container_name: mox-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    restart: unless-stopped
+    networks:
+      - mox-network
+
+  # Prometheus Metrics (optional)
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mox-prometheus
+    profiles:
+      - monitoring
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./deploy/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus-data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+      - '--web.enable-lifecycle'
+    restart: unless-stopped
+    networks:
+      - mox-network
+
+  # Grafana Dashboard (optional)
+  grafana:
+    image: grafana/grafana:latest
+    container_name: mox-grafana
+    profiles:
+      - monitoring
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+    volumes:
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: unless-stopped
+    networks:
+      - mox-network
+
+volumes:
+  mox-data:
+  redis-data:
+  prometheus-data:
+  grafana-data:
+
+networks:
+  mox-network:
+    driver: bridge

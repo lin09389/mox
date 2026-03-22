@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, Field, validator
+from pydantic import BaseModel, validator
 from urllib.parse import urlparse
 
 from mox.core.auth import User, get_current_active_user
@@ -55,7 +55,7 @@ async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
             "reason": result.reason,
             "matched_rules": result.matched_rules,
         }
-    except Exception as e:
+    except Exception:
         return {"decision": "allow", "confidence": 0, "reason": "Gateway validation failed"}
 
 
@@ -101,7 +101,7 @@ async def add_gateway_endpoint(
         )
 
         return {"success": True, "endpoint": request.name}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Gateway operation failed")
 
 
@@ -119,5 +119,5 @@ async def remove_gateway_endpoint(
         gateway = get_llm_gateway()
         gateway.remove_endpoint(name)
         return {"success": True}
-    except Exception as e:
+    except Exception:
         raise HTTPException(status_code=500, detail="Gateway operation failed")

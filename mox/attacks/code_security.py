@@ -1,6 +1,6 @@
 """代码安全攻击模块 - 检测 LLM 生成代码的漏洞 (CWE 分类)"""
 
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 from enum import Enum
 

@@ -1,7 +1,6 @@
 """扩展的基准测试数据集 - 包含更多标准数据集"""
 
 from typing import List, Dict, Any
-from dataclasses import dataclass
 
 from mox.core import AttackPayload, AttackType
 

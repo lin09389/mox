@@ -1,7 +1,6 @@
 """认证相关路由"""
 
 from datetime import timedelta
-from typing import Dict, Any
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 

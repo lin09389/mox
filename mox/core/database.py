@@ -4,7 +4,7 @@
 """
 
 from datetime import datetime
-from typing import Optional, List, Any
+from typing import Optional, List
 from pathlib import Path
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
@@ -18,7 +18,6 @@ from sqlalchemy import (
     Text,
     Boolean,
     JSON,
-    event,
 )
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sessionmaker
 from sqlalchemy.orm import declarative_base

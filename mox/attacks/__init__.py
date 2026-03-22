@@ -39,17 +39,14 @@ from .jailbreak import (
     JailbreakTemplate,
     JAILBREAK_TEMPLATES,
 )
-from .gcg import GCGAttack, AutoDANAttack, GCGConfig, GCGPlusPlusAttack
+from .gcg import GCGAttack, AutoDANAttack, GCGPlusPlusAttack
 from .llm_driven import (
     TAPAttack,
     MultiTurnJailbreakAttack,
     CrescendoAttack,
-    TAPConfig,
-    JudgeStrategy,
 )
 from .rag_attacks import (
     RAGAttackType,
-    RAGAttackConfig,
     RAGContextInjectionAttack,
     AgentToolManipulationAttack,
     ChainOfThoughtExfiltrationAttack,
@@ -57,7 +54,6 @@ from .rag_attacks import (
 )
 from .agent_attacks import (
     AgentAttackType,
-    AgentAttackConfig,
     ToolAbuseAttack,
     MemoryInjectionAttack,
     RoleHijackingAttack,
@@ -74,10 +70,8 @@ from .code_security import (
 from .multi_turn import (
     GOATAttack,
     CrescendoAttack as MultiTurnCrescendoAttack,
-    GOATConfig,
 )
 from .gradient_attack import (
-    GradientAttackConfig,
     GradientBasedAttack,
     FGSMAttack,
     PGDAttack,
@@ -93,7 +87,6 @@ from .advanced_attacks import (
     EvasionAttack,
 )
 from .meta_adversarial import (
-    MetaAdversarialConfig,
     OptimizationStrategy,
     GeneratorAgent,
     AuditorAgent,
@@ -201,6 +194,7 @@ __all__ = [
     "VulnerabilityFinding",
     "CodeSecurityReport",
     "GOATAttack",
+    "MultiTurnCrescendoAttack",
     "GOATConfig",
     "GradientAttackConfig",
     "GradientBasedAttack",

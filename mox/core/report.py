@@ -1,7 +1,6 @@
 """报告生成模块"""
 
 import json
-import re
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -320,7 +319,7 @@ class ReportGenerator:
             for rec in report.recommendations:
                 md += f"- {rec}\n"
 
-        md += f"\n---\n*本报告由 Mox 大模型对抗攻防平台 自动生成*\n"
+        md += "\n---\n*本报告由 Mox 大模型对抗攻防平台 自动生成*\n"
 
         return md
 
@@ -330,6 +329,8 @@ class ReportGenerator:
         """保存报告到文件"""
         if output_dir is None:
             output_dir = Path("data/reports")
+        else:
+            output_dir = Path(output_dir)
         output_dir.mkdir(parents=True, exist_ok=True)
 
         timestamp = report.generated_at.strftime("%Y%m%d_%H%M%S")

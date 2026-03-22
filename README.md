@@ -306,15 +306,73 @@ mox/
 
 ## Docker 部署
 
+### 快速启动 (docker-compose)
+
+```bash
+# 克隆项目
+git clone https://github.com/your-repo/mox.git
+cd mox
+
+# 复制并配置环境变量
+cp .env.example .env
+# 编辑 .env 填入你的 API Keys
+
+# 启动所有服务 (API + UI + Redis)
+docker-compose up -d
+
+# 查看服务状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f api
+```
+
+### 单独启动
+
 ```bash
 # 构建镜像
 docker build -t mox:latest .
 
-# 运行容器
-docker run -d -p 8000:8000 -p 7860:7860 \
+# 运行 API 服务
+docker run -d -p 8000:8000 \
   --env-file .env \
+  --name mox-api \
   mox:latest
+
+# 运行 Web UI
+docker run -d -p 7860:7860 \
+  --env-file .env \
+  --env MOX_API_URL=http://api:8000 \
+  --link mox-api \
+  --name mox-ui \
+  mox:latest python -m mox ui
 ```
+
+### 生产环境部署
+
+```bash
+# 启动包含监控组件 (Prometheus + Grafana)
+docker-compose --profile monitoring up -d
+
+# 服务地址:
+# - API: http://localhost:8000
+# - Web UI: http://localhost:7860
+# - Prometheus: http://localhost:9090
+# - Grafana: http://localhost:3000 (admin/admin)
+```
+
+### 环境变量
+
+复制 `.env.example` 为 `.env` 并配置以下关键变量:
+
+| 变量 | 描述 | 默认值 |
+|------|------|--------|
+| `MOX_SECRET_KEY` | JWT签名密钥 (必填!) | - |
+| `MOX_REQUIRE_AUTH` | 是否需要认证 | `false` |
+| `MOX_REDIS_URL` | Redis连接地址 | `redis://localhost:6379` |
+| `MOX_DATABASE_URL` | 数据库连接地址 | SQLite本地文件 |
+
+**重要**: 生产环境请务必设置 `MOX_SECRET_KEY` 和 `MOX_REQUIRE_AUTH=true`
 
 ## 测试
 
@@ -343,6 +401,40 @@ bandit -r mox/
 safety check
 pip-audit
 ```
+
+## 贡献指南
+
+欢迎提交 Pull Request 或 Issue！
+
+```bash
+# 克隆项目
+git clone https://github.com/your-repo/mox.git
+cd mox
+
+# 创建开发分支
+git checkout -b feature/your-feature-name
+
+# 安装开发依赖
+pip install -e ".[dev]"
+
+# 运行代码检查
+ruff check mox/
+black --check mox/
+mypy mox/
+
+# 运行测试
+pytest tests/ -v
+
+# 提交前
+git add .
+git commit -m "feat: add your feature"
+git push origin feature/your-feature-name
+```
+
+## 版本历史
+
+- **v0.2.0** - 统一攻击/防御框架、多模型支持、CI/CD完善
+- **v0.1.0** - 初始版本
 
 ## License
 

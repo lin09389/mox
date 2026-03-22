@@ -7,11 +7,10 @@
 4. 自定义 span 属性
 """
 
-from typing import Any, Dict, List, Optional, Callable
-from dataclasses import dataclass, field
+from typing import Any, Dict, List, Optional
+from dataclasses import dataclass
 from contextlib import asynccontextmanager
 import time
-import json
 
 
 try:
@@ -22,8 +21,6 @@ try:
     from opentelemetry.sdk.resources import Resource
     from opentelemetry.semconv.resource import ResourceAttributes
     from opentelemetry import metrics
-    from opentelemetry.sdk.metrics import MeterProvider
-    from opentelemetry.sdk.metrics.export import PeriodicExportingMetricReader
 
     OPENTELEMETRY_AVAILABLE = True
 except ImportError:

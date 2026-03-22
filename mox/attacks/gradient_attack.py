@@ -14,10 +14,8 @@
 import re
 import string
 import random
-import asyncio
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List
 from dataclasses import dataclass
-import numpy as np
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
@@ -69,7 +67,6 @@ class GradientBasedAttack(BaseAttack):
         target_behavior: str,
     ) -> float:
         """评估攻击是否成功"""
-        import re
 
         response_lower = response.lower()
         target_lower = target_behavior.lower()
@@ -109,10 +106,14 @@ class GradientBasedAttack(BaseAttack):
         if self._victim_model is None:
             self._victim_model = AutoModelForCausalLM.from_pretrained(
                 self.gradient_config.target_model,
+                revision="main",
                 torch_dtype=torch.float32,
                 device_map="cpu",
             )
-            self._tokenizer = AutoTokenizer.from_pretrained(self.gradient_config.target_model)
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.gradient_config.target_model,
+                revision="main",
+            )
 
     def _get_logits(self, text: str) -> "torch.Tensor":
         """获取文本的logits"""
@@ -192,10 +193,9 @@ class FGSMAttack(GradientBasedAttack):
             base_text = payload.prompt
             target_text = payload.target_behavior
 
-            base_inputs = self._tokenizer(base_text, return_tensors="pt")
+            self._tokenizer(base_text, return_tensors="pt")
             target_inputs = self._tokenizer(target_text, return_tensors="pt")
 
-            base_input_ids = base_inputs["input_ids"]
             target_input_ids = target_inputs["input_ids"]
 
             for restart in range(self.gradient_config.num_restarts):

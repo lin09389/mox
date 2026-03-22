@@ -5,7 +5,6 @@ from typing import Optional, List, Dict, Any
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
-import asyncio
 
 from openai import AsyncOpenAI
 

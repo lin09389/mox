@@ -11,16 +11,15 @@
 import re
 import random
 import math
-import asyncio
-from typing import Optional, List, Dict, Any, Tuple, Callable
-from dataclasses import dataclass, field
-from collections import defaultdict, Counter
+from typing import Optional, List, Dict, Any, Tuple
+from dataclasses import dataclass
+from collections import defaultdict
 from datetime import datetime
 from enum import Enum
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from mox.attacks.base import BaseAttack, AttackConfig
-from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationResult
+from mox.evaluation.attack_evaluator import AttackEvaluator
 
 
 class StrategyType(Enum):

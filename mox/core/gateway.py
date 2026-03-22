@@ -7,13 +7,11 @@
 """
 
 import re
-import asyncio
 from typing import Optional, List, Dict, Any, Set
 from dataclasses import dataclass, field
 from enum import Enum
-from collections import Counter
 
-from mox.core import BaseLLM, Message, DefenseResult
+from mox.core import BaseLLM, Message
 
 
 try:
@@ -101,7 +99,7 @@ class InputValidator:
 
         for pattern in self.config.syntax_blocklist:
             if re.search(pattern, text):
-                return False, f"Invalid syntax character detected", 1.0
+                return False, "Invalid syntax character detected", 1.0
 
         token_count = len(text.split())
         if token_count > self.config.max_tokens:

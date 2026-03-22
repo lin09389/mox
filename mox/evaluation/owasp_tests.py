@@ -14,7 +14,7 @@
 10. LLM10: Vector and Embedding Weaknesses
 """
 
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Dict, List
 from dataclasses import dataclass, field
 from enum import Enum
 import asyncio

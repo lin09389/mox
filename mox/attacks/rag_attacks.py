@@ -4,7 +4,7 @@ RAG / Agent 攻击模块
 针对 RAG 管道和 Agent 系统的攻击
 """
 
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, Callable
 from dataclasses import dataclass
 from enum import Enum
 

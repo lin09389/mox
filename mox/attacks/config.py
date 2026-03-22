@@ -5,7 +5,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import List, Dict
 from enum import Enum
 
 from .base import AttackConfig

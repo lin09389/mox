@@ -3,11 +3,11 @@
 """
 
 import json
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from dataclasses import dataclass
 from datetime import datetime
 
-from mox.core import AttackOutcome, AttackResult
+from mox.core import AttackOutcome
 
 
 @dataclass

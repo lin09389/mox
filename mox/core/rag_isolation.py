@@ -263,23 +263,23 @@ class RAGIsolation:
         logs = self.access_logs
 
         if user_id:
-            logs = [l for l in logs if l.user_id == user_id]
+            logs = [log for log in logs if log.user_id == user_id]
         if kb_id:
-            logs = [l for l in logs if l.kb_id == kb_id]
+            logs = [log for log in logs if log.kb_id == kb_id]
 
         logs = sorted(logs, key=lambda x: x.timestamp, reverse=True)
 
         return [
             {
-                "log_id": l.log_id,
-                "user_id": l.user_id,
-                "kb_id": l.kb_id,
-                "action": l.action,
-                "timestamp": l.timestamp,
-                "granted": l.granted,
-                "reason": l.reason,
+                "log_id": log.log_id,
+                "user_id": log.user_id,
+                "kb_id": log.kb_id,
+                "action": log.action,
+                "timestamp": log.timestamp,
+                "granted": log.granted,
+                "reason": log.reason,
             }
-            for l in logs[:limit]
+            for log in logs[:limit]
         ]
 
 

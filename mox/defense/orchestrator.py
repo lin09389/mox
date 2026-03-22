@@ -92,7 +92,7 @@ class DefenseOrchestrator:
     def _init_defenses(self):
         """初始化所有防御"""
         try:
-            from mox.defense.input_filter import InputFilter, KeywordDetector, EncodingDetector
+            from mox.defense.input_filter import InputFilter
             from mox.defense.output_filter import OutputFilter
             from mox.defense.hardening import SystemPromptHardening
             from mox.defense.injection_detector import PromptInjectionDetector
@@ -107,6 +107,7 @@ class DefenseOrchestrator:
             }
         except ImportError as e:
             import warnings
+
             warnings.warn(f"Failed to import defense modules: {e}")
             self.defense_factories = {}
 
@@ -120,7 +121,9 @@ class DefenseOrchestrator:
         if defense_type in self.defenses:
             del self.defenses[defense_type]
 
-    def set_progress_callback(self, callback: Callable[[DefenseScenario, Optional[DefenseResult]], None]):
+    def set_progress_callback(
+        self, callback: Callable[[DefenseScenario, Optional[DefenseResult]], None]
+    ):
         """设置进度回调"""
         self._progress_callback = callback
 
@@ -135,6 +138,7 @@ class DefenseOrchestrator:
 
         if config_path.suffix in [".yaml", ".yml"]:
             import yaml
+
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
         else:
@@ -355,9 +359,7 @@ class DefenseOrchestrator:
 
         return result
 
-    async def _test_input_filter(
-        self, scenario: DefenseScenario
-    ) -> tuple:
+    async def _test_input_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输入过滤"""
         try:
             from mox.defense.input_filter import KeywordDetector
@@ -375,9 +377,7 @@ class DefenseOrchestrator:
         except Exception as e:
             return False, False, 0.0, scenario.test_input, {"error": str(e)}
 
-    async def _test_output_filter(
-        self, scenario: DefenseScenario
-    ) -> tuple:
+    async def _test_output_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输出过滤"""
         try:
             from mox.defense.output_filter import OutputFilter
@@ -395,9 +395,7 @@ class DefenseOrchestrator:
         except Exception as e:
             return False, False, 0.0, scenario.test_input, {"error": str(e)}
 
-    async def _test_injection_detection(
-        self, scenario: DefenseScenario
-    ) -> tuple:
+    async def _test_injection_detection(self, scenario: DefenseScenario) -> tuple:
         """测试注入检测"""
         try:
             from mox.defense.injection_detector import PromptInjectionDetector
@@ -415,9 +413,7 @@ class DefenseOrchestrator:
         except Exception as e:
             return False, False, 0.0, scenario.test_input, {"error": str(e)}
 
-    async def _test_hallucination_detection(
-        self, scenario: DefenseScenario
-    ) -> tuple:
+    async def _test_hallucination_detection(self, scenario: DefenseScenario) -> tuple:
         """测试幻觉检测"""
         try:
             from mox.defense.hallucination import HallucinationDetector
@@ -430,14 +426,16 @@ class DefenseOrchestrator:
                 False,  # 幻觉不直接阻止
                 result.confidence,
                 scenario.test_input,
-                {"hallucination_type": result.hallucination_type.value if result.hallucination_type else None},
+                {
+                    "hallucination_type": result.hallucination_type.value
+                    if result.hallucination_type
+                    else None
+                },
             )
         except Exception as e:
             return False, False, 0.0, scenario.test_input, {"error": str(e)}
 
-    async def _test_llm_judge(
-        self, scenario: DefenseScenario
-    ) -> tuple:
+    async def _test_llm_judge(self, scenario: DefenseScenario) -> tuple:
         """测试 LLM 评判"""
         if not self.target_llm:
             return False, False, 0.0, scenario.test_input, {"error": "No LLM available"}
@@ -578,8 +576,8 @@ class DefenseReportGenerator:
         report.append(f"**Total Scenarios:** {total}")
         report.append(f"**Detected:** {detected}")
         report.append(f"**Blocked:** {blocked}")
-        report.append(f"**Detection Rate:** {detected/total:.1%}" if total > 0 else "N/A")
-        report.append(f"**Block Rate:** {blocked/total:.1%}" if total > 0 else "N/A\n")
+        report.append(f"**Detection Rate:** {detected / total:.1%}" if total > 0 else "N/A")
+        report.append(f"**Block Rate:** {blocked / total:.1%}" if total > 0 else "N/A\n")
 
         report.append("## Results\n")
         report.append("| Scenario | Defense Type | Detected | Blocked | Confidence |")
@@ -611,10 +609,12 @@ class DefenseReportGenerator:
             if r.detected:
                 type_stats[dtype]["detected"] += 1
 
-        type_data = json.dumps([
-            {"type": k, "total": v["total"], "detected": v["detected"]}
-            for k, v in type_stats.items()
-        ])
+        type_data = json.dumps(
+            [
+                {"type": k, "total": v["total"], "detected": v["detected"]}
+                for k, v in type_stats.items()
+            ]
+        )
 
         html = f"""<!DOCTYPE html>
 <html>
@@ -656,7 +656,7 @@ class DefenseReportGenerator:
         </div>
         <div class="card">
             <h3>Detection Rate</h3>
-            <p style="font-size: 32px; margin: 0;">{detected/total:.1%}</p>
+            <p style="font-size: 32px; margin: 0;">{detected / total:.1%}</p>
         </div>
     </div>
 
@@ -679,8 +679,8 @@ class DefenseReportGenerator:
 """
 
         for r in results:
-            detected = '<span class="detected">✓</span>' if r.detected else '✗'
-            blocked = '<span class="blocked">✓</span>' if r.blocked else '✗'
+            detected = '<span class="detected">✓</span>' if r.detected else "✗"
+            blocked = '<span class="blocked">✓</span>' if r.blocked else "✗"
             html += f"""
             <tr>
                 <td>{r.scenario.name}</td>
@@ -691,12 +691,15 @@ class DefenseReportGenerator:
             </tr>
 """
 
-        html += """
+        html += (
+            """
         </tbody>
     </table>
 
     <script>
-        const data = """ + type_data + """;
+        const data = """
+            + type_data
+            + """;
         new Chart(document.getElementById('defenseChart'), {
             type: 'bar',
             data: {
@@ -719,6 +722,7 @@ class DefenseReportGenerator:
     </script>
 </body>
 </html>"""
+        )
 
         return html
 
@@ -752,18 +756,22 @@ class DefenseReportGenerator:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        writer.writerow(["ID", "Name", "Defense Type", "Detected", "Blocked", "Confidence", "Time (ms)"])
+        writer.writerow(
+            ["ID", "Name", "Defense Type", "Detected", "Blocked", "Confidence", "Time (ms)"]
+        )
 
         for r in results:
-            writer.writerow([
-                r.scenario.scenario_id,
-                r.scenario.name,
-                r.defense_type,
-                "Yes" if r.detected else "No",
-                "Yes" if r.blocked else "No",
-                f"{r.confidence:.2f}",
-                f"{r.detection_time_ms:.2f}",
-            ])
+            writer.writerow(
+                [
+                    r.scenario.scenario_id,
+                    r.scenario.name,
+                    r.defense_type,
+                    "Yes" if r.detected else "No",
+                    "Yes" if r.blocked else "No",
+                    f"{r.confidence:.2f}",
+                    f"{r.detection_time_ms:.2f}",
+                ]
+            )
 
         return output.getvalue()
 

@@ -1,7 +1,7 @@
 """Gradio Web 界面"""
 
 import gradio as gr
-from typing import List, Dict, Any, Optional
+from typing import Dict, Any
 import asyncio
 
 from mox.core import (
@@ -33,12 +33,10 @@ from mox.evaluation import (
 )
 from mox.defense import (
     HallucinationDetector,
-    BiasDetector,
-    PromptInjectionDetector,
     MultiLayerInjectionDetector,
 )
 from mox.core.workflow import PlanThenExecuteEngine
-from mox.core.gateway import InputGateway, create_security_gateway
+from mox.core.gateway import create_security_gateway
 
 
 def create_interface():

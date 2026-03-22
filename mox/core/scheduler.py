@@ -1,7 +1,6 @@
 """定时任务调度模块"""
 
 import asyncio
-import json
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from dataclasses import dataclass, field
@@ -183,7 +182,7 @@ class TaskScheduler:
                     task.run_count += 1
 
                     try:
-                        result = await self._execute_task(task)
+                        await self._execute_task(task)
 
                         if self._db:
                             await self._db.update_scheduled_task_status(

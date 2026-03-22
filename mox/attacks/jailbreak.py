@@ -2,7 +2,7 @@
 
 import re
 import base64
-from typing import Optional, List, Dict
+from typing import Optional, List
 from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult

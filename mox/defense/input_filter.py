@@ -255,15 +255,18 @@ class PerplexityFilter(BaseDefense):
         )
 
     async def sanitize(self, input_text: str) -> str:
-        return input_text
+        sanitized_parts = []
+        for i, char in enumerate(input_text):
+            if ord(char) < 32 and char not in "\n\r\t":
+                continue
+            if char not in "🎉🔥💣⚠️🔐":
+                sanitized_parts.append(char)
+        return "".join(sanitized_parts)
 
     async def _calculate_perplexity(self, text: str) -> float:
         words = text.split()
         if len(words) < 2:
             return float("inf")
-
-        unique_words = set(words)
-        vocab_size = max(len(unique_words), 1)
 
         word_freq = {}
         for word in words:
@@ -350,8 +353,14 @@ class RealPerplexityFilter(BaseDefense):
             raise ImportError("PyTorch and Transformers are required for RealPerplexityFilter")
 
         if self._model is None:
-            self._model = GPT2LMHeadModel.from_pretrained(self.model_name)
-            self._tokenizer = GPT2Tokenizer.from_pretrained(self.model_name)
+            self._model = GPT2LMHeadModel.from_pretrained(
+                self.model_name,
+                revision="main",
+            )
+            self._tokenizer = GPT2Tokenizer.from_pretrained(
+                self.model_name,
+                revision="main",
+            )
             self._model.eval()
 
     async def detect(self, input_text: str) -> DefenseResult:
@@ -405,7 +414,7 @@ class RealPerplexityFilter(BaseDefense):
                 },
             )
 
-        except Exception as e:
+        except Exception:
             return await self._create_result(
                 is_malicious=True,
                 confidence=0.5,
@@ -437,7 +446,10 @@ class RealPerplexityFilter(BaseDefense):
             self._std_ppl = math.sqrt(variance) if variance > 0 else 1.0
 
     async def sanitize(self, input_text: str) -> str:
-        return input_text
+        text = input_text.strip()
+        text = re.sub(r"\s+", " ", text)
+        text = re.sub(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f-\x9f]", "", text)
+        return text
 
     def get_baseline_stats(self) -> dict:
         """获取基线统计信息"""

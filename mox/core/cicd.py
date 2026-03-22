@@ -1,10 +1,7 @@
 """CI/CD 集成模块"""
 
-import os
-import json
 import hmac
 import hashlib
-import asyncio
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
@@ -237,7 +234,7 @@ class CICDIntegration:
                     if resp.status < 200 or resp.status >= 300:
                         logger.warning(f"Webhook failed: {resp.status}")
                     else:
-                        logger.info(f"Webhook sent successfully")
+                        logger.info("Webhook sent successfully")
         except Exception as e:
             logger.error(f"Webhook error: {e}")
 

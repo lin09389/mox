@@ -1,12 +1,10 @@
 """幻觉检测模块 - 检测 LLM 输出中的事实错误"""
 
-from typing import List, Dict, Any, Optional, Tuple
+from typing import List, Dict, Any, Optional
 from dataclasses import dataclass
 from enum import Enum
 import re
 import ast
-import ast
-import math
 
 from mox.core import BaseLLM, Message
 
@@ -147,14 +145,6 @@ class HallucinationDetector:
     def _check_temporal_consistency(self, response: str) -> List[str]:
         """检查时间一致性"""
         errors = []
-
-        date_patterns = [
-            (r"\b(19|20)\d{2}\b", "year"),
-            (
-                r"\b(january|february|march|april|may|june|july|august|september|october|november|december)\b",
-                "month",
-            ),
-        ]
 
         years = re.findall(r"\b(19|20)\d{2}\b", response.lower())
         if years:

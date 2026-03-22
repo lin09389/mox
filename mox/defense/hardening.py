@@ -1,5 +1,6 @@
 """系统提示词加固模块"""
 
+import re
 from typing import Optional, List
 from dataclasses import dataclass
 
@@ -94,7 +95,22 @@ class SystemPromptHardening(BaseDefense):
         )
 
     async def sanitize(self, input_text: str) -> str:
-        return input_text
+        manipulation_patterns = [
+            r"(?i)ignore\s+(all\s+)?previous",
+            r"(?i)forget\s+(all\s+)?instructions",
+            r"(?i)new\s+instructions",
+            r"(?i)override",
+            r"(?i)you\s+are\s+now",
+            r"(?i)act\s+as",
+            r"(?i)pretend",
+            r"(?i)roleplay\s+as",
+        ]
+
+        sanitized = input_text
+        for pattern in manipulation_patterns:
+            sanitized = re.sub(pattern, "[FILTERED]", sanitized, flags=re.IGNORECASE)
+
+        return sanitized
 
     def get_hardened_prompt(self, custom_instructions: Optional[str] = None) -> str:
         if self._hardened_prompt and not custom_instructions:

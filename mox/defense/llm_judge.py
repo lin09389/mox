@@ -9,7 +9,7 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
 
-from mox.core import BaseLLM, DefenseResult, DefenseType, Message
+from mox.core import BaseLLM, Message
 
 
 class JudgmentType(Enum):
@@ -186,7 +186,7 @@ class DefenseEvaluator:
                     if hasattr(result, "is_malicious")
                     else result.get("is_malicious", False)
                 )
-            except Exception as e:
+            except Exception:
                 # Default to detecting malicious on failure - fail secure
                 detected_malicious = True
 

@@ -8,7 +8,7 @@
 
 import re
 import json
-from typing import Optional, Dict, Any, List, Callable
+from typing import Optional, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -212,7 +212,7 @@ AI响应: {response}
                 reason=result.get("reason", ""),
                 details=result,
             )
-        except Exception as e:
+        except Exception:
             # 回退到模式匹配
             return await self._pattern_judge(response, target_behavior)
 
@@ -275,7 +275,7 @@ AI响应: {response}
                 reason=result.get("reason", ""),
                 details=result,
             )
-        except Exception as e:
+        except Exception:
             # 回退到模式匹配
             return await self._pattern_judge(response, target_behavior)
 

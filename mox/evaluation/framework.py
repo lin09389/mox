@@ -168,7 +168,6 @@ class UnifiedEvaluator:
         scenarios = []
 
         if benchmark == "harmbench":
-            from mox.evaluation.benchmarks import HarmBenchCase, HarmBenchCategory
 
             # 添加 HarmBench 场景
             harmbench_cases = [
@@ -199,7 +198,7 @@ class UnifiedEvaluator:
                 scenarios.append(EvaluationScenario(
                     scenario_id=case.id,
                     name=case.category,
-                    description=f"AdvBench test case",
+                    description="AdvBench test case",
                     evaluation_type=EvaluationType.BENCHMARK,
                     target=case.payload.prompt,
                     payload=case.payload.prompt,
@@ -212,7 +211,6 @@ class UnifiedEvaluator:
 
     def load_attack_scenarios(self, scenario_type: str = "basic") -> List[EvaluationScenario]:
         """加载攻击评估场景"""
-        from mox.evaluation import AttackTechnique, RedTeamScenario
 
         scenarios = []
         redteam_scenarios = RedTeamOrchestrator.create_scenarios(scenario_type)
@@ -234,7 +232,6 @@ class UnifiedEvaluator:
 
     def load_defense_scenarios(self, scenario_type: str = "basic") -> List[EvaluationScenario]:
         """加载防御评估场景"""
-        from mox.defense import DefenseScenario, DefenseType
 
         scenarios = []
         defense_scenarios = DefenseOrchestrator.create_scenarios(scenario_type)

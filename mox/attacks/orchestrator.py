@@ -139,6 +139,7 @@ class AttackOrchestrator:
             }
         except ImportError as e:
             import warnings
+
             warnings.warn(f"Failed to import some attack modules: {e}")
 
     def add_attack(self, attack_type: UnifiedAttackType):
@@ -153,7 +154,9 @@ class AttackOrchestrator:
         if attack_type in self.attacks:
             del self.attacks[attack_type]
 
-    def set_progress_callback(self, callback: Callable[[AttackScenario, Optional[AttackExecutionResult]], None]):
+    def set_progress_callback(
+        self, callback: Callable[[AttackScenario, Optional[AttackExecutionResult]], None]
+    ):
         """设置进度回调"""
         self._progress_callback = callback
 
@@ -169,6 +172,7 @@ class AttackOrchestrator:
 
         if config_path.suffix in [".yaml", ".yml"]:
             import yaml
+
             with open(config_path, "r", encoding="utf-8") as f:
                 config = yaml.safe_load(f)
         else:
@@ -615,11 +619,6 @@ class AttackReportGenerator:
             if r.success:
                 type_stats[atype]["success"] += 1
 
-        type_data = json.dumps([
-            {"type": k, "total": v["total"], "success": v["success"]}
-            for k, v in type_stats.items()
-        ])
-
         html = f"""<!DOCTYPE html>
 <html>
 <head>
@@ -659,7 +658,7 @@ class AttackReportGenerator:
         </div>
         <div class="card">
             <h3>Success Rate</h3>
-            <p style="font-size: 32px; margin: 0;">{successful/total:.1%}</p>
+            <p style="font-size: 32px; margin: 0;">{successful / total:.1%}</p>
         </div>
     </div>
 
@@ -678,7 +677,9 @@ class AttackReportGenerator:
 """
 
         for r in results:
-            status = '<span class="success">✓</span>' if r.success else '<span class="failure">✗</span>'
+            status = (
+                '<span class="success">✓</span>' if r.success else '<span class="failure">✗</span>'
+            )
             html += f"""
             <tr>
                 <td>{r.scenario.name}</td>
@@ -705,7 +706,9 @@ class AttackReportGenerator:
             "summary": {
                 "total": len(results),
                 "successful": sum(1 for r in results if r.success),
-                "success_rate": sum(1 for r in results if r.success) / len(results) if results else 0,
+                "success_rate": sum(1 for r in results if r.success) / len(results)
+                if results
+                else 0,
             },
             "results": [
                 {
@@ -728,18 +731,22 @@ class AttackReportGenerator:
         output = io.StringIO()
         writer = csv.writer(output)
 
-        writer.writerow(["ID", "Name", "Attack Type", "Difficulty", "Success", "Score", "Iterations"])
+        writer.writerow(
+            ["ID", "Name", "Attack Type", "Difficulty", "Success", "Score", "Iterations"]
+        )
 
         for r in results:
-            writer.writerow([
-                r.scenario.scenario_id,
-                r.scenario.name,
-                r.attack_type,
-                r.scenario.difficulty,
-                "Yes" if r.success else "No",
-                f"{r.score:.2f}",
-                r.iterations,
-            ])
+            writer.writerow(
+                [
+                    r.scenario.scenario_id,
+                    r.scenario.name,
+                    r.attack_type,
+                    r.scenario.difficulty,
+                    "Yes" if r.success else "No",
+                    f"{r.score:.2f}",
+                    r.iterations,
+                ]
+            )
 
         return output.getvalue()
 

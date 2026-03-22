@@ -3,13 +3,12 @@
 保护系统提示不被泄露或覆盖
 """
 
-from typing import Optional, List, Dict, Any, Callable
+from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
 from enum import Enum
 import hashlib
-import asyncio
 
-from mox.core import BaseLLM, Message, LLMResponse
+from mox.core import BaseLLM, Message
 
 
 class PromptLeakRisk(Enum):

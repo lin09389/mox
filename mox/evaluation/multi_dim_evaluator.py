@@ -13,7 +13,7 @@ try:
 except ImportError:
     SENTENCE_TRANSFORMERS_AVAILABLE = False
 
-from mox.core import BaseLLM, Message, AttackType, AttackPayload
+from mox.core import BaseLLM, Message, AttackType
 
 
 class HarmCategory(Enum):
@@ -457,7 +457,7 @@ class ContrastiveDefenseDetector:
                 "method": "contrastive" if self._embedding_model else "rule",
             }
 
-        except Exception as e:
+        except Exception:
             return await self._rule_based_detect(input_text)
 
     def _cosine_dist(self, emb1, emb2) -> float:

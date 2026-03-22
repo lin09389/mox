@@ -1,16 +1,13 @@
 """国产模型支持 - 通义千问、文心一言、智谱AI"""
 
-import os
 import json
-import hashlib
-from typing import List, Dict, Any, Optional
+from typing import List, Optional
 from dataclasses import dataclass
 
 import aiohttp
 
 from mox.core.llm import BaseLLM, LLMResponse, Message, ModelProvider
 from mox.core.logging import get_logger
-from mox.core.types import ModelProvider
 
 logger = get_logger("chinese_llm")
 

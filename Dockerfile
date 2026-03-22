@@ -1,46 +1,60 @@
+# Mox - LLM Adversarial Attack & Defense Platform
+# Multi-stage build for optimized production image
+
 FROM python:3.11-slim as builder
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    curl \
+# Install build dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    gcc \
+    libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-COPY pyproject.toml .
-RUN pip install --no-cache-dir --upgrade pip wheel
+# Copy application files
+COPY pyproject.toml ./
 
+# Install Python dependencies
+RUN pip install --no-cache-dir --upgrade pip wheel
 RUN pip install --no-cache-dir -e ".[dev]"
 
-
+# Production stage
 FROM python:3.11-slim
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
+# Install runtime dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libffi7 \
     curl \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/* \
+    && useradd --create-home --shell /bin/bash mox
 
+# Copy installed packages from builder
 COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
 
-COPY pyproject.toml .
-COPY mox mox/
-COPY examples examples/
-COPY docs docs/
-COPY data data/
+# Copy application code
+COPY --chown=mox:mox . .
 
-RUN useradd -m -u 1000 mox && chown -R mox:mox /app
+# Create data directory
+RUN mkdir -p /data && chown mox:mox /data
+
+# Switch to non-root user
 USER mox
 
-ENV PYTHONUNBUFFERED=1
-ENV LOG_LEVEL=INFO
-ENV MOX_HOST=0.0.0.0
-ENV MOX_PORT=8000
+# Environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PATH=/home/mox/.local/bin:$PATH \
+    PYTHONPATH=/app
 
-EXPOSE 8000 7860
+# Expose ports
+EXPOSE 8000 7860 9090
 
+# Health check
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/api/health || exit 1
+    CMD curl -f http://localhost:8000/health || exit 1
 
+# Default: Run API server
 CMD ["python", "-m", "mox", "api"]

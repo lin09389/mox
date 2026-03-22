@@ -8,7 +8,6 @@
 from mox.evaluation.evaluator import (
     EvaluationMetrics,
     AttackTypeMetrics,
-    AttackEvaluator as OriginalAttackEvaluator,
     DefenseEvaluator,
     RobustnessEvaluator,
     BenchmarkRunner,
@@ -73,9 +72,7 @@ from mox.evaluation.redteam import (
 # 新增：统一评估框架
 from mox.evaluation.framework import (
     UnifiedEvaluator,
-    EvaluationConfig,
     EvaluationScenario,
-    EvaluationResult,
     EvaluationType,
     EvaluationStatus,
 )
@@ -90,19 +87,16 @@ __all__ = [
     "DefenseEvaluator",
     "RobustnessEvaluator",
     "BenchmarkRunner",
-
     # 基准测试
     "BenchmarkCase",
     "HarmBenchCase",
     "BenchmarkDataset",
     "ADVBENCH_CASES",
     "HARMBENCH_CASES",
-
     # 可视化
     "ChartData",
     "ReportGenerator",
     "create_quick_report",
-
     # 改进的攻击评估
     "AttackEvaluator",
     "LLMAttackEvaluator",
@@ -111,7 +105,6 @@ __all__ = [
     "EvaluationConfig",
     "EvaluationDimension",
     "create_evaluator",
-
     # 困惑度和 Judge
     "AccuratePerplexityCalculator",
     "PerplexityConfig",
@@ -120,21 +113,18 @@ __all__ = [
     "LLMJudgeConfig",
     "JudgeEvaluation",
     "ComprehensiveEvaluator",
-
     # LLM Judge 评判器
     "LLMJudge",
     "MultiDimensionJudge",
     "JudgeConfig",
     "JudgeResult",
     "JudgeMode",
-
     # 红队模块
     "RedTeamOrchestrator",
     "RedTeamScenario",
     "RedTeamResult",
     "RedTeamReportGenerator",
     "AttackTechnique",
-
     # 统一评估框架
     "UnifiedEvaluator",
     "EvaluationConfig",

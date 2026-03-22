@@ -136,7 +136,9 @@ class AuthManager:
             try:
                 parts = user_config.split(":")
                 if len(parts) < 2:
-                    warnings.warn(f"Invalid default user config (need username:password): {user_config}")
+                    warnings.warn(
+                        f"Invalid default user config (need username:password): {user_config}"
+                    )
                     continue
 
                 username = parts[0]
@@ -152,7 +154,9 @@ class AuthManager:
                 self.users_db[username] = user
                 self._password_hashes[username] = PasswordManager.get_password_hash(password)
             except Exception as e:
-                warnings.warn(f"Failed to initialize default user from config: {user_config}, error: {e}")
+                warnings.warn(
+                    f"Failed to initialize default user from config: {user_config}, error: {e}"
+                )
 
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
         user = self.users_db.get(username)
@@ -172,7 +176,7 @@ class AuthManager:
         return self.users_db.get(username)
 
     def create_user(self, user: User, password: str) -> User:
-        hashed_password = PasswordManager.get_password_hash(password)
+        PasswordManager.get_password_hash(password)
         user.scopes = user.scopes or ["read"]
         self.users_db[user.username] = user
         return user

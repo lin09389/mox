@@ -2,7 +2,6 @@
 
 import asyncio
 import argparse
-from typing import Optional
 
 from rich.console import Console
 from rich.table import Table
@@ -13,7 +12,6 @@ from mox.core import (
     LLMFactory,
     AttackType,
     AttackPayload,
-    settings,
 )
 from mox.attacks import (
     PromptInjectionAttack,
@@ -31,12 +29,10 @@ from mox.attacks import (
 from mox.defense import (
     InputFilter,
     OutputFilter,
-    DefensePipeline,
 )
 from mox.defense.llm_judge import LLMJudge, SafetyCoTDefense, JudgmentType
 from mox.evaluation import (
     BenchmarkDataset,
-    BenchmarkRunner,
 )
 
 console = Console()

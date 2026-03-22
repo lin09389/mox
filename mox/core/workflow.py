@@ -239,7 +239,6 @@ class PlanThenExecuteEngine:
                 return False, f"Dangerous action detected: {step.action}"
 
         for step in plan.steps:
-            param_str = json.dumps(step.parameters)
             is_safe, reason = self._validate_parameters(step.action, step.parameters)
             if not is_safe:
                 return False, f"Unsafe parameters in {step.action}: {reason}"

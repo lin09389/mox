@@ -2,11 +2,10 @@
 
 import re
 import string
-from typing import Optional, List, Tuple, Dict, Any
+from typing import Optional, List
 from dataclasses import dataclass
 import random
 import asyncio
-from collections import Counter
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
@@ -460,10 +459,14 @@ class GCGPlusPlusAttack(BaseAttack):
             try:
                 self._victim_model = AutoModelForCausalLM.from_pretrained(
                     self.victim_model_name,
+                    revision="main",
                     torch_dtype=torch.float32,
                     device_map="cpu",
                 )
-                self._tokenizer = AutoTokenizer.from_pretrained(self.victim_model_name)
+                self._tokenizer = AutoTokenizer.from_pretrained(
+                    self.victim_model_name,
+                    revision="main",
+                )
                 self._victim_model.eval()
             except Exception:
                 pass
@@ -606,7 +609,6 @@ class GCGPlusPlusAttack(BaseAttack):
                 logits = outputs.logits
 
             if target_inputs.input_ids.size(1) > 0:
-                target_id = target_inputs.input_ids[0, 0].item()
                 gradients = logits[0, -1, :]
                 return gradients
 

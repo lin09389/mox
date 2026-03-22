@@ -1,7 +1,7 @@
 """扩展评估数据集 - PromptInject, SafetyBench等"""
 
 from typing import Dict, Any, List, Optional
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from enum import Enum
 
 from mox.core.logging import get_logger

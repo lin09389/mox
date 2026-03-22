@@ -8,12 +8,12 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any, Union
+from typing import List, Optional, Dict, Any
 from dataclasses import dataclass, field
 import asyncio
 
 from mox.core import BaseLLM, AttackPayload, AttackOutcome, AttackResult
-from mox.attacks.base import BaseAttack, AttackConfig
+from mox.attacks.base import BaseAttack
 
 
 @dataclass

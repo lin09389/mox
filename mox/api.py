@@ -31,17 +31,20 @@ from mox.routes.websocket import router as websocket_router, manager as ws_manag
 
 # ============ 应用生命周期 ============
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """应用生命周期管理"""
     # 启动时初始化
     from mox.core.database import init_database
+
     await init_database()
-    
+
     yield
-    
+
     # 关闭时清理
     from mox.core.database import get_database
+
     db = get_database()
     await db.close()
 
@@ -83,6 +86,7 @@ app.add_middleware(
 
 
 # ============ 全局异常处理 ============
+
 
 @app.exception_handler(MoxException)
 async def mox_exception_handler(request, exc: MoxException):
@@ -130,6 +134,7 @@ app.include_router(benchmark_router, prefix="/api")
 
 # ============ 基础端点 ============
 
+
 @app.get("/")
 async def root():
     """根路径"""
@@ -159,6 +164,7 @@ async def readiness_check():
     """K8s 就绪探针"""
     try:
         from mox.core.observability import get_health_checker
+
         checker = get_health_checker()
         result = await checker.check_all()
 
@@ -184,20 +190,32 @@ async def prometheus_metrics():
 
 # ============ 模型和模板端点 ============
 
+
 @app.get("/api/models")
 async def list_models() -> Dict[str, List[str]]:
     """列出可用模型"""
     models = [
-        "qwen3:4b", "qwen2.5:14b", "llama3:8b",
-        "abab2.5-chat", "abab6.5s-chat", "abab6.5g-chat", "abab6.5t-chat", "abab5.5-chat",
-        "gpt-4", "gpt-4-turbo", "gpt-3.5-turbo",
-        "claude-3-opus-20240229", "claude-3-sonnet-20240229", "claude-sonnet-4-20250514",
+        "qwen3:4b",
+        "qwen2.5:14b",
+        "llama3:8b",
+        "abab2.5-chat",
+        "abab6.5s-chat",
+        "abab6.5g-chat",
+        "abab6.5t-chat",
+        "abab5.5-chat",
+        "gpt-4",
+        "gpt-4-turbo",
+        "gpt-3.5-turbo",
+        "claude-3-opus-20240229",
+        "claude-3-sonnet-20240229",
+        "claude-sonnet-4-20250514",
         "gemini-2.0-flash",
     ]
 
     # 尝试获取 Ollama 本地模型
     try:
         import httpx
+
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get("http://localhost:11434/api/tags")
             if response.status_code == 200:
@@ -231,12 +249,14 @@ async def get_templates():
             templates_by_category[cat] = []
             for t in cat_templates:
                 severity_stats[t.severity.lower()] = severity_stats.get(t.severity.lower(), 0) + 1
-                templates_by_category[cat].append({
-                    "name": t.name,
-                    "description": t.description,
-                    "severity": t.severity,
-                    "category": cat,
-                })
+                templates_by_category[cat].append(
+                    {
+                        "name": t.name,
+                        "description": t.description,
+                        "severity": t.severity,
+                        "category": cat,
+                    }
+                )
 
         return {
             "success": True,
@@ -254,10 +274,12 @@ async def get_templates():
 
 # ============ 系统加固端点 ============
 
+
 @app.get("/api/hardening/prompt")
 async def get_hardened_prompt(custom_instructions: str = None) -> Dict[str, str]:
     """获取加固的系统提示词"""
     from mox.defense import SystemPromptHardening
+
     hardening = SystemPromptHardening()
     prompt = hardening.get_hardened_prompt(custom_instructions)
     return {"hardened_prompt": prompt}
@@ -267,6 +289,7 @@ async def get_hardened_prompt(custom_instructions: str = None) -> Dict[str, str]
 async def get_injection_defense_prompt() -> Dict[str, str]:
     """获取注入防御提示词"""
     from mox.defense import SystemPromptHardening
+
     hardening = SystemPromptHardening()
     prompt = hardening.get_injection_defense_prompt()
     return {"injection_defense_prompt": prompt}
@@ -274,25 +297,81 @@ async def get_injection_defense_prompt() -> Dict[str, str]:
 
 # ============ 统计端点 ============
 
+
 @app.get("/api/stats/overview")
 async def get_stats_overview() -> Dict[str, Any]:
     """获取统计概览"""
-    return {
-        "total_attacks": 0,
-        "successful_attacks": 0,
-        "total_defenses": 0,
-        "blocked_attacks": 0,
-        "recent_attacks": [],
-    }
+    try:
+        from mox.core.database import get_database
+
+        db = get_database()
+
+        total_attacks = await db.count_attack_records()
+        total_defenses = await db.count_defense_records()
+
+        recent_attacks = await db.get_attack_records(limit=10)
+        recent_attacks_data = []
+        successful_attacks = 0
+        blocked_attacks = 0
+
+        for r in recent_attacks:
+            recent_attacks_data.append(
+                {
+                    "id": r.id,
+                    "attack_type": r.attack_type,
+                    "result": r.result,
+                    "success_score": r.success_score,
+                    "timestamp": r.created_at.isoformat() if r.created_at else None,
+                }
+            )
+            if r.result == "success":
+                successful_attacks += 1
+            if r.is_malicious:
+                blocked_attacks += 1
+
+        return {
+            "total_attacks": total_attacks,
+            "successful_attacks": successful_attacks,
+            "total_defenses": total_defenses,
+            "blocked_attacks": blocked_attacks,
+            "recent_attacks": recent_attacks_data,
+        }
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("api")
+        logger.warning(f"Failed to get stats overview, returning zeros: {e}")
+        return {
+            "total_attacks": total_attacks,
+            "successful_attacks": successful_attacks,
+            "total_defenses": total_defenses,
+            "blocked_attacks": blocked_attacks,
+            "recent_attacks": recent_attacks_data,
+        }
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("api")
+        logger.warning(f"Failed to get stats overview, returning zeros: {e}")
+        return {
+            "total_attacks": 0,
+            "successful_attacks": 0,
+            "total_defenses": 0,
+            "blocked_attacks": 0,
+            "recent_attacks": [],
+            "error": str(e),
+        }
 
 
 # ============ 缓存端点 ============
+
 
 @app.get("/api/cache/stats")
 async def get_cache_stats():
     """获取缓存统计"""
     try:
         from mox.core.cache import CacheManager
+
         cache = CacheManager()
         return cache.get_stats()
     except Exception:
@@ -304,6 +383,7 @@ async def clear_cache():
     """清空缓存"""
     try:
         from mox.core.cache import CacheManager
+
         cache = CacheManager()
         await cache.clear()
         return {"success": True}
@@ -312,6 +392,7 @@ async def clear_cache():
 
 
 # ============ OWASP 测试端点 ============
+
 
 class OWASPRequest(BaseModel):
     model: str = "gpt-4"
@@ -327,6 +408,7 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
 
         if request.model.startswith("abab"):
             from mox.core import MiniMaxLLM
+
             llm = MiniMaxLLM(
                 model=request.model,
                 api_key=settings.MINIMAX_API_KEY,
@@ -340,14 +422,16 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
 
         test_results = []
         for r in results:
-            test_results.append({
-                "category": r.category.value,
-                "test": r.test_name.replace("_", " ").title(),
-                "passed": r.passed,
-                "vulnerable": not r.passed,
-                "severity": r.details.get("severity", "medium"),
-                "model_response": r.model_response or "模型未返回响应",
-            })
+            test_results.append(
+                {
+                    "category": r.category.value,
+                    "test": r.test_name.replace("_", " ").title(),
+                    "passed": r.passed,
+                    "vulnerable": not r.passed,
+                    "severity": r.details.get("severity", "medium"),
+                    "model_response": r.model_response or "模型未返回响应",
+                }
+            )
 
         return {"results": test_results}
 
@@ -356,6 +440,7 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
 
 
 # ============ 红队演练端点 ============
+
 
 class RedTeamRequest(BaseModel):
     model: str = "gpt-4"
@@ -372,6 +457,7 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
 
         if request.model.startswith("abab"):
             from mox.core import MiniMaxLLM
+
             llm = MiniMaxLLM(
                 model=request.model,
                 api_key=settings.MINIMAX_API_KEY,
@@ -399,6 +485,7 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
 
 # ============ 代码安全端点 ============
 
+
 class CodeSecurityRequest(BaseModel):
     prompt: str
     model: str = "qwen:4b"
@@ -414,6 +501,7 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
 
         if request.model.startswith("abab"):
             from mox.core import MiniMaxLLM
+
             llm = MiniMaxLLM(
                 model=request.model,
                 api_key=settings.MINIMAX_API_KEY,
@@ -440,6 +528,7 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
 
 # ============ 偏见检测端点 ============
 
+
 class BiasDetectRequest(BaseModel):
     prompt: str
     model: str = "qwen:4b"
@@ -455,6 +544,7 @@ async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
 
         if request.model.startswith("abab"):
             from mox.core import MiniMaxLLM
+
             llm = MiniMaxLLM(
                 model=request.model,
                 api_key=settings.MINIMAX_API_KEY,
@@ -474,6 +564,7 @@ async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
 
 # ============ WebSocket 统计 ============
 
+
 @app.get("/api/ws/stats")
 async def get_ws_stats():
     """获取 WebSocket 连接统计"""
@@ -482,9 +573,11 @@ async def get_ws_stats():
 
 # ============ 启动服务器 ============
 
+
 def run_server():
     """启动服务器"""
     import uvicorn
+
     uvicorn.run(
         "mox.api:app",
         host=settings.HOST,

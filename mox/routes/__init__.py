@@ -1,7 +1,5 @@
 """路由模块"""
 
-from fastapi import APIRouter
-
 from .attack import router as attack_router
 from .defense import router as defense_router
 from .auth import router as auth_router

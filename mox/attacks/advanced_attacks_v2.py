@@ -7,10 +7,7 @@
 
 import re
 import json
-import random
-from typing import Optional, List, Dict, Any
-from dataclasses import dataclass
-import asyncio
+from typing import Optional, List
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
