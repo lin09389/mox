@@ -1,8 +1,10 @@
 """LLM 网关相关路由"""
 
 from typing import Dict, Any, Optional
+import ipaddress
+import socket
 from fastapi import APIRouter, HTTPException, Depends
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from urllib.parse import urlparse
 
 from mox.core.auth import User, get_current_active_user
@@ -26,14 +28,47 @@ class AddEndpointRequest(BaseModel):
     max_rpm: int = 100
     max_tpm: int = 100000
 
-    @validator("base_url")
+    @field_validator("base_url")
+    @classmethod
     def validate_base_url(cls, v):
-        if v:
-            parsed = urlparse(v)
-            if parsed.scheme not in ("http", "https"):
-                raise ValueError("URL must start with http or https")
-            if parsed.hostname in ("localhost", "127.0.0.1", "0.0.0.0") or parsed.hostname.endswith(".local"):
-                raise ValueError("Internal addresses are not allowed")
+        if not v:
+            return v
+
+        parsed = urlparse(v)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError("URL must start with http or https")
+
+        hostname = parsed.hostname
+        if not hostname:
+            raise ValueError("URL must include a valid hostname")
+
+        if hostname == "localhost" or hostname.endswith(".local"):
+            raise ValueError("Internal addresses are not allowed")
+
+        def _is_blocked_ip(ip_str: str) -> bool:
+            try:
+                ip = ipaddress.ip_address(ip_str)
+            except ValueError:
+                return False
+            return (
+                ip.is_loopback
+                or ip.is_private
+                or ip.is_link_local
+                or ip.is_reserved
+                or ip.is_multicast
+                or ip.is_unspecified
+            )
+
+        if _is_blocked_ip(hostname):
+            raise ValueError("Internal addresses are not allowed")
+
+        try:
+            for item in socket.getaddrinfo(hostname, None):
+                resolved_ip = item[4][0]
+                if _is_blocked_ip(resolved_ip):
+                    raise ValueError("Resolved internal addresses are not allowed")
+        except socket.gaierror:
+            raise ValueError("Hostname cannot be resolved")
         return v
 
 

@@ -39,6 +39,11 @@ class TestLLMResponse:
 
 
 class TestLLMFactory:
+    @pytest.fixture(autouse=True)
+    def mock_provider_clients(self):
+        with patch("mox.core.llm.AsyncOpenAI"), patch("mox.core.llm.AsyncAnthropic"):
+            yield
+
     def test_create_openai(self):
         llm = LLMFactory.create(ModelProvider.OPENAI, "gpt-4")
         assert isinstance(llm, OpenAILLM)

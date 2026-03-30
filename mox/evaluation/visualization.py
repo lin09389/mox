@@ -34,7 +34,7 @@ class ReportGenerator:
                 "success_score": outcome.success_score,
                 "iterations": outcome.iterations,
                 "timestamp": datetime.now().isoformat(),
-                "model_response": outcome.model_response[:200],
+                "model_response": outcome.response[:200],
             }
         )
 

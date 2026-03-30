@@ -36,7 +36,9 @@ LLM Adversarial Attack & Defense Platform
     result = await defense.detect(user_input)
 """
 
-__version__ = "0.2.0"
+from mox.core.version import PACKAGE_VERSION
+
+__version__ = PACKAGE_VERSION
 
 from mox.core import (
     settings,

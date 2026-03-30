@@ -1,6 +1,7 @@
 """Core module exports"""
 
 from .config import settings, Settings
+from .version import PACKAGE_VERSION, get_version
 from .llm import (
     BaseLLM,
     OpenAILLM,
@@ -44,10 +45,23 @@ from .exceptions import (
     GatewayError,
     RateLimitError,
 )
+from .advanced_cache import (
+    CacheEntry,
+    CacheStats,
+    CacheBackend,
+    MemoryCache,
+    RedisCache,
+    MultiLevelCache,
+    CacheManager,
+    cache_key,
+    cached,
+)
 
 __all__ = [
     "settings",
     "Settings",
+    "PACKAGE_VERSION",
+    "get_version",
     "BaseLLM",
     "OpenAILLM",
     "AnthropicLLM",
@@ -84,4 +98,14 @@ __all__ = [
     "DefenseError",
     "GatewayError",
     "RateLimitError",
+    # 缓存
+    "CacheEntry",
+    "CacheStats",
+    "CacheBackend",
+    "MemoryCache",
+    "RedisCache",
+    "MultiLevelCache",
+    "CacheManager",
+    "cache_key",
+    "cached",
 ]

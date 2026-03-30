@@ -130,6 +130,47 @@ from mox.attacks.chain import (
     MultimodalTargetModel,
 )
 
+# 新增：最新攻击技术 (2024-2025)
+from .novel_attacks_v2 import (
+    ManyShotJailbreak,
+    SkeletonKeyAttack as SkeletonKeyAttackV2,
+    IndirectPromptInjection,
+    AdaptiveAttackEnsemble,
+    ManyShotExample as ManyShotExampleV2,
+)
+
+# 最新攻击技术 (2025)
+from .novel_attacks_v3 import (
+    ManyShotJailbreakAttack,
+    SkeletonKeyAttack,
+    DeceptiveAlignmentAttack,
+    CognitiveOverloadAttack,
+    ContextOverflowAttack,
+    RoleConfusionAttack,
+    CompositeNovelAttack,
+    ManyShotExample,
+    MANY_SHOT_EXAMPLES,
+    HARMFUL_MANY_SHOT_EXAMPLES,
+    SKELETON_KEY_TEMPLATES,
+    DECEPTIVE_ALIGNMENT_TEMPLATES,
+    COGNITIVE_OVERLOAD_TEMPLATES,
+    ROLE_CONFUSION_TEMPLATES,
+)
+
+# 高级 Agent 攻击 (2025)
+from .agent_attacks_v2 import (
+    AdvancedAgentAttackType,
+    ToolDefinition,
+    DEFAULT_TOOLS,
+    ToolChainingAttack,
+    IndirectToolInjection,
+    PrivilegeEscalationAttack as PrivilegeEscalationAttackV2,
+    ToolConfusionAttack,
+    DataExfiltrationAttack,
+    MultiAgentAttack,
+    CompositeAgentAttack,
+)
+
 __all__ = [
     # 基础
     "BaseAttack",
@@ -240,4 +281,36 @@ __all__ = [
     "LLMTargetModel",
     "RAGTargetModel",
     "MultimodalTargetModel",
+    # 最新攻击技术 (2024-2025)
+    "ManyShotJailbreak",
+    "SkeletonKeyAttackV2",
+    "IndirectPromptInjection",
+    "AdaptiveAttackEnsemble",
+    "ManyShotExampleV2",
+    # 最新攻击技术 (2025)
+    "ManyShotJailbreakAttack",
+    "SkeletonKeyAttack",
+    "DeceptiveAlignmentAttack",
+    "CognitiveOverloadAttack",
+    "ContextOverflowAttack",
+    "RoleConfusionAttack",
+    "CompositeNovelAttack",
+    "ManyShotExample",
+    "MANY_SHOT_EXAMPLES",
+    "HARMFUL_MANY_SHOT_EXAMPLES",
+    "SKELETON_KEY_TEMPLATES",
+    "DECEPTIVE_ALIGNMENT_TEMPLATES",
+    "COGNITIVE_OVERLOAD_TEMPLATES",
+    "ROLE_CONFUSION_TEMPLATES",
+    # 高级 Agent 攻击 (2025)
+    "AdvancedAgentAttackType",
+    "ToolDefinition",
+    "DEFAULT_TOOLS",
+    "ToolChainingAttack",
+    "IndirectToolInjection",
+    "PrivilegeEscalationAttackV2",
+    "ToolConfusionAttack",
+    "DataExfiltrationAttack",
+    "MultiAgentAttack",
+    "CompositeAgentAttack",
 ]

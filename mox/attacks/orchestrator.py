@@ -397,7 +397,7 @@ class AttackOrchestrator:
             outcome = await attack.generate_attack(payload)
 
             score = await attack.evaluate_success(
-                outcome.model_response,
+                outcome.response,
                 scenario.target_objective,
             )
 
@@ -406,7 +406,7 @@ class AttackOrchestrator:
                 "score": score,
                 "iterations": outcome.iterations,
                 "adversarial_prompt": outcome.adversarial_prompt,
-                "model_response": outcome.model_response,
+                "model_response": outcome.response,
                 "details": outcome.metadata,
             }
         except Exception as e:

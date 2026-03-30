@@ -65,7 +65,7 @@ class AttackChain:
                 "result": outcome.result,
                 "original_prompt": outcome.original_prompt,
                 "adversarial_prompt": outcome.adversarial_prompt,
-                "model_response": outcome.model_response,
+                "model_response": outcome.response,
                 "iterations": outcome.iterations,
                 "success_score": outcome.success_score,
                 "metadata": {

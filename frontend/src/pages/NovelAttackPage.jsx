@@ -8,8 +8,8 @@ import {
   Type,
   Lock,
   FileText,
-  Pilot,
-  Faders,
+  Plane,
+  SlidersHorizontal,
   Target,
   Link2,
   Skull,
@@ -44,7 +44,7 @@ const NOVEL_ATTACK_TYPES = [
   {
     value: 'control_char',
     label: '控制字符注入',
-    icon: Pilot,
+    icon: Plane,
     desc: 'RTL/LTR覆盖、零宽字符注入',
     category: '2024新技术',
   },
@@ -234,7 +234,7 @@ function NovelAttackPage() {
           <div className="card">
             <div className="flex items-center gap-2 mb-3">
               <div className="w-8 h-8 bg-electric-100 rounded-md flex items-center justify-center">
-                <Faders className="w-4 h-4 text-electric-600" />
+                <SlidersHorizontal className="w-4 h-4 text-electric-600" />
               </div>
               <h3 className="text-sm font-semibold text-graphite-900">攻击类型说明</h3>
             </div>

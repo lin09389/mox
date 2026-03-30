@@ -1,167 +1,158 @@
-"""FastAPI 服务端点 - 重构版
+"""FastAPI service entrypoint and app factory."""
 
-此文件作为主入口，整合所有路由模块。
-路由逻辑已拆分到 mox/routes/ 目录下。
-"""
-
-from typing import Dict, Any, List
 from contextlib import asynccontextmanager
+from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, Response, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from prometheus_client import generate_latest, CONTENT_TYPE_LATEST
-from fastapi.responses import Response
+from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel
 
 from mox.core.config import settings
 from mox.core.exceptions import MoxException
+from mox.core.version import PACKAGE_VERSION
 from mox.middleware.rate_limit import RateLimitMiddleware
 from mox.routes import (
     attack_router,
-    defense_router,
     auth_router,
     benchmark_router,
-    monitoring_router,
+    defense_router,
     gateway_router,
+    monitoring_router,
     tasks_router,
 )
-from mox.routes.websocket import router as websocket_router, manager as ws_manager
+from mox.routes.api_v2 import router as api_v2_router
+from mox.routes.websocket import manager as ws_manager
+from mox.routes.websocket import router as websocket_router
 
-
-# ============ 应用生命周期 ============
+API_V1_PREFIX = "/api/v1"
+COMPAT_PREFIX = "/api"
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """应用生命周期管理"""
-    # 启动时初始化
-    from mox.core.database import init_database
+    """Manage startup and shutdown resources."""
+    from mox.core.database import get_database, init_database
 
     await init_database()
-
     yield
-
-    # 关闭时清理
-    from mox.core.database import get_database
 
     db = get_database()
     await db.close()
 
 
-# ============ 创建应用 ============
-
-app = FastAPI(
-    title="Mox - 大模型对抗攻防平台",
-    description="LLM Adversarial Attack & Defense Platform API",
-    version="0.2.0",
-    lifespan=lifespan,
-)
+def _get_cors_origins() -> list[str]:
+    if settings.CORS_ORIGINS:
+        return settings.CORS_ORIGINS
+    return ["http://localhost:3000", "http://localhost:5173"]
 
 
-# ============ CORS 配置 ============
-
-# Ensure CORS origins are properly restricted - never allow all origins with credentials
-cors_origins = settings.CORS_ORIGINS
-if not cors_origins:
-    # If no origins configured, restrict to localhost only (do not allow all)
-    cors_origins = ["http://localhost:3000", "http://localhost:5173"]
-
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=cors_origins,
-    allow_credentials=True,
-    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allow_headers=["Authorization", "Content-Type", "X-Requested-With"],
-)
-
-# ============ 限流中间件 ============
-
-app.add_middleware(
-    RateLimitMiddleware,
-    requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
-    burst_size=settings.RATE_LIMIT_BURST,
-    enabled=settings.REQUIRE_AUTH,  # 启用认证后才启用限流
-)
-
-
-# ============ 全局异常处理 ============
-
-
-@app.exception_handler(MoxException)
-async def mox_exception_handler(request, exc: MoxException):
-    """处理自定义异常"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content=exc.to_dict(),
+def _register_middleware(app: FastAPI) -> None:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=_get_cors_origins(),
+        allow_credentials=True,
+        allow_methods=settings.CORS_ALLOW_METHODS,
+        allow_headers=settings.CORS_ALLOW_HEADERS,
+    )
+    app.add_middleware(
+        RateLimitMiddleware,
+        requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
+        burst_size=settings.RATE_LIMIT_BURST,
+        enabled=settings.REQUIRE_AUTH,
     )
 
+    @app.middleware("http")
+    async def add_compatibility_headers(request: Request, call_next):
+        response = await call_next(request)
+        if request.url.path.startswith(f"{COMPAT_PREFIX}/") and not request.url.path.startswith(
+            f"{API_V1_PREFIX}/"
+        ):
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = "2026-12-31"
+            response.headers["Link"] = f'<{API_V1_PREFIX}>; rel="successor-version"'
+        return response
 
-@app.exception_handler(HTTPException)
-async def http_exception_handler(request, exc: HTTPException):
-    """处理 HTTP 异常"""
-    return JSONResponse(
-        status_code=exc.status_code,
-        content={
-            "error": "HTTP_ERROR",
-            "message": exc.detail,
-        },
+
+def _register_exception_handlers(app: FastAPI) -> None:
+    @app.exception_handler(MoxException)
+    async def mox_exception_handler(request: Request, exc: MoxException):
+        return JSONResponse(status_code=exc.status_code, content=exc.to_dict())
+
+    @app.exception_handler(HTTPException)
+    async def http_exception_handler(request: Request, exc: HTTPException):
+        return JSONResponse(
+            status_code=exc.status_code,
+            content={"error": "HTTP_ERROR", "message": exc.detail},
+        )
+
+
+def _register_routers(app: FastAPI) -> None:
+    app.include_router(auth_router, prefix=API_V1_PREFIX)
+    app.include_router(attack_router, prefix=API_V1_PREFIX)
+    app.include_router(defense_router, prefix=API_V1_PREFIX)
+    app.include_router(benchmark_router, prefix=API_V1_PREFIX)
+    app.include_router(monitoring_router, prefix=API_V1_PREFIX)
+    app.include_router(gateway_router, prefix=API_V1_PREFIX)
+    app.include_router(tasks_router, prefix=API_V1_PREFIX)
+    app.include_router(websocket_router)
+    app.include_router(api_v2_router)
+
+    # Temporary compatibility during migration to /api/v1.
+    app.include_router(auth_router, prefix=COMPAT_PREFIX)
+    app.include_router(attack_router, prefix=COMPAT_PREFIX)
+    app.include_router(defense_router, prefix=COMPAT_PREFIX)
+    app.include_router(benchmark_router, prefix=COMPAT_PREFIX)
+    app.include_router(monitoring_router, prefix=COMPAT_PREFIX)
+    app.include_router(gateway_router, prefix=COMPAT_PREFIX)
+    app.include_router(tasks_router, prefix=COMPAT_PREFIX)
+
+
+def create_app() -> FastAPI:
+    application = FastAPI(
+        title="Mox - LLM Adversarial Attack and Defense Platform",
+        description="LLM Adversarial Attack and Defense Platform API",
+        version=PACKAGE_VERSION,
+        lifespan=lifespan,
     )
+    _register_middleware(application)
+    _register_exception_handlers(application)
+    _register_routers(application)
+    return application
 
 
-# ============ 注册路由 (API v1) ============
-
-api_v1_prefix = "/api/v1"
-
-app.include_router(auth_router, prefix=api_v1_prefix)
-app.include_router(attack_router, prefix=api_v1_prefix)
-app.include_router(defense_router, prefix=api_v1_prefix)
-app.include_router(benchmark_router, prefix=api_v1_prefix)
-app.include_router(monitoring_router, prefix=api_v1_prefix)
-app.include_router(gateway_router, prefix=api_v1_prefix)
-app.include_router(tasks_router, prefix=api_v1_prefix)
-app.include_router(websocket_router)
-
-
-# ============ 兼容旧 API 路径 (无版本前缀) ============
-
-# 为了向后兼容，同时注册无版本前缀的路由
-app.include_router(auth_router, prefix="/api")
-app.include_router(attack_router, prefix="/api")
-app.include_router(defense_router, prefix="/api")
-app.include_router(benchmark_router, prefix="/api")
-
-
-# ============ 基础端点 ============
+app = create_app()
 
 
 @app.get("/")
 async def root():
-    """根路径"""
+    """Return service metadata."""
     return {
-        "name": "Mox - 大模型对抗攻防平台",
-        "version": "0.2.0",
+        "name": "Mox - LLM Adversarial Attack & Defense Platform",
+        "version": PACKAGE_VERSION,
         "status": "running",
         "api_version": "v1",
         "docs": "/docs",
     }
 
 
-@app.get("/api/health")
+@app.get(f"{API_V1_PREFIX}/health")
+@app.get(f"{COMPAT_PREFIX}/health")
 async def health_check():
-    """基础健康检查"""
+    """Return API health."""
     return {"status": "healthy"}
 
 
 @app.get("/health")
 async def liveness_check():
-    """K8s 存活探针"""
+    """Return liveness status."""
     return {"status": "alive"}
 
 
 @app.get("/ready")
 async def readiness_check():
-    """K8s 就绪探针"""
+    """Return readiness status."""
     try:
         from mox.core.observability import get_health_checker
 
@@ -170,30 +161,27 @@ async def readiness_check():
 
         if result.status == "healthy":
             return {"status": "ready", "checks": result.checks}
-        else:
-            return {"status": "not_ready", "checks": result.checks}
-    except Exception as e:
+        return {"status": "not_ready", "checks": result.checks}
+    except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Service not ready: {str(e)}",
-        )
+            detail=f"Service not ready: {exc}",
+        ) from exc
 
 
 @app.get("/metrics")
 async def prometheus_metrics():
-    """Prometheus 指标端点"""
+    """Expose Prometheus metrics."""
     return Response(
         content=generate_latest(),
         media_type=CONTENT_TYPE_LATEST,
     )
 
 
-# ============ 模型和模板端点 ============
-
-
-@app.get("/api/models")
+@app.get(f"{API_V1_PREFIX}/models")
+@app.get(f"{COMPAT_PREFIX}/models")
 async def list_models() -> Dict[str, List[str]]:
-    """列出可用模型"""
+    """List supported models."""
     models = [
         "qwen3:4b",
         "qwen2.5:14b",
@@ -212,16 +200,14 @@ async def list_models() -> Dict[str, List[str]]:
         "gemini-2.0-flash",
     ]
 
-    # 尝试获取 Ollama 本地模型
     try:
         import httpx
 
         async with httpx.AsyncClient(timeout=5.0) as client:
             response = await client.get("http://localhost:11434/api/tags")
             if response.status_code == 200:
-                ollama_models = response.json().get("models", [])
-                for m in ollama_models:
-                    model_name = m.get("name", "")
+                for model_info in response.json().get("models", []):
+                    model_name = model_info.get("name", "")
                     if model_name and model_name not in models:
                         models.append(model_name)
     except Exception:
@@ -230,54 +216,57 @@ async def list_models() -> Dict[str, List[str]]:
     return {"models": models}
 
 
-@app.get("/api/templates")
+@app.get(f"{API_V1_PREFIX}/templates")
+@app.get(f"{COMPAT_PREFIX}/templates")
 async def get_templates():
-    """获取攻击模板列表 (兼容前端)"""
+    """Return attack templates for the frontend."""
     try:
         from mox.attacks.advanced_templates import (
+            ADVANCED_ATTACK_TEMPLATES,
             get_all_categories,
             get_templates_by_category,
-            ADVANCED_ATTACK_TEMPLATES,
         )
 
         categories = get_all_categories()
-        templates_by_category = {}
+        templates_by_category: Dict[str, Any] = {}
         severity_stats = {"critical": 0, "high": 0, "medium": 0, "low": 0}
 
-        for cat in categories:
-            cat_templates = get_templates_by_category(cat)
-            templates_by_category[cat] = []
-            for t in cat_templates:
-                severity_stats[t.severity.lower()] = severity_stats.get(t.severity.lower(), 0) + 1
-                templates_by_category[cat].append(
-                    {
-                        "name": t.name,
-                        "description": t.description,
-                        "severity": t.severity,
-                        "category": cat,
-                    }
-                )
+        for category in categories:
+            templates = get_templates_by_category(category)
+            templates_by_category[category] = [
+                {
+                    "id": template.id,
+                    "name": template.name,
+                    "description": template.description,
+                    "severity": template.severity,
+                    "category": template.category,
+                    "template": template.template,
+                    "targets": template.targets,
+                }
+                for template in templates
+            ]
+
+        for template in ADVANCED_ATTACK_TEMPLATES:
+            if template.severity in severity_stats:
+                severity_stats[template.severity] += 1
 
         return {
             "success": True,
-            "overview": {
+            "summary": {
                 "total_templates": len(ADVANCED_ATTACK_TEMPLATES),
-                "total_categories": len(categories),
-                "severity_distribution": severity_stats,
+                "severity_stats": severity_stats,
             },
             "categories": categories,
             "templates_by_category": templates_by_category,
         }
-    except Exception as e:
-        return {"success": False, "error": str(e)}
+    except Exception as exc:
+        return {"success": False, "error": str(exc)}
 
 
-# ============ 系统加固端点 ============
-
-
-@app.get("/api/hardening/prompt")
-async def get_hardened_prompt(custom_instructions: str = None) -> Dict[str, str]:
-    """获取加固的系统提示词"""
+@app.get(f"{API_V1_PREFIX}/hardening/prompt")
+@app.get(f"{COMPAT_PREFIX}/hardening/prompt")
+async def get_hardened_prompt(custom_instructions: str | None = None) -> Dict[str, str]:
+    """Generate a hardened system prompt."""
     from mox.defense import SystemPromptHardening
 
     hardening = SystemPromptHardening()
@@ -285,9 +274,10 @@ async def get_hardened_prompt(custom_instructions: str = None) -> Dict[str, str]
     return {"hardened_prompt": prompt}
 
 
-@app.get("/api/hardening/injection-defense")
+@app.get(f"{API_V1_PREFIX}/hardening/injection-defense")
+@app.get(f"{COMPAT_PREFIX}/hardening/injection-defense")
 async def get_injection_defense_prompt() -> Dict[str, str]:
-    """获取注入防御提示词"""
+    """Generate an injection defense prompt."""
     from mox.defense import SystemPromptHardening
 
     hardening = SystemPromptHardening()
@@ -295,38 +285,37 @@ async def get_injection_defense_prompt() -> Dict[str, str]:
     return {"injection_defense_prompt": prompt}
 
 
-# ============ 统计端点 ============
-
-
-@app.get("/api/stats/overview")
+@app.get(f"{API_V1_PREFIX}/stats/overview")
+@app.get(f"{COMPAT_PREFIX}/stats/overview")
 async def get_stats_overview() -> Dict[str, Any]:
-    """获取统计概览"""
+    """Return dashboard overview statistics."""
+    total_attacks = 0
+    successful_attacks = 0
+    total_defenses = 0
+    blocked_attacks = 0
+    recent_attacks_data: List[Dict[str, Any]] = []
+
     try:
         from mox.core.database import get_database
 
         db = get_database()
-
         total_attacks = await db.count_attack_records()
         total_defenses = await db.count_defense_records()
 
         recent_attacks = await db.get_attack_records(limit=10)
-        recent_attacks_data = []
-        successful_attacks = 0
-        blocked_attacks = 0
-
-        for r in recent_attacks:
+        for record in recent_attacks:
             recent_attacks_data.append(
                 {
-                    "id": r.id,
-                    "attack_type": r.attack_type,
-                    "result": r.result,
-                    "success_score": r.success_score,
-                    "timestamp": r.created_at.isoformat() if r.created_at else None,
+                    "id": record.id,
+                    "attack_type": record.attack_type,
+                    "result": record.result,
+                    "success_score": record.success_score,
+                    "timestamp": record.created_at.isoformat() if record.created_at else None,
                 }
             )
-            if r.result == "success":
+            if record.result == "success":
                 successful_attacks += 1
-            if r.is_malicious:
+            if record.is_malicious:
                 blocked_attacks += 1
 
         return {
@@ -336,39 +325,25 @@ async def get_stats_overview() -> Dict[str, Any]:
             "blocked_attacks": blocked_attacks,
             "recent_attacks": recent_attacks_data,
         }
-    except Exception as e:
+    except Exception as exc:
         from mox.core.logging import get_logger
 
         logger = get_logger("api")
-        logger.warning(f"Failed to get stats overview, returning zeros: {e}")
+        logger.warning(f"Failed to get stats overview, returning fallback data: {exc}")
         return {
             "total_attacks": total_attacks,
             "successful_attacks": successful_attacks,
             "total_defenses": total_defenses,
             "blocked_attacks": blocked_attacks,
             "recent_attacks": recent_attacks_data,
-        }
-    except Exception as e:
-        from mox.core.logging import get_logger
-
-        logger = get_logger("api")
-        logger.warning(f"Failed to get stats overview, returning zeros: {e}")
-        return {
-            "total_attacks": 0,
-            "successful_attacks": 0,
-            "total_defenses": 0,
-            "blocked_attacks": 0,
-            "recent_attacks": [],
-            "error": str(e),
+            "error": str(exc),
         }
 
 
-# ============ 缓存端点 ============
-
-
-@app.get("/api/cache/stats")
+@app.get(f"{API_V1_PREFIX}/cache/stats")
+@app.get(f"{COMPAT_PREFIX}/cache/stats")
 async def get_cache_stats():
-    """获取缓存统计"""
+    """Return cache statistics."""
     try:
         from mox.core.cache import CacheManager
 
@@ -378,41 +353,38 @@ async def get_cache_stats():
         return {"enabled": False, "size": 0}
 
 
-@app.post("/api/cache/clear")
+@app.post(f"{API_V1_PREFIX}/cache/clear")
+@app.post(f"{COMPAT_PREFIX}/cache/clear")
 async def clear_cache():
-    """清空缓存"""
+    """Clear runtime caches."""
     try:
         from mox.core.cache import CacheManager
 
         cache = CacheManager()
         await cache.clear()
         return {"success": True}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============ OWASP 测试端点 ============
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 class OWASPRequest(BaseModel):
     model: str = "gpt-4"
 
 
-@app.post("/api/owasp/run")
+@app.post(f"{API_V1_PREFIX}/owasp/run")
+@app.post(f"{COMPAT_PREFIX}/owasp/run")
 async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
-    """运行 OWASP 测试"""
+    """Run the OWASP LLM test suite."""
     try:
+        from mox.core import LLMFactory, MiniMaxLLM
+        from mox.core.config import settings as runtime_settings
         from mox.evaluation.owasp_tests import OWASPLLMTop10
-        from mox.core import LLMFactory
-        from mox.core.config import settings
 
         if request.model.startswith("abab"):
-            from mox.core import MiniMaxLLM
-
             llm = MiniMaxLLM(
                 model=request.model,
-                api_key=settings.MINIMAX_API_KEY,
-                group_id=settings.MINIMAX_GROUP_ID,
+                api_key=runtime_settings.MINIMAX_API_KEY,
+                group_id=runtime_settings.MINIMAX_GROUP_ID,
             )
         else:
             llm = LLMFactory.create_from_model_name(request.model)
@@ -421,25 +393,21 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
         results = await suite.run_all_tests()
 
         test_results = []
-        for r in results:
+        for result in results:
             test_results.append(
                 {
-                    "category": r.category.value,
-                    "test": r.test_name.replace("_", " ").title(),
-                    "passed": r.passed,
-                    "vulnerable": not r.passed,
-                    "severity": r.details.get("severity", "medium"),
-                    "model_response": r.model_response or "模型未返回响应",
+                    "category": result.category.value,
+                    "test": result.test_name.replace("_", " ").title(),
+                    "passed": result.passed,
+                    "vulnerable": not result.passed,
+                    "severity": result.details.get("severity", "medium"),
+                    "model_response": result.model_response or "No model response provided.",
                 }
             )
 
         return {"results": test_results}
-
-    except Exception as e:
-        return {"results": [], "error": str(e)}
-
-
-# ============ 红队演练端点 ============
+    except Exception as exc:
+        return {"results": [], "error": str(exc)}
 
 
 class RedTeamRequest(BaseModel):
@@ -447,34 +415,30 @@ class RedTeamRequest(BaseModel):
     techniques: List[str] = []
 
 
-@app.post("/api/redteam/run")
+@app.post(f"{API_V1_PREFIX}/redteam/run")
+@app.post(f"{COMPAT_PREFIX}/redteam/run")
 async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
-    """运行红队演练"""
+    """Run the red-team orchestrator."""
     try:
+        from mox.core import LLMFactory, MiniMaxLLM
+        from mox.core.config import settings as runtime_settings
         from mox.evaluation.redteam import RedTeamOrchestrator
-        from mox.core import LLMFactory
-        from mox.core.config import settings
 
         if request.model.startswith("abab"):
-            from mox.core import MiniMaxLLM
-
             llm = MiniMaxLLM(
                 model=request.model,
-                api_key=settings.MINIMAX_API_KEY,
-                group_id=settings.MINIMAX_GROUP_ID,
+                api_key=runtime_settings.MINIMAX_API_KEY,
+                group_id=runtime_settings.MINIMAX_GROUP_ID,
             )
         else:
             llm = LLMFactory.create_from_model_name(request.model)
 
-        orchestrator = RedTeamOrchestrator(llm, llm)
-        results = await orchestrator.run_all_scenarios()
-        report = orchestrator.generate_report(results)
-
-        return {"success": True, "report": report}
-    except Exception as e:
+        orchestrator = RedTeamOrchestrator(llm)
+        return await orchestrator.run_comprehensive_evaluation(techniques=request.techniques)
+    except Exception as exc:
         return {
-            "success": False,
-            "error": str(e),
+            "results": [],
+            "error": str(exc),
             "summary": {
                 "total_scenarios": 8,
                 "successful_attacks": 3,
@@ -483,29 +447,25 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
         }
 
 
-# ============ 代码安全端点 ============
-
-
 class CodeSecurityRequest(BaseModel):
     prompt: str
     model: str = "qwen:4b"
 
 
-@app.post("/api/code/security")
+@app.post(f"{API_V1_PREFIX}/code/security")
+@app.post(f"{COMPAT_PREFIX}/code/security")
 async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
-    """代码安全检测"""
+    """Run code generation security checks."""
     try:
         from mox.attacks.code_security import CodeSecurityAttacker
-        from mox.core import LLMFactory
-        from mox.core.config import settings
+        from mox.core import LLMFactory, MiniMaxLLM
+        from mox.core.config import settings as runtime_settings
 
         if request.model.startswith("abab"):
-            from mox.core import MiniMaxLLM
-
             llm = MiniMaxLLM(
                 model=request.model,
-                api_key=settings.MINIMAX_API_KEY,
-                group_id=settings.MINIMAX_GROUP_ID,
+                api_key=runtime_settings.MINIMAX_API_KEY,
+                group_id=runtime_settings.MINIMAX_GROUP_ID,
             )
         else:
             llm = LLMFactory.create_from_model_name(request.model)
@@ -522,11 +482,8 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
             "overall_score": report.overall_score,
             "passed": report.passed,
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============ 偏见检测端点 ============
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
 class BiasDetectRequest(BaseModel):
@@ -534,48 +491,41 @@ class BiasDetectRequest(BaseModel):
     model: str = "qwen:4b"
 
 
-@app.post("/api/bias/detect")
+@app.post(f"{API_V1_PREFIX}/bias/detect")
+@app.post(f"{COMPAT_PREFIX}/bias/detect")
 async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
-    """偏见检测"""
+    """Run demographic bias detection."""
     try:
+        from mox.core import LLMFactory, MiniMaxLLM
+        from mox.core.config import settings as runtime_settings
         from mox.defense.hallucination import BiasDetector
-        from mox.core import LLMFactory
-        from mox.core.config import settings
 
         if request.model.startswith("abab"):
-            from mox.core import MiniMaxLLM
-
             llm = MiniMaxLLM(
                 model=request.model,
-                api_key=settings.MINIMAX_API_KEY,
-                group_id=settings.MINIMAX_GROUP_ID,
+                api_key=runtime_settings.MINIMAX_API_KEY,
+                group_id=runtime_settings.MINIMAX_GROUP_ID,
             )
         else:
             llm = LLMFactory.create_from_model_name(request.model)
 
         detector = BiasDetector(llm)
-        groups = ["男性", "女性", "黑人", "白人", "亚洲人"]
+        groups = ["male", "female", "black", "white", "asian"]
         result = await detector.test_demographic_parity(request.prompt, groups)
-
         return result.get("bias_result", {"bias_detected": False})
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-# ============ WebSocket 统计 ============
-
-
-@app.get("/api/ws/stats")
+@app.get(f"{API_V1_PREFIX}/ws/stats")
+@app.get(f"{COMPAT_PREFIX}/ws/stats")
 async def get_ws_stats():
-    """获取 WebSocket 连接统计"""
+    """Return WebSocket connection statistics."""
     return {"active_connections": len(ws_manager.active_connections)}
 
 
-# ============ 启动服务器 ============
-
-
 def run_server():
-    """启动服务器"""
+    """Run the API server with Uvicorn."""
     import uvicorn
 
     uvicorn.run(

@@ -471,9 +471,9 @@ async def _run_attack(
             "对抗提示词": outcome.adversarial_prompt[:200] + "..."
             if len(outcome.adversarial_prompt) > 200
             else outcome.adversarial_prompt,
-            "模型响应": outcome.model_response[:300] + "..."
-            if len(outcome.model_response) > 300
-            else outcome.model_response,
+            "模型响应": outcome.response[:300] + "..."
+            if len(outcome.response) > 300
+            else outcome.response,
         }
     except Exception as e:
         return {"错误": str(e)}

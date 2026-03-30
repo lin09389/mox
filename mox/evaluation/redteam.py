@@ -431,7 +431,7 @@ class RedTeamOrchestrator:
 
             # 评估结果
             score = await attack.evaluate_success(
-                outcome.model_response,
+                outcome.response,
                 scenario.target_behavior or scenario.target_objective,
             )
 
@@ -440,7 +440,7 @@ class RedTeamOrchestrator:
                 success=outcome.result.value == "success",
                 attempts=outcome.iterations,
                 final_prompt=outcome.adversarial_prompt,
-                model_response=outcome.model_response,
+                model_response=outcome.response,
                 execution_time_ms=outcome.metadata.get("execution_time_ms", 0),
                 score=score,
                 details={
@@ -766,7 +766,7 @@ class RedTeamReportGenerator:
                 report.append("**Attack Prompt:**")
                 report.append(f"```\n{r.final_prompt[:200]}...\n```\n")
                 report.append("**Response:**")
-                report.append(f"```\n{r.model_response[:200]}...\n```\n")
+                report.append(f"```\n{r.response[:200]}...\n```\n")
 
         return "\n".join(report)
 
@@ -927,7 +927,7 @@ class RedTeamReportGenerator:
                     "score": r.score,
                     "attempts": r.attempts,
                     "prompt": r.final_prompt,
-                    "response": r.model_response[:500] if r.model_response else "",
+                    "response": r.response[:500] if r.response else "",
                     "execution_time_ms": r.execution_time_ms,
                 }
                 for r in results

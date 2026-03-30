@@ -53,6 +53,41 @@ from mox.defense.orchestrator import (
     DefenseType,
 )
 
+# 新增：Constitutional AI 防御
+from .constitutional_ai import (
+    ConstitutionalAI,
+    ConstitutionalPrinciple,
+    PrincipleCategory,
+    PrincipleEnforcer,
+    SelfCorrectionPipeline,
+    DEFAULT_PRINCIPLES,
+)
+
+# 新增：语义防火墙
+from .semantic_firewall import (
+    SemanticFirewall,
+    IntentClassifier,
+    RiskScorer,
+    ContextualAnalyzer,
+    IntentCategory,
+    RiskLevel,
+    IntentAnalysis,
+    RiskAssessment,
+)
+
+# 新增：输出验证器
+from .output_validator import (
+    OutputValidator,
+    OutputSanitizer,
+    PIIDetector,
+    SensitiveContentDetector,
+    PIICategory,
+    SensitiveCategory,
+    PIIDetection,
+    SensitiveDetection,
+    OutputValidationResult,
+)
+
 __all__ = [
     "BaseDefense",
     "DefenseConfig",
@@ -92,4 +127,30 @@ __all__ = [
     "DefenseResult",
     "DefenseReportGenerator",
     "DefenseType",
+    # Constitutional AI
+    "ConstitutionalAI",
+    "ConstitutionalPrinciple",
+    "PrincipleCategory",
+    "PrincipleEnforcer",
+    "SelfCorrectionPipeline",
+    "DEFAULT_PRINCIPLES",
+    # Semantic Firewall
+    "SemanticFirewall",
+    "IntentClassifier",
+    "RiskScorer",
+    "ContextualAnalyzer",
+    "IntentCategory",
+    "RiskLevel",
+    "IntentAnalysis",
+    "RiskAssessment",
+    # Output Validator
+    "OutputValidator",
+    "OutputSanitizer",
+    "PIIDetector",
+    "SensitiveContentDetector",
+    "PIICategory",
+    "SensitiveCategory",
+    "PIIDetection",
+    "SensitiveDetection",
+    "OutputValidationResult",
 ]

@@ -176,9 +176,10 @@ class AuthManager:
         return self.users_db.get(username)
 
     def create_user(self, user: User, password: str) -> User:
-        PasswordManager.get_password_hash(password)
+        password_hash = PasswordManager.get_password_hash(password)
         user.scopes = user.scopes or ["read"]
         self.users_db[user.username] = user
+        self._password_hashes[user.username] = password_hash
         return user
 
 
@@ -206,6 +207,55 @@ async def get_current_active_user(
 ) -> User:
     if current_user.disabled:
         raise HTTPException(status_code=400, detail="Inactive user")
+    return current_user
+
+
+async def get_optional_user(
+    credentials: HTTPAuthorizationCredentials = Depends(HTTPBearer(auto_error=False)),
+) -> Optional[User]:
+    """可选认证 - 开发模式下允许无认证访问"""
+    from .config import settings
+
+    # 如果禁用认证要求，返回一个默认用户
+    if not settings.REQUIRE_AUTH:
+        return User(
+            username="dev_user",
+            email="dev@mox.ai",
+            scopes=["admin", "attack", "defense", "eval"],
+        )
+
+    # 如果没有提供 token，返回 None
+    if credentials is None:
+        return None
+
+    # 验证 token
+    try:
+        token_data = TokenManager.verify_token(credentials.credentials)
+        user = auth_manager.get_user(token_data.sub)
+        if user and not user.disabled:
+            return user
+    except HTTPException:
+        pass
+
+    return None
+
+
+async def get_optional_active_user(
+    current_user: Optional[User] = Depends(get_optional_user),
+) -> Optional[User]:
+    """可选活跃用户 - 开发模式下允许无认证访问"""
+    if current_user is None:
+        # 开发模式下返回默认用户
+        from .config import settings
+        if not settings.REQUIRE_AUTH:
+            return User(
+                username="dev_user",
+                email="dev@mox.ai",
+                scopes=["admin", "attack", "defense", "eval"],
+            )
+        return None
+    if current_user.disabled:
+        return None
     return current_user
 
 

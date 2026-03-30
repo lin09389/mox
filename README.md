@@ -59,6 +59,33 @@ LLM Adversarial Attack & Defense Platform
 pip install -e .
 ```
 
+### 使用 Ollama 本地模型
+
+```bash
+# 1. 安装 Ollama: https://ollama.ai
+# 2. 下载模型
+ollama pull llama3
+ollama pull qwen3:4b
+
+# 3. 启动服务
+ollama serve
+
+# 4. 运行攻击测试
+python examples/ollama_attack.py
+
+# 或使用快捷脚本
+.\run_ollama_attack.bat      # Windows
+.\run_ollama_attack.ps1      # PowerShell
+```
+
+支持的 Ollama 模型:
+- `llama3`, `llama3.1`, `llama3.2`
+- `qwen2`, `qwen2.5`, `qwen3`, `qwen3:4b`
+- `gemma3`, `gemma3:4b`
+- `mistral`, `mixtral`
+- `phi3`, `deepseek-coder`
+- 以及所有 Ollama 支持的模型
+
 ### 配置环境变量
 
 ```bash

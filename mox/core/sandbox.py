@@ -12,7 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 import asyncio
 import time
-import hashlib
+import secrets
 
 
 class Permission(Enum):
@@ -138,7 +138,7 @@ class ToolSandbox:
     ) -> ToolResult:
         """执行工具调用"""
 
-        call_id = hashlib.md5(f"{tool_name}{time.time()}".encode()).hexdigest()[:12]
+        call_id = secrets.token_hex(6)
 
         call = ToolCall(
             call_id=call_id,

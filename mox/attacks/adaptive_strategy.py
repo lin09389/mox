@@ -599,7 +599,7 @@ class AdaptiveAttackStrategy(BaseAttack):
             if self.feedback_learner:
                 self.feedback_learner.analyze_response(
                     attack_prompt,
-                    outcome.model_response,
+                    outcome.response,
                     outcome.success_score,
                 )
             

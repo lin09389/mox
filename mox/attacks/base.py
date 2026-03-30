@@ -92,7 +92,7 @@ class BaseAttack(ABC):
             result=result,
             original_prompt=original_prompt,
             adversarial_prompt=adversarial_prompt,
-            model_response=model_response,
+            response=model_response,  # AttackOutcome 使用 response 属性
             iterations=iterations,
             success_score=success_score,
             metadata=metadata or {},

@@ -77,6 +77,36 @@ from mox.evaluation.framework import (
     EvaluationStatus,
 )
 
+# 新增：最新评估基准 (2025)
+from mox.evaluation.benchmarks_v2 import (
+    BenchmarkType,
+    HarmCategory,
+    Severity,
+    BenchmarkCase as BenchmarkCaseV2,
+    BenchmarkResult,
+    AgentBenchmarkCase,
+    MMSafetyBenchmarkCase,
+    HARMBENCH_V2_CASES,
+    AGENTBENCH_CASES,
+    MM_SAFETY_BENCH_CASES,
+    SAFETY_BENCH_CASES,
+    RED_TEAM_BENCH_CASES,
+    BenchmarkRunner as BenchmarkRunnerV2,
+    BenchmarkEvaluator,
+)
+
+# 新增：模型安全卡片
+from mox.evaluation.safety_card import (
+    RiskLevel,
+    SafetyCategory,
+    SafetyMetric,
+    RiskAssessment,
+    UsageLimitation,
+    SafetyTestResult,
+    ModelSafetyCard,
+    SafetyCardGenerator,
+)
+
 # 为了向后兼容，使用原有的名称
 AttackEvaluator = EnhancedAttackEvaluator
 
@@ -132,4 +162,28 @@ __all__ = [
     "EvaluationResult",
     "EvaluationType",
     "EvaluationStatus",
+    # 最新评估基准 (2025)
+    "BenchmarkType",
+    "HarmCategory",
+    "Severity",
+    "BenchmarkCaseV2",
+    "BenchmarkResult",
+    "AgentBenchmarkCase",
+    "MMSafetyBenchmarkCase",
+    "HARMBENCH_V2_CASES",
+    "AGENTBENCH_CASES",
+    "MM_SAFETY_BENCH_CASES",
+    "SAFETY_BENCH_CASES",
+    "RED_TEAM_BENCH_CASES",
+    "BenchmarkRunnerV2",
+    "BenchmarkEvaluator",
+    # 模型安全卡片
+    "RiskLevel",
+    "SafetyCategory",
+    "SafetyMetric",
+    "RiskAssessment",
+    "UsageLimitation",
+    "SafetyTestResult",
+    "ModelSafetyCard",
+    "SafetyCardGenerator",
 ]

@@ -786,6 +786,13 @@ class LLMFactory:
     @staticmethod
     def create_from_model_name(model: str, **kwargs) -> BaseLLM:
         model_lower = model.lower()
+        base_url = kwargs.get("base_url", "")
+
+        # 优先检查 base_url - 如果是本地 Ollama 服务，直接返回 OllamaLLM
+        if base_url and ("localhost" in base_url or "11434" in base_url or "ollama" in base_url.lower()):
+            base_url_arg = kwargs.pop("base_url", "http://localhost:11434/v1")
+            api_key = kwargs.pop("api_key", "ollama")
+            return OllamaLLM(model=model, base_url=base_url_arg, api_key=api_key, **kwargs)
 
         # OpenAI models (gpt-4, gpt-3.5, o1, o3)
         if model_lower.startswith("gpt") or model_lower.startswith("o1") or model_lower.startswith("o3"):
@@ -808,13 +815,13 @@ class LLMFactory:
         # Azure OpenAI - check base_url first as it's more specific
         elif "azure" in kwargs.get("base_url", "").lower() or "-azure" in model_lower:
             return AzureOpenAILLM(model=model, **kwargs)
+        # Local/Ollama models - check exact matches first (before Groq)
+        elif model_lower in LLMFactory.LOCAL_MODELS or any(model_lower.startswith(m) for m in LLMFactory.LOCAL_MODELS):
+            base_url_arg = kwargs.pop("base_url", "http://localhost:11434/v1")
+            api_key = kwargs.pop("api_key", "ollama")
+            return OllamaLLM(model=model, base_url=base_url_arg, api_key=api_key, **kwargs)
         # Groq models - mixtral, llama-3*, qwen (when using Groq API)
         elif model_lower.startswith("mixtral") or model_lower.startswith("llama-3") or model_lower.startswith("qwen"):
             return GroqLLM(model=model, **kwargs)
-        # Local/Ollama models - check exact matches first
-        elif model_lower in LLMFactory.LOCAL_MODELS or any(model_lower.startswith(m) for m in LLMFactory.LOCAL_MODELS):
-            base_url = kwargs.pop("base_url", "http://localhost:11434/v1")
-            api_key = kwargs.pop("api_key", "ollama")
-            return OllamaLLM(model=model, base_url=base_url, api_key=api_key, **kwargs)
         else:
             raise ValueError(f"Unknown model: {model}. Please specify the provider explicitly using LLMFactory.create(provider, model).")

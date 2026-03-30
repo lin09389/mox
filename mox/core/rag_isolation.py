@@ -10,7 +10,7 @@
 from typing import Any, Dict, List, Optional, Set
 from dataclasses import dataclass, field
 from enum import Enum
-import hashlib
+import secrets
 import time
 
 
@@ -243,7 +243,7 @@ class RAGIsolation:
     ):
         """记录访问日志"""
         log = AccessLog(
-            log_id=hashlib.md5(f"{user_id}{kb_id}{time.time()}".encode()).hexdigest()[:12],
+            log_id=secrets.token_hex(6),
             user_id=user_id,
             kb_id=kb_id,
             action=action,

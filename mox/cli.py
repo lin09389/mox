@@ -104,7 +104,7 @@ async def run_single_attack(args):
     console.print(Panel(outcome.adversarial_prompt, expand=False))
 
     console.print("\n[bold]模型响应:[/bold]")
-    console.print(Panel(outcome.model_response[:500], expand=False))
+    console.print(Panel(outcome.response[:500], expand=False))
 
 
 async def run_defense_scan(args):

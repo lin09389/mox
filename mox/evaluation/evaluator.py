@@ -130,9 +130,9 @@ class AttackEvaluator:
                     "result": r.result.value,
                     "original_prompt": r.original_prompt,
                     "adversarial_prompt": r.adversarial_prompt,
-                    "model_response": r.model_response[:500] + "..."
-                    if len(r.model_response) > 500
-                    else r.model_response,
+                    "model_response": r.response[:500] + "..."
+                    if len(r.response) > 500
+                    else r.response,
                     "iterations": r.iterations,
                     "success_score": r.success_score,
                     "timestamp": r.timestamp.isoformat(),

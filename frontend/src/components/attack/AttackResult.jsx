@@ -1,169 +1,206 @@
-/**
- * 攻击结果组件 - 赛博工匠风格
- * 显示攻击测试的结果和分析
- */
-
-import { motion, AnimatePresence } from 'framer-motion'
-import { Copy, CheckCircle2, AlertTriangle, Layers } from 'lucide-react'
+import { motion } from 'framer-motion'
+import toast from 'react-hot-toast'
+import {
+  AlertTriangle,
+  CheckCircle2,
+  Clipboard,
+  Copy,
+  FileSearch,
+  Layers3,
+  ShieldCheck,
+} from 'lucide-react'
+import { EmptyState, PanelHeader, ProgressMeter } from '../ui/AppFrame'
 import { useCopyToClipboard } from '../../hooks/useCommon'
+
+function getResultSummary(result) {
+  if (!result) return null
+
+  const status = result.result ?? result['结果']
+  const scoreValue = result.success_score ?? result['成功分数'] ?? 0
+  const score = typeof scoreValue === 'number' ? scoreValue : Number.parseFloat(scoreValue) || 0
+  const iterations = result.iterations ?? result['迭代次数'] ?? 0
+  const prompt = result.adversarial_prompt ?? result['对抗提示词'] ?? ''
+  const modelResponse = result.model_response ?? result['模型响应'] ?? ''
+
+  return {
+    status,
+    score,
+    iterations,
+    prompt,
+    modelResponse,
+    demo: Boolean(result._demo_mode),
+    warning: result._warning,
+    recommendations: result.recommendations ?? [],
+  }
+}
 
 export default function AttackResult({ result }) {
   const [copied, copyToClipboard] = useCopyToClipboard()
+  const summary = getResultSummary(result)
 
-  if (!result) {
+  const handleCopy = async (value, successText) => {
+    if (!value) return
+    const ok = await copyToClipboard(value)
+    if (ok) {
+      toast.success(successText)
+    }
+  }
+
+  if (!summary) {
     return (
-      <div className="card h-full flex items-center justify-center min-h-[320px]">
-        <div className="text-center">
-          <div className="w-14 h-14 mx-auto mb-3 rounded-lg bg-graphite-100 flex items-center justify-center">
-            <Layers className="w-7 h-7 text-graphite-400" />
-          </div>
-          <p className="text-sm text-graphite-500">执行攻击测试后查看结果</p>
-        </div>
-      </div>
+      <section className="card card-glow h-full min-h-[520px]">
+        <PanelHeader
+          title="结果面板"
+          description="运行测试后，这里会展示成功分数、模型响应与后续建议。"
+        />
+        <EmptyState
+          icon={Layers3}
+          title="等待一轮测试结果"
+          description="先在左侧配置攻击参数并提交。结果面板会自动切换到分析视图。"
+          tone="electric"
+        />
+      </section>
     )
   }
 
-  const isSuccess = result['结果'] === 'success' || result.result === 'success'
+  const isSuccess = summary.status === 'success'
+  const riskPercent = Math.round(summary.score * 100)
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 10 }}
+    <motion.section
+      initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card h-full"
+      className="card card-glow h-full"
     >
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="w-10 h-10 bg-electric-100 rounded-lg flex items-center justify-center border border-electric-200/70">
-          <Layers className="w-5 h-5 text-electric-600" />
-        </div>
-        <div>
-          <h2 className="text-lg font-semibold text-graphite-900">攻击结果</h2>
-          <p className="text-xs text-graphite-500">查看攻击效果详情</p>
-        </div>
-      </div>
+      <PanelHeader
+        title="结果面板"
+        description="统一查看风险评分、攻击状态、对抗提示词和模型响应。"
+      />
 
-      {/* Main Result */}
-      <AnimatePresence mode="wait">
-        <motion.div
-          key="result"
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -10 }}
-          transition={{ duration: 0.25 }}
-          className="space-y-4"
-        >
-          {/* Status Card */}
-          <div className="flex items-center justify-between p-4 bg-graphite-50/80 rounded-lg border border-graphite-200/60">
-            <div>
-              <p className="text-xs text-graphite-500 font-medium">攻击结果</p>
-              <p className="text-base font-bold text-graphite-900">
-                {isSuccess ? '攻击成功' : '攻击失败'}
-              </p>
-            </div>
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              isSuccess
-                ? 'bg-lava-100 text-lava-600'
-                : 'bg-neon-100 text-neon-600'
-            }`}>
-              {isSuccess ? (
-                <AlertTriangle className="w-6 h-6" />
-              ) : (
-                <CheckCircle2 className="w-6 h-6" />
-              )}
-            </div>
-          </div>
-
-          {/* Stats Grid */}
-          <div className="grid grid-cols-2 gap-3">
-            <StatCard
-              label="成功分数"
-              value={result['成功分数'] || result.success_score?.toFixed(2) || '0.00'}
-              color="electric"
-            />
-            <StatCard
-              label="迭代次数"
-              value={result['迭代次数'] || result.iterations || 0}
-              color="lave"
-            />
-          </div>
-
-          {/* Demo Mode Warning */}
-          {result._demo_mode && (
-            <div className="p-3.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
-              <span className="text-xs font-semibold text-amber-700 flex items-center gap-2">
-                <AlertTriangle className="w-4 h-4" />
-                演示模式 - 数据仅供参考
+      <div className="space-y-4">
+        <div className="hero-panel p-5">
+          <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+            <div className="space-y-2">
+              <span className={`badge ${isSuccess ? 'badge-danger' : 'badge-success'}`}>
+                {isSuccess ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
+                {isSuccess ? '攻击成功' : '攻击已拦截'}
               </span>
-              <p className="text-xs text-amber-600 mt-1">
-                {result._warning || '这是演示数据，因为API未连接。请确保后端服务正在运行。'}
+              <p className="text-sm text-graphite-500">
+                {summary.demo ? '当前显示演示结果，用于预览流程和页面状态。' : '该结果来自当前一次实际测试。'}
               </p>
-            </div>
-          )}
-
-          {/* Adversarial Prompt */}
-          {(result['对抗提示词'] || result.adversarial_prompt) && (
-            <div className="p-3.5 bg-graphite-50/80 rounded-lg border border-graphite-200/60">
-              <div className="flex justify-between items-center mb-2">
-                <span className="text-xs font-medium text-graphite-600">对抗提示词</span>
-                <button
-                  onClick={() => copyToClipboard(result['对抗提示词'] || result.adversarial_prompt)}
-                  className="text-graphite-400 hover:text-electric-600 transition-colors p-1"
-                >
-                  <Copy className="w-3.5 h-3.5" />
-                </button>
+              <div className="flex flex-wrap gap-4 text-sm text-graphite-600">
+                <span>风险分数：<strong className="text-graphite-950">{summary.score.toFixed(2)}</strong></span>
+                <span>迭代次数：<strong className="text-graphite-950">{summary.iterations}</strong></span>
               </div>
-              <p className="text-xs text-graphite-700 font-mono break-all leading-relaxed">
-                {(result['对抗提示词'] || result.adversarial_prompt)?.slice(0, 200)}
-                {(result['对抗提示词'] || result.adversarial_prompt)?.length > 200 && '...'}
+            </div>
+
+            <div className="min-w-[220px] rounded-[20px] border border-white/80 bg-white/72 p-4">
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-graphite-400">风险热度</p>
+              <p className="mt-3 font-display text-4xl font-bold tracking-tight text-graphite-950">{riskPercent}%</p>
+              <div className="mt-3">
+                <ProgressMeter value={riskPercent} tone={isSuccess ? 'danger' : 'success'} />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {summary.demo && (
+          <div className="rounded-[20px] border border-amber-100 bg-amber-50/75 px-4 py-3 text-sm text-amber-800">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+              <p>{summary.warning || '当前后端未连接，页面展示的是演示数据。'}</p>
+            </div>
+          </div>
+        )}
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clipboard className="h-4 w-4 text-electric-600" />
+                <h3 className="text-sm font-semibold text-graphite-900">对抗提示词</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(summary.prompt, copied ? '已复制。' : '已复制对抗提示词。')}
+                className="btn-ghost px-2 py-1"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            {summary.prompt ? (
+              <p className="max-h-[240px] overflow-auto rounded-[16px] bg-graphite-50/90 p-4 font-mono text-xs leading-6 text-graphite-700">
+                {summary.prompt}
               </p>
-            </div>
-          )}
+            ) : (
+              <EmptyState
+                icon={Clipboard}
+                title="暂无对抗提示词"
+                description="当前结果没有返回对抗提示词字段。"
+              />
+            )}
+          </article>
 
-          {/* Model Response */}
-          {(result['模型响应'] || result.model_response) && (
-            <div className="p-3.5 bg-graphite-50/80 rounded-lg border border-graphite-200/60">
-              <span className="text-xs font-medium text-graphite-600">模型响应</span>
-              <p className="text-xs text-graphite-700 mt-2 break-all leading-relaxed">
-                {(result['模型响应'] || result.model_response)?.slice(0, 300)}
-                {(result['模型响应'] || result.model_response)?.length > 300 && '...'}
+          <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
+            <div className="mb-3 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FileSearch className="h-4 w-4 text-lava-600" />
+                <h3 className="text-sm font-semibold text-graphite-900">模型响应</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleCopy(summary.modelResponse, '已复制模型响应。')}
+                className="btn-ghost px-2 py-1"
+              >
+                <Copy className="h-4 w-4" />
+              </button>
+            </div>
+            {summary.modelResponse ? (
+              <p className="max-h-[240px] overflow-auto rounded-[16px] bg-graphite-50/90 p-4 text-sm leading-7 text-graphite-700">
+                {summary.modelResponse}
               </p>
+            ) : (
+              <EmptyState
+                icon={FileSearch}
+                title="暂无模型响应"
+                description="当前结果没有返回模型输出内容。"
+              />
+            )}
+          </article>
+        </div>
+
+        <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
+          <div className="mb-3 flex items-center gap-2">
+            {isSuccess ? (
+              <AlertTriangle className="h-4 w-4 text-lava-600" />
+            ) : (
+              <CheckCircle2 className="h-4 w-4 text-neon-600" />
+            )}
+            <h3 className="text-sm font-semibold text-graphite-900">后续建议</h3>
+          </div>
+          {summary.recommendations.length > 0 ? (
+            <div className="space-y-3">
+              {summary.recommendations.slice(0, 4).map((item, index) => (
+                <div
+                  key={`${item.priority}-${index}`}
+                  className="rounded-[18px] border border-graphite-200/70 bg-graphite-50/75 px-4 py-3"
+                >
+                  <p className="text-sm font-medium text-graphite-900">
+                    {item.priority ? `优先级 ${item.priority}` : `建议 ${index + 1}`}
+                  </p>
+                  <p className="mt-1 text-sm text-graphite-600">{item.content || String(item)}</p>
+                </div>
+              ))}
             </div>
+          ) : (
+            <p className="text-sm text-graphite-500">
+              {isSuccess
+                ? '建议补充输入过滤、输出审查和更严格的系统提示保护。'
+                : '当前测试未突破防线，建议继续扩大提示词覆盖面验证鲁棒性。'}
+            </p>
           )}
-
-          {/* Recommendations */}
-          {result.recommendations && result.recommendations.length > 0 && (
-            <div className="p-3.5 bg-amber-50/50 rounded-lg border border-amber-200/60">
-              <span className="text-xs font-semibold text-amber-700">安全建议</span>
-              <ul className="mt-2 space-y-1.5">
-                {result.recommendations.slice(0, 3).map((rec, idx) => (
-                  <li key={idx} className="text-xs text-amber-700 flex items-start gap-2">
-                    <span className="font-semibold">[{rec.priority}]</span>
-                    <span>{rec.content}</span>
-                  </li>
-                ))}
-              </ul>
-            </div>
-          )}
-        </motion.div>
-      </AnimatePresence>
-    </motion.div>
-  )
-}
-
-// ============ 子组件 ============
-
-function StatCard({ label, value, color }) {
-  const colorClasses = {
-    electric: 'bg-electric-50/50 text-electric-700',
-    lave: 'bg-lava-50/50 text-lava-700',
-    neon: 'bg-neon-50/50 text-neon-700',
-    amber: 'bg-amber-50/50 text-amber-700',
-  }
-
-  return (
-    <div className={`p-3.5 rounded-lg ${colorClasses[color]}`}>
-      <p className="text-[11px] text-graphite-500">{label}</p>
-      <p className="text-xl font-bold text-graphite-900 mt-0.5">{value}</p>
-    </div>
+        </article>
+      </div>
+    </motion.section>
   )
 }
