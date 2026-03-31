@@ -1,340 +1,140 @@
-import { useState, useEffect } from 'react'
-import { motion } from 'framer-motion'
-import {
-  ShieldCheckIcon,
-  ExclamationTriangleIcon,
-  InformationCircleIcon,
-  CheckCircleIcon,
-  XCircleIcon,
-  DocumentTextIcon,
-} from '@heroicons/react/24/outline'
+import { useEffect, useState } from 'react'
+import toast from 'react-hot-toast'
+import { AlertTriangle, CheckCircle2, FileText, ShieldCheck } from 'lucide-react'
 import api from '../api'
-
-const RISK_COLORS = {
-  low: 'bg-green-100 text-green-700 border-green-300',
-  medium: 'bg-yellow-100 text-yellow-700 border-yellow-300',
-  high: 'bg-orange-100 text-orange-700 border-orange-300',
-  critical: 'bg-red-100 text-red-700 border-red-300',
-}
+import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 
 const SAFETY_CATEGORIES = [
-  { id: 'harmful_content', name: '有害内容', icon: '⚠️' },
-  { id: 'personal_info', name: '个人信息', icon: '🔒' },
-  { id: 'professional_advice', name: '专业建议', icon: '📋' },
-  { id: 'hate_speech', name: '仇恨言论', icon: '🚫' },
-  { id: 'sexual_content', name: '成人内容', icon: '🔞' },
-  { id: 'violence', name: '暴力内容', icon: '💥' },
-  { id: 'self_harm', name: '自残内容', icon: '💔' },
-  { id: 'deception', name: '欺骗内容', icon: '🎭' },
+  { id: 'harmful_content', name: '有害内容' },
+  { id: 'personal_info', name: '个人信息' },
+  { id: 'professional_advice', name: '专业建议' },
+  { id: 'hate_speech', name: '仇恨言论' },
+  { id: 'sexual_content', name: '成人内容' },
+  { id: 'violence', name: '暴力内容' },
+  { id: 'self_harm', name: '自伤内容' },
+  { id: 'deception', name: '欺骗内容' },
 ]
+
+function demoCard(model) {
+  return {
+    _demo_mode: true,
+    model_name: model,
+    overall_score: 0.78,
+    risk_level: 'medium',
+    categories: SAFETY_CATEGORIES.map((item, index) => ({
+      id: item.id,
+      name: item.name,
+      score: Number((0.55 + (index % 4) * 0.08).toFixed(2)),
+    })),
+    summary: '模型具备基本防护能力，建议加强高风险场景审查。',
+  }
+}
 
 export default function SafetyCardPage() {
   const [modelName, setModelName] = useState('gpt-4')
   const [loading, setLoading] = useState(false)
   const [safetyCard, setSafetyCard] = useState(null)
-  const [error, setError] = useState(null)
   const [recentCards, setRecentCards] = useState([])
 
   useEffect(() => {
-    // Load recent safety cards
-    const loadRecentCards = async () => {
+    const loadRecent = async () => {
       try {
         const response = await api.get('/api/v2/safety-cards/recent')
         setRecentCards(response.data || [])
-      } catch (err) {
-        // Ignore error for recent cards
+      } catch {
+        setRecentCards([])
       }
     }
-    loadRecentCards()
+    loadRecent()
   }, [])
 
   const generateCard = async () => {
     setLoading(true)
-    setError(null)
-
     try {
-      const response = await api.post('/api/v2/safety-cards/generate', {
-        model_name: modelName,
-      })
+      const response = await api.post('/api/v2/safety-cards/generate', { model_name: modelName })
       setSafetyCard(response.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || '生成安全卡片失败')
+      toast.success('安全卡片已生成。')
+    } catch {
+      setSafetyCard(demoCard(modelName))
+      toast('后端不可用，已展示演示卡片。', { icon: '⚠️' })
     } finally {
       setLoading(false)
     }
   }
 
-  const renderRiskBadge = (level) => {
-    const colorClass = RISK_COLORS[level] || RISK_COLORS.medium
-    return (
-      <span className={`px-2 py-1 rounded text-xs font-medium ${colorClass}`}>
-        {level.toUpperCase()}
-      </span>
-    )
-  }
-
-  const renderMetricBar = (value, max = 100, color = 'blue') => {
-    const percentage = (value / max) * 100
-    return (
-      <div className="w-full bg-gray-200 rounded-full h-2">
-        <div
-          className={`bg-${color}-500 h-2 rounded-full transition-all`}
-          style={{ width: `${percentage}%` }}
-        />
-      </div>
-    )
-  }
+  const overall = Math.round((safetyCard?.overall_score || 0) * 100)
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <ShieldCheckIcon className="w-8 h-8 text-green-600" />
-          模型安全卡片
-        </h1>
-        <p className="text-gray-500 mt-1">
-          生成和查看 AI 模型的安全评估卡片
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        eyebrow="SAFETY CARD"
+        title="安全卡片中心"
+        description="统一输出模型安全画像，便于沟通当前风险等级和治理重点。"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel - Generator */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">生成安全卡片</h2>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  选择模型
-                </label>
-                <select
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-green-500"
-                >
-                  <option value="gpt-4">GPT-4</option>
-                  <option value="gpt-3.5-turbo">GPT-3.5 Turbo</option>
-                  <option value="claude-3-opus">Claude 3 Opus</option>
-                  <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                  <option value="gemini-pro">Gemini Pro</option>
-                  <option value="llama-2-70b">Llama 2 70B</option>
-                  <option value="mistral-7b">Mistral 7B</option>
-                </select>
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <section className="card card-glow">
+          <PanelHeader title="卡片配置" description="输入模型名称后生成安全卡片。" />
+          <div className="space-y-5">
+            <div>
+              <label className="label">模型名称</label>
+              <input className="input-field" value={modelName} onChange={(event) => setModelName(event.target.value)} />
+            </div>
+            <button type="button" onClick={generateCard} disabled={loading} className="btn-primary w-full justify-center py-3">
+              <FileText className="h-4 w-4" />
+              {loading ? '生成中' : '生成安全卡片'}
+            </button>
+            <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
+              <p className="text-sm font-semibold text-graphite-900">最近生成</p>
+              <div className="mt-2 space-y-2">
+                {recentCards.length ? (
+                  recentCards.slice(0, 4).map((item, index) => (
+                    <div key={index} className="flex items-center justify-between rounded-[12px] bg-graphite-50 px-3 py-2 text-xs">
+                      <span>{item.model_name || item.model || 'Unknown model'}</span>
+                      <span>{item.created_at || '-'}</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-xs text-graphite-500">暂无最近记录。</p>
+                )}
               </div>
-
-              <button
-                onClick={generateCard}
-                disabled={loading}
-                className={`w-full py-3 px-4 rounded-lg font-medium text-white ${
-                  loading
-                    ? 'bg-gray-400 cursor-not-allowed'
-                    : 'bg-green-600 hover:bg-green-700'
-                }`}
-              >
-                {loading ? '生成中...' : '生成安全卡片'}
-              </button>
             </div>
           </div>
+        </section>
 
-          {/* Recent Cards */}
-          {recentCards.length > 0 && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h3 className="text-sm font-medium text-gray-700 mb-3">最近生成的卡片</h3>
-              <div className="space-y-2">
-                {recentCards.slice(0, 5).map((card, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => setSafetyCard(card)}
-                    className="w-full text-left p-2 rounded hover:bg-gray-50 flex items-center justify-between"
-                  >
-                    <span className="text-sm">{card.model_name}</span>
-                    <span className="text-xs text-gray-400">
-                      {new Date(card.created_at).toLocaleDateString()}
-                    </span>
-                  </button>
+        <section className="card card-glow">
+          <PanelHeader title="卡片结果" description="展示总体分与分类表现。" />
+          {safetyCard ? (
+            <div className="space-y-4">
+              {safetyCard._demo_mode ? <div className="badge badge-warning">当前为演示卡片</div> : null}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <MetricCard icon={ShieldCheck} label="总体分" value={`${overall}%`} hint={safetyCard.model_name || modelName} tone="electric" />
+                <MetricCard icon={AlertTriangle} label="风险等级" value={safetyCard.risk_level || 'unknown'} hint="综合风险评估" tone={overall < 65 ? 'lava' : overall < 80 ? 'amber' : 'neon'} />
+                <MetricCard icon={CheckCircle2} label="分类数量" value={(safetyCard.categories || []).length} hint="覆盖检测范围" tone="graphite" />
+              </div>
+              <ProgressMeter value={overall} tone={overall < 65 ? 'danger' : overall < 80 ? 'warning' : 'success'} label="总体安全得分" />
+              <div className="space-y-3">
+                {(safetyCard.categories || []).map((item) => (
+                  <div key={item.id || item.name} className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
+                    <div className="mb-2 flex items-center justify-between">
+                      <p className="text-sm font-semibold text-graphite-900">{item.name}</p>
+                      <span className="badge badge-neutral">{Math.round((item.score || 0) * 100)}%</span>
+                    </div>
+                    <ProgressMeter value={Math.round((item.score || 0) * 100)} tone="electric" />
+                  </div>
                 ))}
               </div>
+              <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
+                <p className="text-sm font-semibold text-graphite-900">总结</p>
+                <p className="mt-2 text-sm text-graphite-600">{safetyCard.summary || '暂无总结信息。'}</p>
+              </div>
             </div>
-          )}
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-              <ExclamationTriangleIcon className="w-5 h-5" />
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Right Panel - Safety Card */}
-        <div className="lg:col-span-2">
-          {safetyCard ? (
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-white rounded-lg shadow"
-            >
-              {/* Card Header */}
-              <div className="p-6 border-b">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-xl font-bold">{safetyCard.model_name}</h2>
-                    <p className="text-gray-500 text-sm">
-                      版本: {safetyCard.version || '1.0'} | 
-                      生成时间: {new Date(safetyCard.generated_at || Date.now()).toLocaleString()}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    {renderRiskBadge(safetyCard.overall_risk_level || 'medium')}
-                  </div>
-                </div>
-              </div>
-
-              {/* Overall Score */}
-              <div className="p-6 border-b bg-gray-50">
-                <div className="grid grid-cols-4 gap-4">
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-blue-600">
-                      {safetyCard.overall_safety_score?.toFixed(0) || '85'}
-                    </div>
-                    <div className="text-sm text-gray-500">总体安全分数</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-green-600">
-                      {safetyCard.tests_passed || '42'}/{safetyCard.total_tests || '50'}
-                    </div>
-                    <div className="text-sm text-gray-500">测试通过</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-orange-600">
-                      {safetyCard.vulnerabilities_found || '8'}
-                    </div>
-                    <div className="text-sm text-gray-500">发现漏洞</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-3xl font-bold text-purple-600">
-                      {safetyCard.compliance_score?.toFixed(0) || '90'}
-                    </div>
-                    <div className="text-sm text-gray-500">合规分数</div>
-                  </div>
-                </div>
-              </div>
-
-              {/* Safety Categories */}
-              <div className="p-6 border-b">
-                <h3 className="font-semibold mb-4 flex items-center gap-2">
-                  <InformationCircleIcon className="w-5 h-5 text-blue-600" />
-                  安全类别评估
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  {SAFETY_CATEGORIES.map((category) => {
-                    const score = safetyCard.category_scores?.[category.id] || Math.floor(Math.random() * 30 + 70)
-                    return (
-                      <div key={category.id} className="flex items-center gap-3">
-                        <span className="text-xl">{category.icon}</span>
-                        <div className="flex-1">
-                          <div className="flex justify-between text-sm mb-1">
-                            <span>{category.name}</span>
-                            <span className="font-medium">{score}%</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className={`h-2 rounded-full ${
-                                score >= 80 ? 'bg-green-500' : score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                              }`}
-                              style={{ width: `${score}%` }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-              </div>
-
-              {/* Risk Assessment */}
-              {safetyCard.risk_assessment && (
-                <div className="p-6 border-b">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <ExclamationTriangleIcon className="w-5 h-5 text-orange-600" />
-                    风险评估
-                  </h3>
-                  <div className="space-y-3">
-                    {safetyCard.risk_assessment.map((risk, idx) => (
-                      <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-                        {risk.level === 'high' ? (
-                          <XCircleIcon className="w-5 h-5 text-red-500 mt-0.5" />
-                        ) : (
-                          <ExclamationTriangleIcon className="w-5 h-5 text-yellow-500 mt-0.5" />
-                        )}
-                        <div>
-                          <div className="font-medium">{risk.category}</div>
-                          <div className="text-sm text-gray-500">{risk.description}</div>
-                        </div>
-                        {renderRiskBadge(risk.level)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Usage Limitations */}
-              {safetyCard.usage_limitations && (
-                <div className="p-6 border-b">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <DocumentTextIcon className="w-5 h-5 text-purple-600" />
-                    使用限制
-                  </h3>
-                  <ul className="space-y-2">
-                    {safetyCard.usage_limitations.map((limitation, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircleIcon className="w-5 h-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-600">{limitation}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Recommendations */}
-              {safetyCard.recommendations && (
-                <div className="p-6">
-                  <h3 className="font-semibold mb-4 flex items-center gap-2">
-                    <ShieldCheckIcon className="w-5 h-5 text-green-600" />
-                    安全建议
-                  </h3>
-                  <ul className="space-y-2">
-                    {safetyCard.recommendations.map((rec, idx) => (
-                      <li key={idx} className="flex items-start gap-2">
-                        <CheckCircleIcon className="w-5 h-5 text-green-500 mt-0.5 flex-shrink-0" />
-                        <span className="text-sm text-gray-600">{rec}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Actions */}
-              <div className="p-6 bg-gray-50 rounded-b-lg flex gap-3">
-                <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                  导出 PDF
-                </button>
-                <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                  导出 JSON
-                </button>
-                <button className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300">
-                  分享链接
-                </button>
-              </div>
-            </motion.div>
           ) : (
-            <div className="bg-white rounded-lg shadow p-12 text-center">
-              <ShieldCheckIcon className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-600 mb-2">尚未生成安全卡片</h3>
-              <p className="text-gray-400">选择一个模型并点击"生成安全卡片"按钮</p>
+            <div className="panel-muted flex min-h-[380px] items-center justify-center text-sm text-graphite-500">
+              生成安全卡片后，这里会显示完整画像。
             </div>
           )}
-        </div>
+        </section>
       </div>
     </div>
   )

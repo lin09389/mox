@@ -1,86 +1,42 @@
-import { useState } from 'react'
-import { motion } from 'framer-motion'
-import { 
-  PhotoIcon, 
-  MusicalNoteIcon, 
-  DocumentTextIcon,
-  PlayIcon,
-  ExclamationTriangleIcon
-} from '@heroicons/react/24/outline'
+import { useMemo, useState } from 'react'
+import toast from 'react-hot-toast'
+import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert } from 'lucide-react'
 import api from '../api'
+import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 
-const MULTIMODAL_ATTACK_TYPES = [
-  { 
-    id: 'image_injection', 
-    name: '图像注入攻击', 
-    description: '在图像中嵌入恶意指令',
-    icon: PhotoIcon,
-    color: 'blue'
-  },
-  { 
-    id: 'audio_injection', 
-    name: '音频注入攻击', 
-    description: '通过音频输入注入恶意指令',
-    icon: MusicalNoteIcon,
-    color: 'purple'
-  },
-  { 
-    id: 'cross_modal', 
-    name: '跨模态攻击', 
-    description: '利用模态间的信息传递进行攻击',
-    icon: DocumentTextIcon,
-    color: 'orange'
-  },
-  { 
-    id: 'figstep', 
-    name: 'FigStep 攻击', 
-    description: '利用图像中的文字进行攻击',
-    icon: PhotoIcon,
-    color: 'red'
-  },
+const TYPES = [
+  { id: 'image_injection', name: '图像注入', description: '通过视觉内容注入恶意指令。', icon: Image },
+  { id: 'audio_injection', name: '音频注入', description: '通过语音或噪声片段隐藏攻击意图。', icon: AudioLines },
+  { id: 'cross_modal', name: '跨模态攻击', description: '联动文本、图像或音频形成组合攻击。', icon: Layers3 },
+  { id: 'figstep', name: 'FigStep', description: '利用图像文本布局干扰模型判断。', icon: ScanSearch },
 ]
 
 const IMAGE_TEMPLATES = [
-  {
-    id: 'hidden_text',
-    name: '隐藏文字',
-    description: '在图像中隐藏攻击指令',
-    preview: '🖼️ 带有隐藏文字的图像',
-  },
-  {
-    id: 'typography',
-    name: '排版攻击',
-    description: '利用特殊排版绕过检测',
-    preview: '📝 特殊排版的文本图像',
-  },
-  {
-    id: 'steganography',
-    name: '隐写术',
-    description: '使用隐写术嵌入指令',
-    preview: '🔐 隐写编码图像',
-  },
+  { id: 'hidden_text', name: '隐藏文字', description: '将指令嵌入图片局部区域。' },
+  { id: 'typography', name: '排版干扰', description: '利用特殊字体和布局扰动识别。' },
+  { id: 'steganography', name: '隐写编码', description: '通过隐写技术嵌入文本指令。' },
 ]
 
 const AUDIO_TEMPLATES = [
-  {
-    id: 'voice_command',
-    name: '语音命令注入',
-    description: '在音频中嵌入语音命令',
-    preview: '🎤 包含命令的音频',
-  },
-  {
-    id: 'ultrasonic',
-    name: '超声波注入',
-    description: '使用超声波频率注入指令',
-    preview: '🔊 超声波音频',
-  },
-  {
-    id: 'background_noise',
-    name: '背景噪声注入',
-    description: '在背景噪声中隐藏指令',
-    preview: '🎵 带隐藏指令的音频',
-  },
+  { id: 'voice_command', name: '语音命令注入', description: '在语音中混入指令。' },
+  { id: 'ultrasonic', name: '超声注入', description: '利用超声频段干扰模型。' },
+  { id: 'background_noise', name: '背景噪声注入', description: '把攻击内容隐藏在噪声层。' },
 ]
+
+function buildDemoResult(payload) {
+  const score = 0.45 + Math.random() * 0.35
+  const success = score > 0.62
+  return {
+    _demo_mode: true,
+    attack_type: payload.attack_type,
+    success,
+    success_rate: Number((score * 100).toFixed(1)),
+    risk_level: success ? 'high' : 'medium',
+    summary: success
+      ? '多模态输入触发了策略边界，存在风险输出。'
+      : '防线拦截了关键注入路径，输出风险可控。',
+  }
+}
 
 export default function MultimodalAttackPage() {
   const [attackType, setAttackType] = useState('image_injection')
@@ -91,259 +47,145 @@ export default function MultimodalAttackPage() {
   const [audioUrl, setAudioUrl] = useState('')
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
-  const [error, setError] = useState(null)
+
+  const templates = useMemo(
+    () => (attackType === 'audio_injection' ? AUDIO_TEMPLATES : IMAGE_TEMPLATES),
+    [attackType]
+  )
+
+  const progress = loading ? 70 : result ? result.success_rate || 0 : 0
 
   const handleAttack = async () => {
     setLoading(true)
-    setError(null)
     setResult(null)
-
     try {
       const payload = {
         attack_type: attackType,
         prompt: targetPrompt,
         model_name: modelName,
-        template: template,
+        template,
+        image_url: imageUrl,
+        audio_url: audioUrl,
       }
-
-      if (attackType === 'image_injection' || attackType === 'figstep') {
-        payload.image_url = imageUrl
-      } else if (attackType === 'audio_injection') {
-        payload.audio_url = audioUrl
-      }
-
       const response = await api.post('/api/v2/attacks/multimodal', payload)
       setResult(response.data)
-    } catch (err) {
-      setError(err.response?.data?.detail || '攻击执行失败')
+      toast.success('多模态攻击测试已完成。')
+    } catch {
+      setResult(buildDemoResult({ attack_type: attackType }))
+      toast('后端不可用，已展示演示结果。', { icon: '⚠️' })
     } finally {
       setLoading(false)
     }
   }
 
-  const getColorClasses = (color) => {
-    const colors = {
-      blue: 'bg-blue-100 text-blue-700 border-blue-300',
-      purple: 'bg-purple-100 text-purple-700 border-purple-300',
-      orange: 'bg-orange-100 text-orange-700 border-orange-300',
-      red: 'bg-red-100 text-red-700 border-red-300',
-    }
-    return colors[color] || colors.blue
-  }
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <PhotoIcon className="w-8 h-8 text-blue-600" />
-          多模态攻击测试
-        </h1>
-        <p className="text-gray-500 mt-1">
-          针对 Vision-Language 模型的安全测试
-        </p>
-      </div>
+    <div className="page-shell">
+      <PageHeader
+        eyebrow="MULTIMODAL LAB"
+        title="多模态攻击工作台"
+        description="统一管理图像、音频与跨模态攻击测试，评估模型在复杂输入下的边界稳定性。"
+      />
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left Panel */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Attack Type Selection */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">选择攻击类型</h2>
-            <div className="grid grid-cols-2 gap-3">
-              {MULTIMODAL_ATTACK_TYPES.map((type) => {
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <section className="card card-glow">
+          <PanelHeader title="攻击配置" description="选择模态、模板和目标模型后发起测试。" />
+          <div className="space-y-5">
+            <div className="grid gap-3 sm:grid-cols-2">
+              {TYPES.map((type) => {
                 const Icon = type.icon
+                const active = attackType === type.id
                 return (
-                  <motion.button
+                  <button
                     key={type.id}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    type="button"
                     onClick={() => setAttackType(type.id)}
-                    className={`p-4 rounded-lg border-2 text-left transition-all ${
-                      attackType === type.id
-                        ? `border-${type.color}-500 ${getColorClasses(type.color)}`
-                        : 'border-gray-200 hover:border-gray-300'
+                    className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
+                      active ? 'border-electric-200 bg-electric-50/80' : 'border-graphite-200/70 bg-white/75'
                     }`}
                   >
-                    <div className="flex items-center gap-2 mb-1">
-                      <Icon className="w-5 h-5" />
-                      <span className="font-medium">{type.name}</span>
+                    <div className="mb-2 flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-electric-700" />
+                      <p className="text-sm font-semibold text-graphite-900">{type.name}</p>
                     </div>
-                    <p className="text-sm text-gray-500">{type.description}</p>
-                  </motion.button>
+                    <p className="text-xs text-graphite-500">{type.description}</p>
+                  </button>
                 )
               })}
             </div>
-          </div>
 
-          {/* Template Selection */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">选择攻击模板</h2>
-            <div className="grid grid-cols-3 gap-3">
-              {(attackType === 'audio_injection' ? AUDIO_TEMPLATES : IMAGE_TEMPLATES).map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setTemplate(t.id)}
-                  className={`p-3 rounded-lg border-2 text-left transition-all ${
-                    template === t.id
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-gray-200 hover:border-gray-300'
-                  }`}
-                >
-                  <div className="font-medium text-sm">{t.name}</div>
-                  <div className="text-xs text-gray-500 mt-1">{t.preview}</div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Input Configuration */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">输入配置</h2>
-            <div className="space-y-4">
-              {/* URL Input based on attack type */}
-              {(attackType === 'image_injection' || attackType === 'figstep') && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    图像 URL
-                  </label>
-                  <input
-                    type="url"
-                    value={imageUrl}
-                    onChange={(e) => setImageUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/image.png"
-                  />
-                </div>
-              )}
-
-              {attackType === 'audio_injection' && (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    音频 URL
-                  </label>
-                  <input
-                    type="url"
-                    value={audioUrl}
-                    onChange={(e) => setAudioUrl(e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                    placeholder="https://example.com/audio.mp3"
-                  />
-                </div>
-              )}
-
+            <div className="grid gap-4 sm:grid-cols-2">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  目标提示
-                </label>
-                <textarea
-                  value={targetPrompt}
-                  onChange={(e) => setTargetPrompt(e.target.value)}
-                  rows={3}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="输入攻击目标..."
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  目标模型
-                </label>
-                <select
-                  value={modelName}
-                  onChange={(e) => setModelName(e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                >
-                  <option value="gpt-4-vision">GPT-4 Vision</option>
-                  <option value="gpt-4o">GPT-4o</option>
-                  <option value="claude-3-opus">Claude 3 Opus</option>
-                  <option value="claude-3-sonnet">Claude 3 Sonnet</option>
-                  <option value="gemini-pro-vision">Gemini Pro Vision</option>
+                <label className="label">模板</label>
+                <select className="select-field" value={template} onChange={(event) => setTemplate(event.target.value)}>
+                  {templates.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.name}
+                    </option>
+                  ))}
                 </select>
               </div>
-            </div>
-          </div>
-
-          {/* Execute Button */}
-          <button
-            onClick={handleAttack}
-            disabled={loading}
-            className={`w-full py-3 px-4 rounded-lg font-medium text-white flex items-center justify-center gap-2 ${
-              loading
-                ? 'bg-gray-400 cursor-not-allowed'
-                : 'bg-blue-600 hover:bg-blue-700'
-            }`}
-          >
-            <PlayIcon className="w-5 h-5" />
-            {loading ? '执行中...' : '执行攻击'}
-          </button>
-
-          {error && (
-            <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-center gap-2">
-              <ExclamationTriangleIcon className="w-5 h-5" />
-              {error}
-            </div>
-          )}
-        </div>
-
-        {/* Right Panel - Results */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-semibold mb-4">攻击结果</h2>
-            {result ? (
-              <div className="space-y-4">
-                <div className={`p-4 rounded-lg ${
-                  result.result === 'success' ? 'bg-red-50' : 'bg-green-50'
-                }`}>
-                  <div className={`text-xl font-bold ${
-                    result.result === 'success' ? 'text-red-600' : 'text-green-600'
-                  }`}>
-                    {result.result === 'success' ? '⚠️ 攻击成功' : '✓ 攻击失败'}
-                  </div>
-                  <div className="text-sm text-gray-600 mt-1">
-                    成功率: {(result.success_score * 100).toFixed(1)}%
-                  </div>
-                </div>
-
-                {result.model_response && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">模型响应</h3>
-                    <div className="bg-gray-50 p-3 rounded text-sm max-h-60 overflow-y-auto">
-                      {result.model_response}
-                    </div>
-                  </div>
-                )}
-
-                {result.detected_patterns && result.detected_patterns.length > 0 && (
-                  <div>
-                    <h3 className="text-sm font-medium text-gray-700 mb-1">检测到的模式</h3>
-                    <div className="space-y-1">
-                      {result.detected_patterns.map((pattern, idx) => (
-                        <div key={idx} className="bg-yellow-50 text-yellow-700 px-2 py-1 rounded text-sm">
-                          {pattern}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+              <div>
+                <label className="label">目标模型</label>
+                <input className="input-field" value={modelName} onChange={(event) => setModelName(event.target.value)} />
               </div>
-            ) : (
-              <div className="text-center text-gray-400 py-12">
-                执行攻击后查看结果
+            </div>
+
+            <div>
+              <label className="label">攻击提示词</label>
+              <textarea
+                rows={4}
+                className="textarea-field"
+                value={targetPrompt}
+                onChange={(event) => setTargetPrompt(event.target.value)}
+                placeholder="描述你希望模型被诱导执行的行为。"
+              />
+            </div>
+
+            {(attackType === 'image_injection' || attackType === 'figstep' || attackType === 'cross_modal') && (
+              <div>
+                <label className="label">图像 URL</label>
+                <input className="input-field" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://example.com/image.png" />
               </div>
             )}
-          </div>
 
-          {/* Info Card */}
-          <div className="bg-blue-50 rounded-lg p-4">
-            <h3 className="font-medium text-blue-900 mb-2">💡 提示</h3>
-            <ul className="text-sm text-blue-700 space-y-1">
-              <li>• 图像攻击需要支持视觉的模型</li>
-              <li>• 音频攻击需要支持音频的模型</li>
-              <li>• 跨模态攻击利用模态间信息传递</li>
-            </ul>
+            {(attackType === 'audio_injection' || attackType === 'cross_modal') && (
+              <div>
+                <label className="label">音频 URL</label>
+                <input className="input-field" value={audioUrl} onChange={(event) => setAudioUrl(event.target.value)} placeholder="https://example.com/audio.wav" />
+              </div>
+            )}
+
+            <button type="button" className="btn-primary w-full justify-center py-3" onClick={handleAttack} disabled={loading}>
+              <Play className="h-4 w-4" />
+              {loading ? '正在执行攻击' : '发起多模态攻击'}
+            </button>
           </div>
-        </div>
+        </section>
+
+        <section className="card card-glow">
+          <PanelHeader title="测试结果" description="展示风险等级、成功率和结论摘要。" />
+          {result ? (
+            <div className="space-y-4">
+              {result._demo_mode ? <div className="badge badge-warning">当前为演示结果</div> : null}
+              <div className="grid gap-3 sm:grid-cols-3">
+                <MetricCard icon={ShieldAlert} label="风险等级" value={result.risk_level || 'unknown'} hint="模型当前暴露水平" tone="lava" />
+                <MetricCard icon={Play} label="攻击结果" value={result.success ? '成功' : '失败'} hint="是否突破策略边界" tone={result.success ? 'lava' : 'neon'} />
+                <MetricCard icon={ScanSearch} label="成功率" value={`${result.success_rate || 0}%`} hint="综合评分" tone="electric" />
+              </div>
+              <ProgressMeter value={result.success_rate || 0} tone={result.success ? 'danger' : 'warning'} label="风险热度" />
+              <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
+                <p className="text-sm font-semibold text-graphite-900">摘要</p>
+                <p className="mt-2 text-sm text-graphite-600">{result.summary || result.message || '接口未返回摘要信息。'}</p>
+              </div>
+            </div>
+          ) : (
+            <div className="panel-muted flex min-h-[420px] flex-col items-center justify-center gap-3 text-center">
+              <Layers3 className="h-8 w-8 text-graphite-400" />
+              <p className="text-sm text-graphite-500">执行攻击后，这里会显示多模态风险结果。</p>
+              <ProgressMeter value={progress} tone="electric" label="准备状态" />
+            </div>
+          )}
+        </section>
       </div>
     </div>
   )
