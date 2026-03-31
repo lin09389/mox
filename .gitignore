@@ -1,0 +1,54 @@
+# Bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.pyc
+
+# Python
+build/
+dist/
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.coverage
+coverage.xml
+htmlcov/
+*.log
+bandit-report.json
+safety-report.json
+
+# Virtual environments
+.env
+venv/
+env/
+.venv
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.cache/
+
+# Claude Code
+.claude/
+
+# Junk
+nul
+
+# Data (database files)
+data/
+*.db
+*.db-journal
+
+# Frontend dependencies
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/tsconfig.tsbuildinfo
