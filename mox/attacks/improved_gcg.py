@@ -18,6 +18,9 @@ from dataclasses import dataclass, field
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from mox.attacks.base import BaseAttack, AttackConfig
 from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("improved_gcg")
 
 # 可选依赖
 try:
@@ -187,7 +190,8 @@ class GradientOptimizer:
 
             return importance
 
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Token importance computation failed: {e}")
             return {}
 
     def suggest_replacements(
@@ -239,7 +243,8 @@ class GradientOptimizer:
 
             return suggestions[:num_suggestions]
 
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Suggest replacements failed: {e}")
             return []
 
 
@@ -256,7 +261,8 @@ class SemanticDiversitySelector:
         if EMBEDDING_AVAILABLE:
             try:
                 self._model = SentenceTransformer(model_name)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load semantic diversity model: {e}")
                 pass
 
     def _get_embedding(self, text: str):
@@ -264,7 +270,8 @@ class SemanticDiversitySelector:
             return None
         try:
             return self._model.encode(text, convert_to_numpy=True)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Semantic diversity embedding failed: {e}")
             return None
 
     def _cosine_similarity(self, emb1, emb2) -> float:
@@ -866,7 +873,8 @@ class TransferGCGAttack(ImprovedGCGAttack):
                         success_score=score,
                         metadata={"method": "transfer_gcg"},
                     )
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Transfer GCG candidate evaluation failed: {e}")
                 continue
 
         return best_outcome or await super().generate_attack(payload)

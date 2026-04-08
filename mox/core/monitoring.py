@@ -16,6 +16,10 @@ import statistics
 import functools
 from collections import deque
 
+from mox.core.logging import get_logger
+
+logger = get_logger("monitoring")
+
 
 class AlertLevel(Enum):
     """告警级别"""
@@ -119,8 +123,8 @@ class AnomalyDetector:
                 for callback in self.alert_callbacks:
                     try:
                         callback(anomaly)
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.error(f"Alert callback failed: {e}")
 
                 return anomaly
 

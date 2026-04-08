@@ -122,7 +122,7 @@ class QwenLLM(BaseLLM):
                                     if content:
                                         yield content
                             except json.JSONDecodeError:
-                                pass
+                                pass  # Incomplete chunk in streaming, expected
 
 
 class ErnieLLM(BaseLLM):
@@ -225,7 +225,7 @@ class ErnieLLM(BaseLLM):
                                     if content:
                                         yield content
                             except json.JSONDecodeError:
-                                pass
+                                pass  # Incomplete chunk in streaming, expected
 
 
 class ZhipuLLM(BaseLLM):
@@ -310,7 +310,7 @@ class ZhipuLLM(BaseLLM):
                                     if content:
                                         yield content
                             except json.JSONDecodeError:
-                                pass
+                                pass  # Incomplete chunk in streaming, expected
 
 
 def create_qwen_llm(api_key: str, model: str = "qwen-turbo") -> QwenLLM:

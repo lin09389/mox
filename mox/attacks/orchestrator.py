@@ -188,7 +188,10 @@ class AttackOrchestrator:
                 attack_type = UnifiedAttackType(attack_str)
                 orchestrator.add_attack(attack_type)
             except ValueError:
-                pass
+                from mox.core.logging import get_logger
+
+                logger = get_logger("attack_orchestrator")
+                logger.warning(f"Unknown attack type in config: {attack_str}")
 
         # 加载攻击场景
         scenarios = []

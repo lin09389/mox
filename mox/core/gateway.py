@@ -12,6 +12,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from mox.core import BaseLLM, Message
+from mox.core.logging import get_logger
+
+logger = get_logger("gateway")
 
 
 try:
@@ -213,7 +216,8 @@ class SemanticSimilarityChecker:
                 self._embedding_model = SentenceTransformer(model_name)
                 self._use_embeddings = True
                 self._precompute_embeddings()
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load gateway embedding model: {e}")
                 self._use_embeddings = False
 
     def _precompute_embeddings(self):
@@ -228,7 +232,8 @@ class SemanticSimilarityChecker:
             self._signature_embeddings = self._embedding_model.encode(
                 all_signatures, convert_to_numpy=True, show_progress_bar=False
             )
-        except Exception:
+        except Exception as e:
+            logger.warning(f"Gateway precompute embeddings failed: {e}")
             self._signature_embeddings = None
             self._use_embeddings = False
 
@@ -283,7 +288,8 @@ class SemanticSimilarityChecker:
 
             return max_similarity > 0.5, matched_types, min(max_similarity * 1.2, 1.0)
 
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Gateway embedding similarity check failed: {e}")
             return self._check_similarity_keyword(text.lower())
 
     def _cosine_similarity(self, emb1, emb2) -> float:
@@ -397,7 +403,7 @@ class InputGateway:
 
         # Sanitize user input to prevent prompt injection
         # Escape any attempt to manipulate the judge
-        sanitized_text = text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+        sanitized_text = text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         if len(sanitized_text) > 500:
             sanitized_text = sanitized_text[:500] + "..."
 

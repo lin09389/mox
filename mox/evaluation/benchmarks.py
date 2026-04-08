@@ -13,6 +13,9 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from mox.core import AttackPayload, AttackType
+from mox.core.logging import get_logger
+
+logger = get_logger("benchmarks")
 
 
 class HarmBenchCategory(Enum):
@@ -476,7 +479,8 @@ class AutoEvaluator:
                 if outcome.result.value == "success":
                     successful += 1
                 confidences.append(outcome.success_score)
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Attack evaluation payload failed: {e}")
                 pass
 
         total = len(payloads)

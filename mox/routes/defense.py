@@ -7,11 +7,15 @@ from pydantic import BaseModel
 from mox.defense import InputFilter, OutputFilter
 from mox.core.database import Database
 from mox.core.auth import get_current_active_user, User
+from mox.core.logging import get_logger
+
+logger = get_logger("defense")
 
 router = APIRouter(prefix="/defense", tags=["Defense"])
 
 
 # ============ 请求模型 ============
+
 
 class ScanRequest(BaseModel):
     text: str
@@ -37,6 +41,7 @@ def get_db() -> Database:
 
 
 # ============ 辅助函数 ============
+
 
 def _analyze_detection_patterns(detected_patterns: List[str]) -> Dict[str, Any]:
     """分析检测到的模式"""
@@ -92,42 +97,53 @@ def _generate_defense_recommendations(
     recommendations = []
 
     if is_malicious and confidence > 0.8:
-        recommendations.append({
-            "priority": "紧急",
-            "category": "立即行动",
-            "content": "高置信度检测到恶意内容，建议立即阻止该请求",
-        })
+        recommendations.append(
+            {
+                "priority": "紧急",
+                "category": "立即行动",
+                "content": "高置信度检测到恶意内容，建议立即阻止该请求",
+            }
+        )
     elif is_malicious:
-        recommendations.append({
-            "priority": "高",
-            "category": "审查建议",
-            "content": "检测到可疑内容，建议进行人工审查",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "审查建议",
+                "content": "检测到可疑内容，建议进行人工审查",
+            }
+        )
     else:
-        recommendations.append({
-            "priority": "低",
-            "category": "安全状态",
-            "content": "未检测到明显威胁，内容可以放行",
-        })
+        recommendations.append(
+            {
+                "priority": "低",
+                "category": "安全状态",
+                "content": "未检测到明显威胁，内容可以放行",
+            }
+        )
 
     if any("injection" in p.lower() for p in detected_patterns):
-        recommendations.append({
-            "priority": "高",
-            "category": "专项加固",
-            "content": "检测到注入攻击，建议部署专门的注入检测器",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "专项加固",
+                "content": "检测到注入攻击，建议部署专门的注入检测器",
+            }
+        )
 
     if any("jailbreak" in p.lower() or "role_play" in p.lower() for p in detected_patterns):
-        recommendations.append({
-            "priority": "高",
-            "category": "专项加固",
-            "content": "检测到越狱尝试，建议增强系统提示词加固",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "专项加固",
+                "content": "检测到越狱尝试，建议增强系统提示词加固",
+            }
+        )
 
     return recommendations
 
 
 # ============ 路由端点 ============
+
 
 @router.post("/scan")
 async def scan_input(
@@ -193,11 +209,11 @@ async def scan_input(
             },
         }
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Defense scan failed: {e}")
         raise HTTPException(status_code=500, detail="Defense scan failed")
 
 
-@router.post("/sanitize")
 async def sanitize_input(
     request: ScanRequest,
     current_user: User = Depends(get_current_active_user),
@@ -219,7 +235,8 @@ async def sanitize_input(
             "detected_patterns": result.detected_patterns,
         }
 
-    except Exception:
+    except Exception as e:
+        logger.error(f"Sanitization failed: {e}")
         raise HTTPException(status_code=500, detail="Sanitization failed")
 
 
@@ -245,7 +262,8 @@ async def get_defense_history(
                 for r in records
             ]
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to get defense history: {e}")
         return {"records": []}
 
 
@@ -266,7 +284,8 @@ async def detect_injection(
             "confidence": result.confidence,
             "detected_patterns": result.detected_patterns,
         }
-    except Exception:
+    except Exception as e:
+        logger.error(f"Injection detection failed: {e}")
         return {"is_malicious": False, "confidence": 0, "error": "Injection detection failed"}
 
 

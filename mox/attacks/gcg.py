@@ -9,6 +9,9 @@ import asyncio
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("gcg")
 
 try:
     import torch
@@ -64,7 +67,8 @@ class GCGAttack(BaseAttack):
         if self.gcg_config.use_semantic_similarity and SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
                 self._embedding_model = SentenceTransformer(self.gcg_config.embedding_model)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load embedding model: {e}")
                 self.gcg_config.use_semantic_similarity = False
 
     def _init_candidate_tokens(self) -> List[str]:
@@ -78,7 +82,8 @@ class GCGAttack(BaseAttack):
             return None
         try:
             return self._embedding_model.encode(text, convert_to_numpy=True)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Embedding encoding failed: {e}")
             return None
 
     def _cosine_similarity(self, emb1, emb2) -> float:
@@ -339,7 +344,8 @@ class AutoDANAttack(BaseAttack):
                 if result == AttackResult.SUCCESS:
                     return outcome
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"AutoDAN iteration failed: {e}")
                 continue
 
         return best_outcome or self._create_outcome(
@@ -441,7 +447,8 @@ class GCGPlusPlusAttack(BaseAttack):
         if self.gcg_config.use_semantic_similarity and SENTENCE_TRANSFORMERS_AVAILABLE:
             try:
                 self._embedding_model = SentenceTransformer(self.gcg_config.embedding_model)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load embedding model for GCG++: {e}")
                 self.gcg_config.use_semantic_similarity = False
 
     def _init_candidate_tokens(self) -> List[str]:
@@ -468,15 +475,16 @@ class GCGPlusPlusAttack(BaseAttack):
                     revision="main",
                 )
                 self._victim_model.eval()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to load victim model: {e}")
 
     def _get_embedding(self, text: str):
         if self._embedding_model is None:
             return None
         try:
             return self._embedding_model.encode(text, convert_to_numpy=True)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"GCG++ embedding encoding failed: {e}")
             return None
 
     def _cosine_similarity(self, emb1, emb2) -> float:
@@ -613,7 +621,8 @@ class GCGPlusPlusAttack(BaseAttack):
                 return gradients
 
             return None
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Gradient computation failed: {e}")
             return None
 
     def _gradient_guided_mutate(self, suffix: str, gradient_info: "Optional[torch.Tensor]") -> str:
@@ -647,7 +656,8 @@ class GCGPlusPlusAttack(BaseAttack):
                             if idx < len(suffix_list):
                                 new_char = random.choice(self.candidate_tokens)
                                 suffix_list[idx] = new_char
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Gradient-guided mutation failed: {e}")
             pass
 
         return "".join(suffix_list)
@@ -719,7 +729,8 @@ class GCGPlusPlusAttack(BaseAttack):
                     break
 
             return selected
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Semantic diversity selection failed: {e}")
             return elite_candidates
 
     def _mutate(self, suffix: str) -> str:

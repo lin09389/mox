@@ -8,11 +8,15 @@ from pydantic import BaseModel, field_validator
 from urllib.parse import urlparse
 
 from mox.core.auth import User, get_current_active_user
+from mox.core.logging import get_logger
+
+logger = get_logger("gateway")
 
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
 
 
 # ============ 请求模型 ============
+
 
 class GatewayRequest(BaseModel):
     input: str
@@ -74,6 +78,7 @@ class AddEndpointRequest(BaseModel):
 
 # ============ 路由端点 ============
 
+
 @router.post("/validate")
 async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
     """验证输入网关"""
@@ -90,8 +95,16 @@ async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
             "reason": result.reason,
             "matched_rules": result.matched_rules,
         }
-    except Exception:
-        return {"decision": "allow", "confidence": 0, "reason": "Gateway validation failed"}
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("gateway")
+        logger.error(f"Gateway validation failed, denying request: {e}")
+        return {
+            "decision": "deny",
+            "confidence": 0,
+            "reason": "Gateway validation failed - fail-secure deny",
+        }
 
 
 @router.get("/stats")
@@ -99,14 +112,17 @@ async def get_gateway_stats():
     """获取LLM网关统计"""
     try:
         from mox.core.llm_gateway import get_llm_gateway
+
         gateway = get_llm_gateway()
         return gateway.get_stats()
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to get gateway stats: {e}")
         return {
             "total_requests": 0,
             "successful_requests": 0,
             "failed_requests": 0,
             "avg_latency_ms": 0,
+            "error": str(e),
         }
 
 
@@ -136,7 +152,8 @@ async def add_gateway_endpoint(
         )
 
         return {"success": True, "endpoint": request.name}
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to add gateway endpoint: {e}")
         raise HTTPException(status_code=500, detail="Gateway operation failed")
 
 
@@ -151,8 +168,10 @@ async def remove_gateway_endpoint(
 
     try:
         from mox.core.llm_gateway import get_llm_gateway
+
         gateway = get_llm_gateway()
         gateway.remove_endpoint(name)
         return {"success": True}
-    except Exception:
+    except Exception as e:
+        logger.error(f"Failed to remove gateway endpoint: {e}")
         raise HTTPException(status_code=500, detail="Gateway operation failed")

@@ -17,6 +17,9 @@ from datetime import datetime
 
 from mox.core import DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("enhanced_filter")
 
 # 可选依赖
 try:
@@ -270,7 +273,8 @@ class SemanticDetector:
         if EMBEDDING_AVAILABLE:
             try:
                 self._model = SentenceTransformer(embedding_model)
-            except Exception:
+            except Exception as e:
+                logger.warning(f"Failed to load semantic detection embedding model: {e}")
                 pass
 
     def _get_embedding(self, text: str):
@@ -279,7 +283,8 @@ class SemanticDetector:
             return None
         try:
             return self._model.encode(text, convert_to_numpy=True)
-        except Exception:
+        except Exception as e:
+            logger.debug(f"Enhanced filter embedding failed: {e}")
             return None
 
     def _cosine_similarity(self, emb1, emb2) -> float:

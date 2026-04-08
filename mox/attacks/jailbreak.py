@@ -7,6 +7,9 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("jailbreak")
 
 
 def encode_base64(text: str) -> str:
@@ -212,7 +215,8 @@ class JailbreakAttack(BaseAttack):
                 if result == AttackResult.SUCCESS:
                     return outcome
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Jailbreak template failed: {e}")
                 continue
 
         return best_outcome or self._create_outcome(

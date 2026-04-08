@@ -19,6 +19,9 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("gradient_attack")
 
 
 try:
@@ -492,7 +495,8 @@ class AdversarialSuffixAttack(GradientBasedAttack):
                                             self.candidate_tokens
                                         )
                                         candidate = "".join(candidate_chars)
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"Gradient optimization step failed: {e}")
                         pass
 
                     messages = [Message(role="user", content=adversarial_prompt)]
@@ -516,7 +520,8 @@ class AdversarialSuffixAttack(GradientBasedAttack):
                                     success_score=score,
                                     metadata={"method": "adversarial_suffix"},
                                 )
-                    except Exception:
+                    except Exception as e:
+                        logger.debug(f"LLM response evaluation failed: {e}")
                         pass
 
                 if self.gradient_config.verbose and iteration % 10 == 0:

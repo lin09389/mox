@@ -16,6 +16,9 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from mox.core.logging import get_logger
+
+logger = get_logger("advanced_attacks")
 
 
 @dataclass
@@ -226,7 +229,8 @@ class ZeroShotAdversarialAttack(BaseAttack):
                             metadata={"method": "zero_shot", "template": template["name"]},
                         )
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Zero-shot template {template['name']} failed: {e}")
                 continue
 
         result = (
@@ -355,7 +359,8 @@ class HallucinationInductionAttack(BaseAttack):
                     best_prompt = adversarial_prompt
                     best_response = response.content
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Hallucination induction template {template['name']} failed: {e}")
                 continue
 
         result = AttackResult.SUCCESS if best_hallucination_score >= 0.5 else AttackResult.FAILURE
@@ -625,7 +630,8 @@ Answer: {payload.target_behavior}"""
             try:
                 response = await self.target_llm.generate(messages)
                 knowledge_parts.append(response.content[:200])
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Knowledge extraction prompt failed: {e}")
                 continue
 
         return " | ".join(knowledge_parts) if knowledge_parts else "No knowledge extracted"
@@ -707,7 +713,8 @@ class EvasionAttack(BaseAttack):
                     best_prompt = evaded_prompt
                     best_response = response.content
 
-            except Exception:
+            except Exception as e:
+                logger.debug(f"Evasion technique {technique} failed: {e}")
                 continue
 
         result = (

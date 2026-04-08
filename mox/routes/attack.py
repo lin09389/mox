@@ -445,7 +445,7 @@ async def run_attack(
             ),
         }
 
-    except Exception:
+    except Exception as e:
         raise HTTPException(status_code=500, detail="Attack execution failed")
 
 
@@ -646,7 +646,11 @@ async def run_advanced_attack(
         report = executor.generate_report(results)
 
         return {"success": True, "report": report}
-    except Exception:
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("attack")
+        logger.error(f"Advanced attack execution failed: {e}")
         return {"success": False, "error": "Advanced attack execution failed"}
 
 
@@ -664,7 +668,11 @@ async def test_token_smuggling(
         results = await executor.test_all_encodings(request.target)
 
         return {"success": True, "results": results}
-    except Exception:
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("attack")
+        logger.error(f"Token smuggling test failed: {e}")
         return {"success": False, "error": "Token smuggling test failed"}
 
 
@@ -693,7 +701,11 @@ async def get_attack_history(
                 for r in records
             ]
         }
-    except Exception:
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("attack")
+        logger.error(f"Failed to get attack history: {e}")
         return {"records": []}
 
 

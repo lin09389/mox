@@ -12,6 +12,10 @@ from dataclasses import dataclass
 from contextlib import asynccontextmanager
 import time
 
+from mox.core.logging import get_logger
+
+logger = get_logger("telemetry")
+
 
 try:
     from opentelemetry import trace
@@ -126,8 +130,8 @@ class MoxTelemetry:
                 exporter = OTLPSpanExporter(endpoint=self.config.otlp_endpoint)
                 processor = BatchSpanProcessor(exporter)
                 provider.add_span_processor(processor)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to set up OTLP span exporter: {e}")
 
             trace.set_tracer_provider(provider)
             self._tracer = trace.get_tracer(__name__)
@@ -135,8 +139,8 @@ class MoxTelemetry:
         if self.config.enable_metrics:
             try:
                 self._meter = metrics.get_meter(__name__)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning(f"Failed to set up metrics meter: {e}")
 
     @asynccontextmanager
     def trace(self, name: str, **attributes):
@@ -169,8 +173,8 @@ class MoxTelemetry:
             try:
                 counter = self._meter.create_counter(name)
                 counter.add(value)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug(f"Failed to create OpenTelemetry counter: {e}")
 
     def record_latency(self, name: str, latency_ms: float):
         """记录延迟"""

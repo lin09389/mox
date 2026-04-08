@@ -154,7 +154,10 @@ class DefenseOrchestrator:
                 defense_type = DefenseType(defense_str)
                 orchestrator.add_defense(defense_type)
             except ValueError:
-                pass
+                from mox.core.logging import get_logger
+
+                logger = get_logger("defense_orchestrator")
+                logger.warning(f"Unknown defense type in config: {defense_str}")
 
         # 加载测试场景
         scenarios = []

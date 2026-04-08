@@ -723,12 +723,19 @@ async def _validate_workflow_safety(user_request: str, tools: str):
 
         tool_list = [t.strip() for t in tools.split(",") if t.strip()]
 
-        def dummy_tool(query: str, params: dict):
-            return "dummy result"
+        # Create realistic tool stubs that simulate proper responses
+        # instead of dummy_tool that always returns "dummy result"
+        def _make_tool_stub(tool_name: str):
+            def tool_stub(query: str, params: dict):
+                return f"[{tool_name}] Executed with query='{query}', params={params}"
+
+            return tool_stub
 
         engine = PlanThenExecuteEngine(llm=llm, require_approval=False)
         for tool_name in tool_list:
-            engine.register_tool(tool_name, dummy_tool, description=f"Tool: {tool_name}")
+            engine.register_tool(
+                tool_name, _make_tool_stub(tool_name), description=f"Tool: {tool_name}"
+            )
 
         plan = await engine.plan(user_request)
 

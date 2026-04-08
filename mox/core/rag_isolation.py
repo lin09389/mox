@@ -13,6 +13,10 @@ from enum import Enum
 import secrets
 import time
 
+from mox.core.logging import get_logger
+
+logger = get_logger("rag_isolation")
+
 
 class AccessLevel(Enum):
     """访问级别"""
@@ -228,7 +232,8 @@ class RAGIsolation:
                     for doc in docs
                 ]
 
-        except Exception:
+        except Exception as e:
+            logger.error(f"RAG query failed for kb_id={kb_id}: {e}")
             pass
 
         return []

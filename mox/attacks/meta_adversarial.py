@@ -128,11 +128,16 @@ Analysis: ..."""
                 "full_evaluation": response.content,
                 "success_likelihood": score / 10.0,
             }
-        except Exception:
+        except Exception as e:
+            from mox.core.logging import get_logger
+
+            logger = get_logger("meta_adversarial")
+            logger.error(f"Auditor evaluation failed, returning zero score: {e}")
             return {
-                "score": random.uniform(5, 9),
-                "full_evaluation": "Evaluation failed",
-                "success_likelihood": random.uniform(0.5, 0.9),
+                "score": 0.0,
+                "full_evaluation": f"Evaluation failed: {e}",
+                "success_likelihood": 0.0,
+                "evaluation_failed": True,
             }
 
     def _parse_evaluation(self, text: str) -> float:

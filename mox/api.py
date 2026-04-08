@@ -210,8 +210,11 @@ async def list_models() -> Dict[str, List[str]]:
                     model_name = model_info.get("name", "")
                     if model_name and model_name not in models:
                         models.append(model_name)
-    except Exception:
-        pass
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("api")
+        logger.warning(f"Failed to discover Ollama models: {e}")
 
     return {"models": models}
 
@@ -349,8 +352,12 @@ async def get_cache_stats():
 
         cache = CacheManager()
         return cache.get_stats()
-    except Exception:
-        return {"enabled": False, "size": 0}
+    except Exception as e:
+        from mox.core.logging import get_logger
+
+        logger = get_logger("api")
+        logger.warning(f"Failed to get cache stats: {e}")
+        return {"enabled": False, "size": 0, "error": str(e)}
 
 
 @app.post(f"{API_V1_PREFIX}/cache/clear")
