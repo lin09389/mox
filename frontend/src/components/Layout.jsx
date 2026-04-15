@@ -108,15 +108,15 @@ export default function Layout({ children }) {
 
   if (isAuthPage) {
     return (
-      <div className="app-shell">
-        <main className="app-container py-8">
+      <div className="app-shell bg-white">
+        <main className="app-container py-12">
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, y: 16 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              initial={{ opacity: 0, scale: 0.98, y: 8 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.02, y: -8 }}
+              transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
             >
               {children}
             </motion.div>
@@ -127,197 +127,220 @@ export default function Layout({ children }) {
   }
 
   return (
-    <div className="app-shell">
-      <header className="sticky top-0 z-50 border-b border-white/70 bg-[#edf3fb]/85 backdrop-blur-xl">
+    <div className="app-shell min-h-screen selection:bg-electric-50 selection:text-electric-900">
+      <header className="sticky top-0 z-50 border-b border-white/40 bg-white/60 backdrop-blur-xl shadow-sm">
         <div className="app-container py-3">
           <div className="flex items-center justify-between gap-4">
-            <div className="flex min-w-0 items-center gap-4">
+            <div className="flex items-center gap-10">
               <NavLink to="/" className="group flex items-center gap-3">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-[18px] bg-graphite-950 text-white shadow-lifted">
-                  <span className="font-display text-lg font-bold tracking-tight">M</span>
-                  <span className="absolute -right-1 -top-1 rounded-full bg-electric-500 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.2em] text-white">
-                    SOC
-                  </span>
+                <div className="relative flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-graphite-900 to-graphite-800 text-white shadow-md transition-all duration-300 group-hover:scale-105 group-hover:shadow-graphite-900/20">
+                  <div className="absolute inset-0 rounded-xl bg-white/10 opacity-0 transition-opacity group-hover:opacity-100" />
+                  <span className="font-display text-lg font-bold">M</span>
                 </div>
-                <div className="hidden sm:block">
-                  <p className="font-display text-lg font-bold tracking-tight text-graphite-950">Mox Console</p>
-                  <p className="text-xs text-graphite-500">AI 安全攻防与治理工作台</p>
+                <div>
+                  <p className="font-display text-lg font-bold tracking-tight text-graphite-950 leading-none mb-1 group-hover:text-electric-700 transition-colors">Mox</p>
+                  <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-graphite-600">Security Console</p>
                 </div>
               </NavLink>
 
-              <div className="hidden xl:flex items-center gap-1 rounded-full border border-white/80 bg-white/65 p-1 shadow-fine">
+              <nav className="hidden xl:flex items-center gap-1.5 bg-white/50 p-1.5 rounded-xl border border-white/60 shadow-inner backdrop-blur-sm">
                 {PRIMARY_GROUPS.flatMap((group) => group.items).map((item) => {
                   const Icon = item.icon
                   return (
                     <NavLink
                       key={item.path}
                       to={item.path}
-                      className={({ isActive }) => clsx('nav-link', isActive && 'nav-link-active')}
+                      className={({ isActive }) => 
+                        clsx(
+                          'relative flex items-center gap-2.5 px-4 py-2.5 text-sm font-medium transition-all duration-300 rounded-lg overflow-hidden',
+                          isActive 
+                            ? 'text-electric-700 shadow-sm' 
+                            : 'text-graphite-500 hover:text-graphite-900 hover:bg-white/60'
+                        )
+                      }
                     >
-                      <Icon className="h-4 w-4" />
-                      {item.short}
+                      {({ isActive }) => (
+                        <>
+                          {isActive && (
+                            <motion.div
+                              layoutId="nav-active-bg"
+                              className="absolute inset-0 bg-white border border-electric-100/50"
+                              initial={false}
+                              transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
+                            />
+                          )}
+                          <Icon className={clsx("h-4 w-4 relative z-10 transition-transform duration-300", isActive && "scale-110")} />
+                          <span className="relative z-10">{item.label}</span>
+                        </>
+                      )}
                     </NavLink>
                   )
                 })}
-              </div>
+              </nav>
             </div>
 
-            <div className="hidden items-center gap-3 lg:flex">
-              <div className="rounded-full border border-white/80 bg-white/72 px-4 py-2 shadow-fine">
-                <div className="flex items-center gap-2 text-xs text-graphite-500">
-                  <span className="status-dot status-dot-online" />
-                  监控周期 30s
-                </div>
-                <div className="mt-1 text-sm font-medium text-graphite-800">
-                  {isPricingPage ? '当前浏览商业化页面' : currentSecondary.title}
-                </div>
-              </div>
-              <StatusPill online={apiStatus === 'connected'} />
-              <NavLink to="/pricing" className="btn-secondary px-4">
-                <CreditCard className="h-4 w-4" />
-                专业版
-              </NavLink>
-              <NavLink to="/login" className="btn-primary px-4">
-                <LogIn className="h-4 w-4" />
+            <div className="hidden lg:flex items-center gap-5">
+              <div className="h-8 w-px bg-graphite-200/60" />
+              <NavLink to="/login" className="text-sm font-medium text-graphite-600 hover:text-electric-700 transition-colors">
                 登录
               </NavLink>
+              <NavLink to="/pricing" className="btn-primary !px-6 !py-2.5 !rounded-xl">
+                <Sparkles className="h-4 w-4" />
+                升级专业版
+              </NavLink>
             </div>
 
-            <button
-              type="button"
-              onClick={() => setDrawerOpen((value) => !value)}
-              className="btn-secondary px-3 lg:hidden"
-              aria-label={drawerOpen ? '关闭导航菜单' : '打开导航菜单'}
-              aria-expanded={drawerOpen}
-            >
-              {drawerOpen ? <X className="h-4 w-4" /> : <Menu className="h-4 w-4" />}
-            </button>
+            <div className="xl:hidden flex items-center gap-2">
+              <button
+                type="button"
+                className="p-2.5 rounded-xl text-graphite-600 bg-white/50 border border-white/60 hover:bg-white transition-colors shadow-sm"
+                onClick={() => setDrawerOpen(true)}
+              >
+                <Menu className="h-5 w-5" />
+              </button>
+            </div>
           </div>
+        </div>
 
-          <div className="mt-3 hidden items-center justify-between gap-4 lg:flex">
-            <div className="flex min-w-0 flex-wrap items-center gap-2">
-              {SECONDARY_GROUPS.map((group) => (
-                <div key={group.title} className="flex items-center gap-2">
-                  <span className="text-[11px] font-semibold uppercase tracking-[0.22em] text-graphite-400">
-                    {group.title}
-                  </span>
-                  <div className="flex flex-wrap items-center gap-1">
-                    {group.items.map((item) => {
-                      const Icon = item.icon
-                      return (
-                        <NavLink
-                          key={item.path}
-                          to={item.path}
-                          className={({ isActive }) =>
-                            clsx('subnav-link', isActive && 'subnav-link-active')
-                          }
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                          {item.label}
-                        </NavLink>
-                      )
-                    })}
-                  </div>
-                </div>
-              ))}
+        {/* 次级导航栏 */}
+        <div className="hidden xl:block border-t border-white/40 bg-graphite-50/50">
+          <div className="app-container py-2 flex items-center gap-8">
+            <div className="text-xs font-bold uppercase tracking-wider text-graphite-500 flex items-center gap-2">
+              {currentSecondary.title}
+              <ChevronRight className="h-3 w-3 opacity-50" />
             </div>
+            <nav className="flex items-center gap-1">
+              {currentSecondary.items.map((item) => {
+                const Icon = item.icon
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    className={({ isActive }) =>
+                      clsx(
+                        'flex items-center gap-2 px-3 py-1.5 text-[13px] font-medium rounded-lg transition-colors',
+                        isActive
+                          ? 'bg-white text-electric-700 shadow-sm border border-white/60'
+                          : 'text-graphite-600 hover:bg-white/60 hover:text-graphite-900'
+                      )
+                    }
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {item.label}
+                  </NavLink>
+                )
+              })}
+            </nav>
           </div>
         </div>
       </header>
 
+      {/* 移动端抽屉导航 */}
       <AnimatePresence>
         {drawerOpen && (
-          <motion.div
-            className="fixed inset-0 z-40 lg:hidden"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-          >
-            <div className="absolute inset-0 bg-graphite-950/35 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
-            <motion.aside
-              className="absolute right-0 top-0 h-full w-[min(92vw,380px)] border-l border-white/70 bg-[#eff4fb]/96 p-5 shadow-modal"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[60] bg-graphite-900/40 backdrop-blur-sm"
+              onClick={() => setDrawerOpen(false)}
+            />
+            <motion.div
+              initial={{ x: '100%', borderTopLeftRadius: 30, borderBottomLeftRadius: 30 }}
+              animate={{ x: 0, borderTopLeftRadius: 0, borderBottomLeftRadius: 0 }}
+              exit={{ x: '100%', borderTopLeftRadius: 30, borderBottomLeftRadius: 30 }}
+              transition={{ type: 'spring', bounce: 0, duration: 0.4 }}
+              className="fixed inset-y-0 right-0 z-[70] w-full max-w-sm bg-white/95 backdrop-blur-xl border-l border-white/60 shadow-2xl flex flex-col overflow-hidden"
             >
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-semibold text-graphite-950">导航中心</p>
-                  <p className="text-xs text-graphite-500">快速切换模块与页面</p>
+              <div className="flex items-center justify-between p-5 border-b border-graphite-200/50">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-graphite-900 to-graphite-800 text-white shadow-md">
+                    <span className="font-display text-sm font-bold">M</span>
+                  </div>
+                  <span className="font-display font-bold text-graphite-950">导航菜单</span>
                 </div>
-                <button type="button" onClick={() => setDrawerOpen(false)} className="btn-ghost px-2.5 py-2">
-                  <X className="h-4 w-4" />
+                <button
+                  onClick={() => setDrawerOpen(false)}
+                  className="rounded-full p-2 bg-graphite-100/80 text-graphite-600 hover:bg-graphite-200 transition-colors"
+                >
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="mt-5 space-y-4">
-                <div className="card p-4">
-                  <StatusPill online={apiStatus === 'connected'} />
-                  <div className="glass-divider my-4" />
-                  <div className="space-y-3">
-                    <NavLink to="/pricing" className="btn-secondary w-full justify-between">
-                      专业版方案
-                      <ChevronRight className="h-4 w-4" />
-                    </NavLink>
-                    <NavLink to="/login" className="btn-primary w-full justify-between">
-                      登录账户
-                      <ChevronRight className="h-4 w-4" />
-                    </NavLink>
-                  </div>
+              <div className="flex-1 overflow-y-auto px-5 py-6 no-scrollbar space-y-8">
+                {/* 主导航模块 */}
+                <div className="space-y-4">
+                  <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-graphite-500">基础功能</p>
+                  <nav className="grid grid-cols-2 gap-2">
+                    {PRIMARY_GROUPS.flatMap(g => g.items).map(item => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        className={({ isActive }) => clsx(
+                          "flex flex-col gap-3 p-4 rounded-xl border transition-all",
+                          isActive 
+                            ? "bg-electric-50 border-electric-200 text-electric-700 shadow-sm" 
+                            : "bg-graphite-50/50 border-transparent text-graphite-700 hover:bg-white hover:border-graphite-200 hover:shadow-sm"
+                        )}
+                      >
+                        <item.icon className="h-5 w-5" />
+                        <span className="text-sm font-bold">{item.label}</span>
+                      </NavLink>
+                    ))}
+                  </nav>
                 </div>
 
-                {[...PRIMARY_GROUPS, ...SECONDARY_GROUPS].map((group) => (
-                  <div key={group.title} className="card p-4">
-                    <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.22em] text-graphite-400">
-                      {group.title}
-                    </p>
-                    <div className="space-y-2">
-                      {group.items.map((item) => {
-                        const Icon = item.icon
-                        return (
-                          <NavLink
-                            key={item.path}
-                            to={item.path}
-                            className={({ isActive }) =>
-                              clsx(
-                                'flex items-center justify-between rounded-2xl border px-3 py-3 text-sm font-medium transition-all duration-200',
-                                isActive
-                                  ? 'border-electric-200 bg-electric-50 text-electric-700'
-                                  : 'border-graphite-200/70 bg-white/75 text-graphite-700'
-                              )
-                            }
-                          >
-                            <span className="flex items-center gap-3">
-                              <Icon className="h-4 w-4" />
-                              {item.label}
-                            </span>
-                            <ChevronRight className="h-4 w-4 text-graphite-400" />
-                          </NavLink>
-                        )
-                      })}
-                    </div>
+                {/* 次级导航模块 */}
+                {SECONDARY_GROUPS.map((group) => (
+                  <div key={group.title} className="space-y-3">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-graphite-500">{group.title}</p>
+                    <nav className="flex flex-col space-y-1">
+                      {group.items.map((item) => (
+                        <NavLink
+                          key={item.path}
+                          to={item.path}
+                          className={({ isActive }) => clsx(
+                            "flex items-center gap-3 px-4 py-3 rounded-xl transition-all",
+                            isActive 
+                              ? "bg-electric-50 text-electric-700 font-bold" 
+                              : "text-graphite-600 font-medium hover:bg-graphite-50 hover:text-graphite-900"
+                          )}
+                        >
+                          <item.icon className={clsx("h-4 w-4", isActive ? "text-electric-600" : "opacity-60")} />
+                          {item.label}
+                        </NavLink>
+                      ))}
+                    </nav>
                   </div>
                 ))}
               </div>
-            </motion.aside>
-          </motion.div>
+              
+              <div className="p-5 border-t border-graphite-200/50 bg-graphite-50/50 flex flex-col gap-3">
+                <NavLink to="/login" className="btn-secondary w-full justify-center">登录账号</NavLink>
+                <NavLink to="/pricing" className="btn-primary w-full justify-center">
+                  <Sparkles className="h-4 w-4" /> 升级专业版
+                </NavLink>
+              </div>
+            </motion.div>
+          </>
         )}
       </AnimatePresence>
 
-      <main className="app-container py-6">
+      <main className="app-container py-10">
         <AnimatePresence mode="wait">
           <motion.div
             key={location.pathname}
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+            initial={{ opacity: 0, y: 15, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -15, scale: 0.98 }}
+            transition={{ type: 'spring', stiffness: 300, damping: 25, mass: 0.8 }}
           >
             {children}
           </motion.div>
         </AnimatePresence>
       </main>
+
 
       <footer className="border-t border-white/70 bg-white/55">
         <div className="app-container flex flex-col gap-2 py-5 text-xs text-graphite-500 sm:flex-row sm:items-center sm:justify-between">

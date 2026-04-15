@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { BarChart3, ShieldAlert, Sparkles, TerminalSquare } from 'lucide-react'
 import { AttackForm, AttackResult, DEFAULT_MODELS } from '../components/attack'
@@ -7,6 +7,19 @@ import { attackApi, getModels, isDemoModeEnabled } from '../api'
 import { useLocalStorage } from '../hooks/useCommon'
 import { useAttackTemplates } from '../hooks/useAttackTemplates'
 import { HeroStat, InfoCallout, PageHeader, QuickLink, StatusPill } from '../components/ui/AppFrame'
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.5, ease: [0.16, 1, 0.3, 1] } }
+}
 
 function buildDemoResult(formData) {
   const normalized = Math.min(0.94, 0.18 + formData.max_iterations / 140 + formData.prompt.length / 900)
@@ -59,12 +72,12 @@ export default function AttackPage() {
 
   const quickFacts = useMemo(
     () => [
-      { label: 'Model', value: form.model, hint: 'Changes response style and attack behavior.', tone: 'electric' },
-      { label: 'Iterations', value: form.max_iterations, hint: 'Higher values usually explore deeper variants.', tone: 'warning' },
+      { label: 'Model', value: form.model, hint: 'Target model for evaluation', tone: 'electric' },
+      { label: 'Iterations', value: form.max_iterations, hint: 'Search depth', tone: 'warning' },
       {
         label: 'Run mode',
-        value: apiConnected ? 'Live API' : isDemoModeEnabled ? 'Demo fallback' : 'Offline',
-        hint: apiConnected ? 'Requests are sent to the backend.' : 'Live execution is not currently available.',
+        value: apiConnected ? 'Live API' : isDemoModeEnabled ? 'Demo mode' : 'Offline',
+        hint: apiConnected ? 'Connected to backend' : 'Local simulation',
         tone: apiConnected ? 'success' : 'danger',
       },
     ],
@@ -104,13 +117,13 @@ export default function AttackPage() {
 
         await new Promise((resolve) => window.setTimeout(resolve, 900))
         setResult(buildDemoResult(formData))
-        toast('Switched to demo mode because the backend is offline.', { icon: '⚠️' })
+        toast.success('Simulation completed in demo mode.')
         return
       }
 
       const data = await attackApi.run(formData)
       setResult(data)
-      toast.success('Attack run completed.')
+      toast.success('Attack execution completed successfully.')
     } catch (error) {
       const detail = error.response?.data?.detail || error.response?.data?.message || 'Request failed.'
       toast.error(detail)
@@ -128,40 +141,52 @@ export default function AttackPage() {
       prompt: template.content || template.prompt || '',
       target_behavior: template.target || current.target_behavior,
     }))
-    toast.success(`Loaded template: ${template.name}`)
+    toast.success(`Template applied: ${template.name}`)
   }
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="ATTACK LAB"
-        title="Attack Testing Console"
-        description="Run prompt attack scenarios, compare model behavior, and review the generated result in a single workflow."
-        badge={<StatusPill online={apiConnected} onlineLabel="Live API" offlineLabel="Offline" />}
-      />
+    <motion.div 
+      className="page-shell"
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="ATTACK LAB"
+          title="模型攻击测试"
+          description="执行自动化对抗测试，评估大模型在极端情况下的安全边界与响应策略。"
+          badge={<StatusPill online={apiConnected} onlineLabel="引擎在线" offlineLabel="离线模式" />}
+        />
+      </motion.div>
 
-      <section className="hero-panel">
-        <div className="relative z-10 grid gap-4 lg:grid-cols-[1.3fr_0.9fr]">
-          <div className="space-y-3">
-            <span className="badge badge-neutral">Attack form state is persisted locally so you can resume quickly.</span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-graphite-950">
-              Treat every run like a real operator workflow, not a one-off form submit.
-            </h2>
-            <p className="max-w-2xl text-sm text-graphite-600 sm:text-base">
-              The page keeps the model choice, prompt, target behavior, and result panel close together so we can move faster
-              without losing context between retries.
-            </p>
+      <motion.section variants={itemVariants} className="hero-panel mb-4">
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[1fr_auto]">
+          <div className="space-y-6 max-w-2xl">
+            <div className="space-y-2">
+              <h2 className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-graphite-950">
+                构建高质量的对抗测试用例
+              </h2>
+              <p className="text-sm sm:text-base text-graphite-600 leading-relaxed">
+                在左侧配置攻击参数并执行测试。所有的表单状态都会自动在本地持久化，您可以随时中断或恢复测试流程。
+              </p>
+            </div>
+            <div className="inline-flex items-center gap-2 rounded-xl bg-electric-900/60 px-4 py-2 border border-electric-100/50 backdrop-blur-md shadow-sm">
+              <Sparkles className="h-4 w-4 text-electric-700" />
+              <span className="text-xs font-bold text-electric-800">提示：建议先从基础的 Prompt Injection 开始验证。</span>
+            </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
+
+          <div className="flex flex-col sm:flex-row gap-4 xl:w-[480px]">
             {quickFacts.map((item) => (
               <HeroStat key={item.label} label={item.label} value={item.value} hint={item.hint} tone={item.tone} />
             ))}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <div className="page-grid">
-        <motion.div initial={{ opacity: 0, x: -12 }} animate={{ opacity: 1, x: 0 }}>
+      <div className="page-grid mt-2">
+        <motion.div variants={itemVariants}>
           <AttackForm
             form={form}
             setForm={setForm}
@@ -174,46 +199,50 @@ export default function AttackPage() {
           />
         </motion.div>
 
-        <motion.div initial={{ opacity: 0, x: 12 }} animate={{ opacity: 1, x: 0 }} className="space-y-6">
-          <AttackResult result={result} />
+        <motion.div variants={itemVariants} className="space-y-6">
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div
+                key="result"
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <AttackResult result={result} />
+              </motion.div>
+            ) : (
+              <motion.div
+                key="placeholder"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex h-[320px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/60 bg-white/40 px-6 text-center backdrop-blur-sm transition-all duration-500 hover:bg-white/60"
+              >
+                <div className="mb-4 rounded-2xl bg-gradient-to-br from-white to-graphite-50 p-4 shadow-soft border border-white">
+                  <TerminalSquare className="h-6 w-6 text-graphite-500" />
+                </div>
+                <h3 className="text-sm font-bold text-graphite-900">等待执行</h3>
+                <p className="mt-2 max-w-[260px] text-xs font-medium text-graphite-500 leading-relaxed">
+                  配置攻击参数并点击执行，测试结果和详细的修复建议将在此区域显示。
+                </p>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           <InfoCallout
-            title="Before you submit"
-            description="Write the target behavior as an observable outcome so the result panel is easier to evaluate."
+            title="测试建议"
+            description="明确定义您的测试目标（Target Behavior），这有助于自动化评估引擎更准确地计算风险分数。"
             cta={
               <div className="space-y-3">
-                <QuickLink label="Start with prompt injection" description="Best for validating system-prompt hardening." />
-                <QuickLink label="Retry with jailbreak" description="Useful when you want stronger role-play pressure." />
+                <QuickLink label="使用预设模板" description="从右侧表单顶部的模板库中快速加载典型攻击案例。" />
+                <QuickLink label="分析风险分数" description="超过 0.5 的分数表明模型可能存在策略漂移倾向。" />
               </div>
             }
             icon={Sparkles}
           />
-
-          <div className="card">
-            <div className="mb-4 flex items-center gap-2">
-              <TerminalSquare className="h-4 w-4 text-electric-600" />
-              <h3 className="text-sm font-semibold text-graphite-900">Review checklist</h3>
-            </div>
-            <div className="space-y-3 text-sm text-graphite-600">
-              <p>1. Check the risk score first, then inspect the model response, then decide whether a defense change is needed.</p>
-              <p>2. If the page is in demo mode, rerun the same prompt against the live backend before treating it as a real finding.</p>
-              <p>3. For high-risk prompts, save the scenario into your regression suite so future fixes stay covered.</p>
-            </div>
-            <div className="glass-divider my-4" />
-            <div className="flex flex-wrap gap-2 text-xs">
-              <span className="badge badge-neutral">
-                <ShieldAlert className="h-3.5 w-3.5" /> Attack status
-              </span>
-              <span className="badge badge-neutral">
-                <BarChart3 className="h-3.5 w-3.5" /> Risk scoring
-              </span>
-              <span className="badge badge-neutral">
-                <Sparkles className="h-3.5 w-3.5" /> Demo fallback
-              </span>
-            </div>
-          </div>
         </motion.div>
       </div>
-    </div>
+    </motion.div>
   )
 }

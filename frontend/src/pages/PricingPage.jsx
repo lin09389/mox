@@ -82,15 +82,15 @@ export default function PricingPage() {
           </div>
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">统一设计</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-graphite-600">统一设计</p>
               <p className="mt-2 text-sm font-semibold text-graphite-900">与主应用视觉一致</p>
             </div>
             <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">聚焦决策</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-graphite-600">聚焦决策</p>
               <p className="mt-2 text-sm font-semibold text-graphite-900">突出能力边界与调用量</p>
             </div>
             <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">专业感</p>
+              <p className="text-xs uppercase tracking-[0.18em] text-graphite-600">专业感</p>
               <p className="mt-2 text-sm font-semibold text-graphite-900">更像产品控制台，而不是广告页</p>
             </div>
           </div>
@@ -102,8 +102,8 @@ export default function PricingPage() {
           const Icon = plan.icon
           const toneStyles = {
             graphite: 'border-graphite-200 bg-white/82',
-            electric: 'border-electric-200 bg-electric-50/80',
-            lava: 'border-lava-200 bg-lava-50/80',
+            electric: 'border-electric-200 bg-electric-900/80',
+            lava: 'border-lava-200 bg-lava-900/80',
           }
 
           return (
@@ -162,7 +162,7 @@ export default function PricingPage() {
       <AnimatePresence>
         {showCheckout && selectedPlan && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/35 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-white/35 p-4 backdrop-blur-sm"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}

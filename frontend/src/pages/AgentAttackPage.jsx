@@ -97,7 +97,7 @@ export default function AgentAttackPage() {
                     key={item.id}
                     onClick={() => setAttackType(item.id)}
                     className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
-                      active ? 'border-electric-200 bg-electric-50/80' : 'border-graphite-200/70 bg-white/75'
+                      active ? 'border-electric-200 bg-electric-900/80' : 'border-graphite-200/70 bg-white/75'
                     }`}
                   >
                     <p className="text-sm font-semibold text-graphite-900">{item.name}</p>
@@ -129,8 +129,8 @@ export default function AgentAttackPage() {
                     className={`rounded-[14px] border px-3 py-2 text-left text-sm transition-all ${
                       selectedTools.includes(tool.name)
                         ? tool.danger
-                          ? 'border-lava-200 bg-lava-50/70'
-                          : 'border-electric-200 bg-electric-50/70'
+                          ? 'border-lava-200 bg-lava-900/70'
+                          : 'border-electric-200 bg-electric-900/70'
                         : 'border-graphite-200/70 bg-white/75'
                     }`}
                   >

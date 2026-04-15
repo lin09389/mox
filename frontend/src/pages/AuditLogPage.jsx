@@ -77,7 +77,7 @@ export default function AuditLogPage() {
         <PanelHeader title="筛选" description="按关键字和状态过滤审计事件。" />
         <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
           <label className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
             <input className="input-field pl-11" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索动作、资源、用户" />
           </label>
           <select className="select-field" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>

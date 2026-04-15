@@ -1,8 +1,9 @@
 """认证和安全模块"""
 
+import warnings
 from datetime import datetime, timedelta, timezone
 from typing import Optional, List
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import Enum
 
 from jose import JWTError, jwt
@@ -14,6 +15,8 @@ from .config import settings
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
+
+_SECRET_KEY_WARNED = False
 
 
 class TokenType(Enum):
@@ -28,7 +31,7 @@ class TokenData:
     sub: str
     exp: datetime
     token_type: TokenType = TokenType.ACCESS
-    scopes: List[str] = None
+    scopes: List[str] = field(default_factory=list)
 
 
 @dataclass
@@ -60,7 +63,28 @@ class TokenManager:
     """Token管理"""
 
     @staticmethod
+    def _check_secret_key():
+        global _SECRET_KEY_WARNED
+        if not _SECRET_KEY_WARNED and settings.SECRET_KEY.startswith("MOX_") is False:
+            import os
+
+            if len(settings.SECRET_KEY) == 64:
+                try:
+                    bytes.fromhex(settings.SECRET_KEY)
+                    if not _SECRET_KEY_WARNED:
+                        warnings.warn(
+                            "SECRET_KEY is auto-generated (random hex). "
+                            "All JWT tokens will be invalidated on restart. "
+                            "Set MOX_SECRET_KEY environment variable for production use.",
+                            stacklevel=3,
+                        )
+                        _SECRET_KEY_WARNED = True
+                except ValueError:
+                    pass
+
+    @staticmethod
     def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
+        TokenManager._check_secret_key()
         to_encode = data.copy()
         if expires_delta:
             expire = datetime.now(timezone.utc) + expires_delta
@@ -247,6 +271,7 @@ async def get_optional_active_user(
     if current_user is None:
         # 开发模式下返回默认用户
         from .config import settings
+
         if not settings.REQUIRE_AUTH:
             return User(
                 username="dev_user",

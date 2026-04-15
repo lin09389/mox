@@ -134,7 +134,7 @@ export default function TemplatePage() {
       </section>
 
       {showModal ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/35 p-4 backdrop-blur-sm">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-white/35 p-4 backdrop-blur-sm">
           <form className="w-full max-w-[560px] rounded-[24px] border border-white/80 bg-white p-6 shadow-modal" onSubmit={submit}>
             <PanelHeader title={editing ? '编辑模板' : '新建模板'} description="填写名称、类型和模板内容。" />
             <div className="space-y-4">

@@ -71,7 +71,7 @@ export default function RedTeamPage() {
                       onClick={() => toggle(technique.id)}
                       className={`rounded-[18px] border px-4 py-3 text-left transition-all ${
                         active
-                          ? 'border-electric-200 bg-electric-50/75'
+                          ? 'border-electric-200 bg-electric-900/75'
                           : 'border-graphite-200/70 bg-white/75'
                       }`}
                     >
@@ -115,7 +115,7 @@ export default function RedTeamPage() {
             </div>
           ) : (
             <div className="panel-muted flex min-h-[430px] flex-col items-center justify-center gap-3 text-center">
-              <AlertTriangle className="h-8 w-8 text-graphite-400" />
+              <AlertTriangle className="h-8 w-8 text-graphite-600" />
               <p className="text-sm text-graphite-500">尚未运行红队演练，配置后即可查看结果。</p>
             </div>
           )}

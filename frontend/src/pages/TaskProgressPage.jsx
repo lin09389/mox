@@ -77,7 +77,7 @@ export default function TaskProgressPage() {
           <PanelHeader title="任务列表" description="按状态实时更新，点击查看详情。" />
           {loading ? (
             <div className="panel-muted flex min-h-[360px] items-center justify-center">
-              <Loader2 className="h-7 w-7 animate-spin text-electric-600" />
+              <Loader2 className="h-7 w-7 animate-spin text-electric-700" />
             </div>
           ) : (
             <div className="space-y-3">
@@ -123,7 +123,7 @@ export default function TaskProgressPage() {
             </div>
           ) : (
             <div className="panel-muted flex min-h-[360px] flex-col items-center justify-center gap-3 text-center">
-              <Eye className="h-7 w-7 text-graphite-400" />
+              <Eye className="h-7 w-7 text-graphite-600" />
               <p className="text-sm text-graphite-500">从左侧列表选择一个任务查看详情。</p>
             </div>
           )}

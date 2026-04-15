@@ -1,13 +1,20 @@
-"""LLM统一网关 - 支持负载均衡和故障转移"""
+"""LLM统一网关 - 支持负载均衡和故障转移
 
-from typing import List, Optional, Dict, Any
+修复：
+- 缓存 LLM 实例，避免每次请求重建客户端
+- RateLimiter token 使用量随请求窗口自动过期回收
+- endpoint 键名统一使用 name（而非 model）
+- 并发请求的限流 key 统一
+"""
+
+from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
 import asyncio
 import random
 from datetime import datetime, timedelta
 
-from .llm import LLMFactory, ModelProvider, Message, LLMResponse
+from .llm import BaseLLM, LLMFactory, ModelProvider, Message, LLMResponse
 from .logging import get_logger
 
 logger = get_logger("llm_gateway")
@@ -52,34 +59,35 @@ class GatewayConfig:
 
 
 class RateLimiter:
-    """速率限制器"""
+    """速率限制器 - 修复 token 使用量随窗口自动回收"""
 
     def __init__(self, rpm: int, tpm: int):
         self.rpm = rpm
         self.tpm = tpm
-        self.requests: List[datetime] = []
-        self.tokens_used: int = 0
+        self._request_timestamps: List[datetime] = []
+        self._token_bucket: List[Tuple[datetime, int]] = []
 
     async def acquire(self, estimated_tokens: int = 0) -> bool:
         now = datetime.now()
-        self.requests = [t for t in self.requests if now - t < timedelta(minutes=1)]
+        cutoff = now - timedelta(minutes=1)
 
-        # Check request rate limit
-        if len(self.requests) >= self.rpm:
+        self._request_timestamps = [t for t in self._request_timestamps if t > cutoff]
+        self._token_bucket = [(ts, tokens) for ts, tokens in self._token_bucket if ts > cutoff]
+
+        if len(self._request_timestamps) >= self.rpm:
             return False
 
-        # Check token rate limit - use estimated_tokens properly
-        if self.tokens_used + estimated_tokens >= self.tpm:
+        current_tokens = sum(tokens for _, tokens in self._token_bucket)
+        if current_tokens + estimated_tokens >= self.tpm:
             return False
 
-        # Reserve tokens for this request
-        self.tokens_used += estimated_tokens
-        self.requests.append(now)
+        self._request_timestamps.append(now)
+        self._token_bucket.append((now, estimated_tokens))
         return True
 
     def reset(self):
-        self.requests = []
-        self.tokens_used = 0
+        self._request_timestamps.clear()
+        self._token_bucket.clear()
 
 
 class ConcurrencyLimiter:
@@ -106,49 +114,14 @@ class ConcurrencyLimiter:
         return self._active
 
 
-class BatchRequest:
-    """批量请求处理"""
-
-    def __init__(self, max_batch_size: int = 10, timeout: float = 1.0):
-        self.max_batch_size = max_batch_size
-        self.timeout = timeout
-        self._pending: List[asyncio.Future] = []
-        self._lock = asyncio.Lock()
-
-    async def submit(self, coro) -> Any:
-        """提交请求到批次"""
-        future = asyncio.Future()
-        async with self._lock:
-            self._pending.append(future)
-
-            if len(self._pending) >= self.max_batch_size:
-                await self._flush()
-
-        asyncio.create_task(self._wait_and_resolve(coro, future))
-        return await future
-
-    async def _wait_and_resolve(self, coro, future: asyncio.Future):
-        try:
-            result = await asyncio.wait_for(coro, timeout=self.timeout)
-            future.set_result(result)
-        except Exception as e:
-            future.set_exception(e)
-
-    async def _flush(self):
-        if not self._pending:
-            return
-        # Actually await all pending futures before clearing
-        for future in self._pending:
-            if not future.done():
-                try:
-                    await asyncio.wait_for(future, timeout=self.timeout)
-                except Exception:
-                    pass
-        self._pending.clear()
-
-
 class LLMGateway:
-    """LLM统一网关 - 支持多模型负载均衡"""
+    """LLM统一网关 - 支持多模型负载均衡
+
+    修复：
+    - 缓存 LLM 实例，复用连接
+    - endpoint 键名统一使用 name
+    - RateLimiter token 自动回收
+    """
 
     def __init__(self, config: Optional[GatewayConfig] = None):
         self.config = config or GatewayConfig()
@@ -156,6 +129,21 @@ class LLMGateway:
         self._current_index = 0
         self._lock = asyncio.Lock()
         self.rate_limiters: Dict[str, RateLimiter] = {}
+        self._llm_cache: Dict[str, BaseLLM] = {}
+
+    def _get_llm(self, endpoint: LLMEndpoint) -> BaseLLM:
+        """获取或创建 LLM 实例（带缓存）"""
+        cache_key = f"{endpoint.provider.value}:{endpoint.model}:{endpoint.base_url or ''}"
+        if cache_key not in self._llm_cache:
+            llm = LLMFactory.create(
+                endpoint.provider,
+                endpoint.model,
+                base_url=endpoint.base_url,
+                api_key=endpoint.api_key,
+            )
+            self._llm_cache[cache_key] = llm
+            logger.debug(f"Created new LLM instance for {cache_key}")
+        return self._llm_cache[cache_key]
 
     def add_endpoint(
         self,
@@ -183,6 +171,9 @@ class LLMGateway:
 
     def remove_endpoint(self, name: str) -> None:
         if name in self.endpoints:
+            ep = self.endpoints[name]
+            cache_key = f"{ep.provider.value}:{ep.model}:{ep.base_url or ''}"
+            self._llm_cache.pop(cache_key, None)
             del self.endpoints[name]
             del self.rate_limiters[name]
             logger.info(f"Removed endpoint: {name}")
@@ -230,6 +221,12 @@ class LLMGateway:
         }
         return strategy_map[self.config.strategy]()
 
+    def _get_endpoint_name(self, endpoint: LLMEndpoint) -> Optional[str]:
+        for name, ep in self.endpoints.items():
+            if ep is endpoint:
+                return name
+        return None
+
     async def generate(
         self,
         messages: List[Message],
@@ -245,16 +242,12 @@ class LLMGateway:
         if not endpoint:
             raise RuntimeError("No available endpoints")
 
-        limiter = self.rate_limiters.get(endpoint.model)
+        ep_name = self._get_endpoint_name(endpoint) or endpoint_name or ""
+        limiter = self.rate_limiters.get(ep_name)
         if limiter:
             await limiter.acquire(estimated_tokens=max_tokens or 500)
 
-        llm = LLMFactory.create(
-            endpoint.provider,
-            endpoint.model,
-            base_url=endpoint.base_url,
-            api_key=endpoint.api_key,
-        )
+        llm = self._get_llm(endpoint)
 
         start_time = datetime.now()
         try:
@@ -272,7 +265,9 @@ class LLMGateway:
 
             if self.config.fallback_enabled and endpoint_name is None:
                 logger.warning("Attempting fallback to another endpoint")
-                self.endpoints[endpoint.model].health_status = "unhealthy"
+                ep_name_key = self._get_endpoint_name(endpoint)
+                if ep_name_key and ep_name_key in self.endpoints:
+                    self.endpoints[ep_name_key].health_status = "unhealthy"
                 return await self.generate(messages, temperature, max_tokens)
 
             raise
@@ -295,12 +290,7 @@ class LLMGateway:
         if not endpoint:
             raise RuntimeError("No available endpoints")
 
-        llm = LLMFactory.create(
-            endpoint.provider,
-            endpoint.model,
-            base_url=endpoint.base_url,
-            api_key=endpoint.api_key,
-        )
+        llm = self._get_llm(endpoint)
 
         async for chunk in llm.generate_stream(messages, temperature, max_tokens):
             yield chunk
@@ -327,6 +317,7 @@ class LLMGateway:
             "total_endpoints": len(self.endpoints),
             "available_endpoints": len(available),
             "strategy": self.config.strategy.value,
+            "cached_llm_instances": len(self._llm_cache),
             "endpoints": {
                 name: {
                     "model": ep.model,

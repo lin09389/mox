@@ -60,7 +60,7 @@ export default function LoginPage() {
             initial={{ scale: 0.94 }}
             animate={{ scale: 1 }}
             transition={{ duration: 0.5, delay: 0.1 }}
-            className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-graphite-900 shadow-lifted"
+            className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-graphite-50 shadow-lifted"
           >
             <ShieldCheck className="h-8 w-8 text-white" />
             <motion.div
@@ -76,7 +76,7 @@ export default function LoginPage() {
         </div>
 
         {(expiredReason || DEMO_MODE_ENABLED) && (
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-800">
+          <div className="rounded-2xl border border-amber-200/70 bg-amber-900/80 px-4 py-3 text-sm text-amber-800">
             {expiredReason
               ? 'Your session expired. Please sign in again.'
               : 'Demo mode is enabled. Some pages can fall back to sample data when the API is unavailable.'}
@@ -111,7 +111,7 @@ export default function LoginPage() {
                 </label>
                 <div className="relative mt-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Mail className="h-5 w-5 text-graphite-400" />
+                    <Mail className="h-5 w-5 text-graphite-600" />
                   </div>
                   <input
                     id="username"
@@ -133,7 +133,7 @@ export default function LoginPage() {
                 </label>
                 <div className="relative mt-1">
                   <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-graphite-400" />
+                    <Lock className="h-5 w-5 text-graphite-600" />
                   </div>
                   <input
                     id="password"
@@ -152,7 +152,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="flex w-full justify-center rounded-md border border-transparent bg-graphite-900 px-4 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:bg-graphite-800 disabled:opacity-70"
+                className="flex w-full justify-center rounded-md border border-transparent bg-graphite-50 px-4 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:bg-graphite-100 disabled:opacity-70"
                 aria-busy={isLoading}
               >
                 {isLoading ? (
@@ -179,7 +179,7 @@ export default function LoginPage() {
             <div className="mt-6 text-center">
               <Link
                 to="/register"
-                className="flex items-center justify-center gap-1 font-medium text-electric-600 transition-colors hover:text-electric-500"
+                className="flex items-center justify-center gap-1 font-medium text-electric-700 transition-colors hover:text-electric-500"
               >
                 Create an account <ArrowRight className="h-4 w-4" />
               </Link>

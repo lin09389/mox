@@ -107,7 +107,7 @@ export default function OWASPPage() {
             </div>
           ) : (
             <div className="panel-muted flex min-h-[420px] flex-col items-center justify-center gap-3 text-center">
-              <ShieldAlert className="h-8 w-8 text-graphite-400" />
+              <ShieldAlert className="h-8 w-8 text-graphite-600" />
               <p className="text-sm text-graphite-500">尚未运行测试，请先选择模型并启动 OWASP 套件。</p>
             </div>
           )}

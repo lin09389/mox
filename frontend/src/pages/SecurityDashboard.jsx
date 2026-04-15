@@ -14,7 +14,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { getDefenseLogs, getRecentAttacks, getStats } from '../api/security'
-import { HeroStat, InfoCallout, InsightList, MetricCard, PageHeader, PanelHeader, QuickLink } from '../components/ui/AppFrame'
+import { HeroStat, InfoCallout, InsightList, MetricCard, PageHeader, PanelHeader, QuickLink, animContainer, animItem } from '../components/ui/AppFrame'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
 
 function normalizeStats(stats) {
@@ -126,67 +126,89 @@ export default function SecurityDashboard() {
   )
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="SECURITY OVERVIEW"
-        title="专业监控台"
-        description="把当前请求规模、拦截表现、攻击成功率和近期高风险活动放在同一视野中，便于快速判断是否需要进入专项页面。"
-        badge={
-          <div className="badge badge-neutral px-3 py-1.5">
-            <Clock3 className="h-3.5 w-3.5" />
-            最近更新 {lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        }
-      />
+    <motion.div 
+      className="page-shell"
+      variants={animContainer}
+      initial="hidden"
+      animate="show"
+    >
+      <motion.div variants={animItem}>
+        <PageHeader
+          eyebrow="SECURITY OVERVIEW"
+          title="监控大盘"
+          description="全局视角监控风险指标，实时把控平台安全态势。"
+          badge={
+            <div className="flex items-center gap-2 rounded-full border border-graphite-200 bg-white px-3 py-1.5 text-xs font-medium text-graphite-600 shadow-sm">
+              <span className="relative flex h-2 w-2">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-neon-400 opacity-75"></span>
+                <span className="relative inline-flex h-2 w-2 rounded-full bg-neon-500"></span>
+              </span>
+              最近更新 {lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            </div>
+          }
+        />
+      </motion.div>
 
-      <section className="hero-panel">
-        <div className="relative z-10 grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">
-          <div className="space-y-4">
-            <span className="badge badge-neutral">
-              <Radar className="h-3.5 w-3.5" />
-              30 秒自动刷新监控数据
-            </span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-graphite-950 sm:text-4xl">
-              先看风险信号，再进入具体模块处理。
-            </h2>
-            <p className="max-w-2xl text-sm text-graphite-600 sm:text-base">
-              这版首页把随机图表替换成更稳定的监控信号视图。你可以先判断风险热度，再决定是去攻击页复测、防御页排查，还是到历史页做回归分析。
-            </p>
-            <div className="flex flex-wrap gap-3">
+      <motion.section variants={animItem} className="hero-panel mb-4">
+        <div className="relative z-10 grid gap-8 xl:grid-cols-[1fr_auto]">
+          <div className="space-y-6 max-w-2xl">
+            <div className="space-y-2">
+              <motion.h2 
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+                className="font-display text-2xl sm:text-3xl font-bold tracking-tight text-graphite-950"
+              >
+                风险信号实时感知
+              </motion.h2>
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="text-sm sm:text-base text-graphite-600 leading-relaxed"
+              >
+                主动监控拦截表现与攻击成功率。基于实时数据做出研判，快速定位潜在风险并采取防御措施。
+              </motion.p>
+            </div>
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="flex flex-wrap items-center gap-4"
+            >
               <Link to="/attack" className="btn-primary">
                 进入攻击测试
-                <ArrowRight className="h-4 w-4" />
+                <ArrowRight className="h-4 w-4 ml-1 transition-transform group-hover:translate-x-1" />
               </Link>
               <Link to="/history" className="btn-secondary">
                 查看历史记录
               </Link>
-            </div>
+            </motion.div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <HeroStat
-              label="实时拦截"
-              value={stats.blockedRequests.toLocaleString()}
-              hint="当前累计被防线拦截的请求数"
-              tone="danger"
-            />
+          <motion.div 
+            variants={animContainer}
+            initial="hidden"
+            animate="show"
+            className="flex flex-col sm:flex-row gap-4 xl:w-[400px]"
+          >
             <HeroStat
               label="风险热度"
               value={`${Math.round(stats.attackSuccessRate * 100)}%`}
-              hint="攻击成功率越高，越需要尽快回归"
+              hint="攻击成功率"
               tone="warning"
             />
             <HeroStat
               label="防御韧性"
               value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
-              hint="反映防护策略当前有效性"
+              hint="防护策略有效性"
               tone="success"
             />
-          </div>
+          </motion.div>
         </div>
-      </section>
+      </motion.section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <motion.div variants={animContainer} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {overview.map((item) => (
           <MetricCard
             key={item.label}
@@ -197,140 +219,147 @@ export default function SecurityDashboard() {
             tone={item.tone}
           />
         ))}
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="card">
+      <motion.div variants={animContainer} className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr] mt-2">
+        <motion.section variants={animItem} className="card flex flex-col">
           <PanelHeader
-            title="风险信号"
-            description="把当前应该优先注意的几项信息做成可读的简短结论。"
+            title="风险评估信号"
+            description="基于核心指标的自动化分析研判。"
           />
-          <InsightList items={signalItems} />
-        </section>
+          <div className="flex-1 flex flex-col justify-center">
+            <InsightList items={signalItems} />
+          </div>
+        </motion.section>
 
-        <InfoCallout
-          title="下一步建议"
-          description="如果攻击成功率升高，优先进入攻击测试页复刻案例；如果防御成功率下降，优先查看防御日志确认是哪一层失效。"
-          icon={Sparkles}
-          cta={
-            <div className="space-y-3">
-              <Link to="/attack" className="block">
-                <QuickLink label="攻击测试页" description="复刻高风险案例并对比成功分数变化。" />
-              </Link>
-              <Link to="/defense" className="block">
-                <QuickLink label="防御检测页" description="确认输入过滤和输出审查是否漏检。" />
-              </Link>
-              <Link to="/history" className="block">
-                <QuickLink label="历史记录页" description="查看近期问题是否持续出现。" />
-              </Link>
-            </div>
-          }
-        />
-      </div>
+        <motion.div variants={animItem}>
+          <InfoCallout
+            title="专项行动建议"
+            description="基于当前风险信号，建议采取以下针对性操作："
+            icon={Sparkles}
+            cta={
+              <motion.div variants={animContainer} initial="hidden" animate="show" className="space-y-3">
+                <Link to="/attack" className="block">
+                  <QuickLink label="高危复测" description="复刻高风险案例并对比成功分数变化。" />
+                </Link>
+                <Link to="/defense" className="block">
+                  <QuickLink label="规则排查" description="确认输入过滤和输出审查是否漏检。" />
+                </Link>
+                <Link to="/history" className="block">
+                  <QuickLink label="长线追踪" description="查看近期异常事件是否具有持续性。" />
+                </Link>
+              </motion.div>
+            }
+          />
+        </motion.div>
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="card">
+      <motion.div variants={animContainer} className="grid gap-6 xl:grid-cols-2 mt-2">
+        <motion.section variants={animItem} className="card">
           <PanelHeader
-            title="近期攻击事件"
-            description="只保留最有用的信息：类型、结果和触发时间。"
+            title="近期安全事件"
+            description="最新发生的攻击行为记录。"
+            action={
+              <Link to="/history" className="text-sm font-medium text-electric-700 hover:text-electric-700 flex items-center gap-1 group">
+                全部事件 <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            }
           />
 
           {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="spinner-lg" />
+            <div className="flex min-h-[260px] items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-graphite-200 border-t-electric-600" />
             </div>
           ) : recentAttacks.length === 0 ? (
-            <div className="panel-muted flex min-h-[220px] items-center justify-center text-sm text-graphite-500">
-              目前没有新的攻击事件。
+            <div className="flex min-h-[260px] items-center justify-center rounded-xl border border-dashed border-graphite-200 bg-graphite-50/50">
+              <p className="text-sm text-graphite-500">目前没有新的攻击事件记录</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <motion.div variants={animContainer} initial="hidden" animate="show" className="space-y-3">
               {recentAttacks.slice(0, 5).map((attack, index) => (
                 <motion.div
                   key={`${attack.type}-${index}`}
-                  initial={{ opacity: 0, x: -8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 px-4 py-3"
+                  variants={animItem}
+                  whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,1)' }}
+                  className="group flex flex-col sm:flex-row sm:items-center justify-between gap-3 rounded-xl border border-white/60 bg-white/40 px-5 py-4 transition-colors hover:border-white hover:shadow-soft backdrop-blur-sm cursor-default"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-graphite-900">
-                        {attack.type || '未知攻击类型'}
-                      </p>
-                      <p className="mt-1 text-xs text-graphite-500">
-                        {(attack.prompt || '无提示词内容').slice(0, 64)}
-                      </p>
-                    </div>
-                    <div className="space-y-2 text-right">
-                      <span className={`badge ${attack.success ? 'badge-danger' : 'badge-success'}`}>
-                        {attack.success ? '攻击成功' : '已拦截'}
-                      </span>
-                      <p className="text-xs text-graphite-400">{formatRelativeTime(attack.created_at || new Date())}</p>
-                    </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-graphite-900 truncate group-hover:text-electric-700 transition-colors">
+                      {attack.type || '未知攻击类型'}
+                    </p>
+                    <p className="mt-1.5 text-xs font-medium text-graphite-500 truncate">
+                      {(attack.prompt || '无提示词内容')}
+                    </p>
+                  </div>
+                  <div className="flex items-center sm:flex-col sm:items-end sm:justify-center gap-2.5 shrink-0">
+                    <span className={`badge ${attack.success ? 'badge-danger' : 'badge-success'}`}>
+                      {attack.success ? '攻击成功' : '已拦截'}
+                    </span>
+                    <p className="text-[11px] text-graphite-600 font-semibold tracking-wide">
+                      {formatRelativeTime(attack.created_at || new Date())}
+                    </p>
                   </div>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </section>
+        </motion.section>
 
-        <section className="card">
+        <motion.section variants={animItem} className="card">
           <PanelHeader
-            title="防御日志快照"
-            description="帮助判断当前是输入过滤、输出过滤还是其他策略在承压。"
+            title="防御引擎日志"
+            description="各防护模块的实时检测状态。"
+            action={
+              <Link to="/defense" className="text-sm font-medium text-electric-700 hover:text-electric-700 flex items-center gap-1 group">
+                防御设置 <ArrowRight className="h-3 w-3 transition-transform group-hover:translate-x-0.5" />
+              </Link>
+            }
           />
 
           {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="spinner-lg" />
+            <div className="flex min-h-[260px] items-center justify-center">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-graphite-200 border-t-electric-600" />
             </div>
           ) : defenseLogs.length === 0 ? (
-            <div className="panel-muted flex min-h-[220px] items-center justify-center text-sm text-graphite-500">
-              暂无防御日志，等待新的请求进入。
+            <div className="flex min-h-[260px] items-center justify-center rounded-xl border border-dashed border-graphite-200 bg-graphite-50/50">
+              <p className="text-sm text-graphite-500">暂无防御拦截日志</p>
             </div>
           ) : (
-            <div className="space-y-3">
+            <motion.div variants={animContainer} initial="hidden" animate="show" className="space-y-3">
               {defenseLogs.slice(0, 5).map((log, index) => (
                 <motion.div
                   key={`${log.defense_type}-${index}`}
-                  initial={{ opacity: 0, x: 8 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 px-4 py-3"
+                  variants={animItem}
+                  whileHover={{ scale: 1.01, backgroundColor: 'rgba(255,255,255,1)' }}
+                  className="group flex items-center justify-between gap-4 rounded-xl border border-white/60 bg-white/40 px-5 py-4 transition-colors hover:border-white hover:shadow-soft backdrop-blur-sm cursor-default"
                 >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold text-graphite-900">
+                  <div className="flex items-center gap-4 min-w-0">
+                    <motion.div 
+                      whileHover={{ rotate: 15, scale: 1.15 }}
+                      transition={{ type: 'spring' }}
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border bg-white shadow-sm ${log.blocked ? 'border-lava-100 text-lava-600 shadow-lava-500/10' : 'border-neon-100 text-neon-600 shadow-neon-500/10'}`}
+                    >
+                      {log.blocked ? <ShieldAlert className="h-5 w-5" /> : <ShieldCheck className="h-5 w-5" />}
+                    </motion.div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-bold text-graphite-900 truncate group-hover:text-electric-700 transition-colors">
                         {log.defense_type || '防御模块'}
                       </p>
-                      <p className="mt-1 text-xs text-graphite-500">
-                        置信度 {(Number(log.confidence || 0) * 100).toFixed(1)}%
+                      <p className="text-xs font-medium text-graphite-500 mt-1">
+                        置信度: <span className="font-bold text-graphite-700">{(Number(log.confidence || 0) * 100).toFixed(1)}%</span>
                       </p>
                     </div>
-                    <span className={`badge ${log.blocked ? 'badge-danger' : 'badge-success'}`}>
-                      {log.blocked ? '已拦截' : '已放行'}
-                    </span>
                   </div>
+                  <span className={`badge shrink-0 ${log.blocked ? 'badge-danger' : 'badge-success'}`}>
+                    {log.blocked ? '触发拦截' : '检测通过'}
+                  </span>
                 </motion.div>
               ))}
-            </div>
+            </motion.div>
           )}
-        </section>
-      </div>
-
-      <section className="card">
-        <PanelHeader
-          title="快捷入口"
-          description="把常用路径放在首页，减少多层导航查找。"
-        />
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Link to="/owasp"><QuickLink label="OWASP 测试" description="用标准化风险类目做专项验证。" /></Link>
-          <Link to="/redteam"><QuickLink label="红队演练" description="按更接近真实攻击链的方式复测。" /></Link>
-          <Link to="/benchmark"><QuickLink label="基准评测" description="对比不同模型或数据集表现。" /></Link>
-          <Link to="/reports"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
-        </div>
-      </section>
-    </div>
+        </motion.section>
+      </motion.div>
+    </motion.div>
   )
 }
+

@@ -250,7 +250,7 @@ export default function DefensePage() {
                     type="button"
                     onClick={() => setScanType(type.value)}
                     className={`rounded-lg border p-4 text-left transition-all ${
-                      scanType === type.value ? 'border-electric-500 bg-electric-50/50' : 'border-graphite-200/70 bg-white'
+                      scanType === type.value ? 'border-electric-500 bg-electric-900/50' : 'border-graphite-200/70 bg-white'
                     }`}
                   >
                     <div className="font-medium text-graphite-800">{type.label}</div>
@@ -268,7 +268,7 @@ export default function DefensePage() {
                   rows={8}
                 />
                 <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-graphite-400">{text.length} chars</span>
+                  <span className="text-xs text-graphite-600">{text.length} chars</span>
                   <div className="flex gap-2">
                     <button type="button" onClick={checkApiStatus} className="btn-ghost px-3 py-1.5 text-xs">
                       <RefreshCw className="h-3.5 w-3.5" />
@@ -326,7 +326,7 @@ export default function DefensePage() {
 
                 {normalized ? (
                   <div className="space-y-4">
-                    <div className={`rounded-2xl border px-4 py-4 ${normalized.isMalicious ? 'border-lava-200/70 bg-lava-50/70' : 'border-neon-200/70 bg-neon-50/70'}`}>
+                    <div className={`rounded-2xl border px-4 py-4 ${normalized.isMalicious ? 'border-lava-200/70 bg-lava-900/70' : 'border-neon-200/70 bg-neon-900/70'}`}>
                       <div className="text-sm font-semibold text-graphite-900">
                         {normalized.isMalicious ? 'Threat detected' : 'No obvious threat'}
                       </div>
@@ -342,7 +342,7 @@ export default function DefensePage() {
                     </div>
 
                     <div>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-graphite-400">Patterns</p>
+                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-graphite-600">Patterns</p>
                       {normalized.detectedPatterns.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {normalized.detectedPatterns.map((pattern) => (
@@ -358,7 +358,7 @@ export default function DefensePage() {
                   </div>
                 ) : (
                   <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <ShieldAlert className="h-8 w-8 text-graphite-300" />
+                    <ShieldAlert className="h-8 w-8 text-graphite-700" />
                     <p className="mt-3 text-sm text-graphite-500">Run a scan to populate this panel.</p>
                   </div>
                 )}
@@ -367,7 +367,7 @@ export default function DefensePage() {
               <div className="card">
                 <div className="mb-3 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-electric-600" />
+                    <FileText className="h-4 w-4 text-electric-700" />
                     <h2 className="text-sm font-semibold text-graphite-900">Sanitized output</h2>
                   </div>
                   {sanitized && (
@@ -396,7 +396,7 @@ export default function DefensePage() {
             className="card"
           >
             <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-electric-600" />
+              <Sparkles className="h-4 w-4 text-electric-700" />
               <h2 className="text-sm font-semibold text-graphite-900">Sanitize the current text</h2>
             </div>
             <p className="mt-2 text-sm text-graphite-500">
@@ -428,8 +428,8 @@ export default function DefensePage() {
                         <span className={`badge ${entry.result?.isMalicious ? 'badge-danger' : 'badge-success'}`}>
                           {entry.result?.isMalicious ? 'Threat' : 'Clean'}
                         </span>
-                        <span className="text-xs text-graphite-400">{new Date(entry.timestamp).toLocaleString()}</span>
-                        <span className="text-xs text-graphite-400">{entry.scanType}</span>
+                        <span className="text-xs text-graphite-600">{new Date(entry.timestamp).toLocaleString()}</span>
+                        <span className="text-xs text-graphite-600">{entry.scanType}</span>
                       </div>
                       <p className="mt-2 truncate text-sm text-graphite-700">{entry.text}</p>
                     </div>
@@ -439,7 +439,7 @@ export default function DefensePage() {
               ))
             ) : (
               <div className="card flex min-h-[260px] flex-col items-center justify-center text-center">
-                <BarChart3 className="h-8 w-8 text-graphite-300" />
+                <BarChart3 className="h-8 w-8 text-graphite-700" />
                 <p className="mt-3 text-sm text-graphite-500">No defense history yet.</p>
               </div>
             )}

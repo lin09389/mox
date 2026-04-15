@@ -57,7 +57,7 @@ export default function RegisterPage() {
             <div>
               <label className="label" htmlFor="username">用户名</label>
               <div className="relative">
-                <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+                <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
                 <input id="username" required className="input-field pl-11" placeholder="mox_operator" />
               </div>
             </div>
@@ -65,7 +65,7 @@ export default function RegisterPage() {
             <div>
               <label className="label" htmlFor="register-email">邮箱地址</label>
               <div className="relative">
-                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+                <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
                 <input id="register-email" type="email" required className="input-field pl-11" placeholder="you@example.com" />
               </div>
             </div>
@@ -73,13 +73,13 @@ export default function RegisterPage() {
             <div>
               <label className="label" htmlFor="register-password">密码</label>
               <div className="relative">
-                <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+                <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
                 <input id="register-password" type="password" required className="input-field pl-11" placeholder="至少 8 位，建议包含字母和数字" />
               </div>
             </div>
 
             <label className="flex items-start gap-3 rounded-[18px] border border-graphite-200/70 bg-graphite-50/70 px-4 py-3 text-sm text-graphite-600">
-              <input type="checkbox" required className="mt-0.5 rounded border-graphite-300 text-electric-600" />
+              <input type="checkbox" required className="mt-0.5 rounded border-graphite-300 text-electric-700" />
               <span>
                 我已阅读并同意
                 <a href="#" className="mx-1 text-electric-700 hover:text-electric-800">服务条款</a>

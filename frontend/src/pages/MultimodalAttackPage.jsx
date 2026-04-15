@@ -100,7 +100,7 @@ export default function MultimodalAttackPage() {
                     type="button"
                     onClick={() => setAttackType(type.id)}
                     className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
-                      active ? 'border-electric-200 bg-electric-50/80' : 'border-graphite-200/70 bg-white/75'
+                      active ? 'border-electric-200 bg-electric-900/80' : 'border-graphite-200/70 bg-white/75'
                     }`}
                   >
                     <div className="mb-2 flex items-center gap-2">
@@ -180,7 +180,7 @@ export default function MultimodalAttackPage() {
             </div>
           ) : (
             <div className="panel-muted flex min-h-[420px] flex-col items-center justify-center gap-3 text-center">
-              <Layers3 className="h-8 w-8 text-graphite-400" />
+              <Layers3 className="h-8 w-8 text-graphite-600" />
               <p className="text-sm text-graphite-500">执行攻击后，这里会显示多模态风险结果。</p>
               <ProgressMeter value={progress} tone="electric" label="准备状态" />
             </div>

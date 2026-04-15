@@ -30,7 +30,7 @@ function PageLoader() {
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-4" aria-live="polite" aria-busy="true">
       <div className="rounded-[20px] border border-white/80 bg-white/82 p-5 shadow-soft">
-        <Loader className="h-8 w-8 animate-spin text-electric-600" />
+        <Loader className="h-8 w-8 animate-spin text-electric-700" />
       </div>
       <div className="text-center">
         <p className="text-sm font-medium text-graphite-700">页面正在加载</p>

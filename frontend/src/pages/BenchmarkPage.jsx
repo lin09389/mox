@@ -134,13 +134,13 @@ export default function BenchmarkPage() {
                       onClick={() => setForm((current) => ({ ...current, dataset: dataset.value }))}
                       className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
                         active
-                          ? 'border-electric-200 bg-electric-50/75'
+                          ? 'border-electric-200 bg-electric-900/75'
                           : 'border-graphite-200/70 bg-white/75'
                       }`}
                     >
                       <p className="text-sm font-semibold text-graphite-900">{dataset.label}</p>
                       <p className="mt-1 text-xs text-graphite-500">{dataset.desc}</p>
-                      <p className="mt-2 text-xs text-graphite-400">样本量 {dataset.count}</p>
+                      <p className="mt-2 text-xs text-graphite-600">样本量 {dataset.count}</p>
                     </button>
                   )
                 })}
@@ -224,7 +224,7 @@ export default function BenchmarkPage() {
               <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
                 <ProgressMeter value={progress} tone="electric" label="评测进度" />
                 <div className="panel-muted flex min-h-[280px] items-center justify-center">
-                  <Loader2 className="h-7 w-7 animate-spin text-electric-600" />
+                  <Loader2 className="h-7 w-7 animate-spin text-electric-700" />
                 </div>
               </motion.div>
             ) : result ? (
@@ -234,11 +234,11 @@ export default function BenchmarkPage() {
                 ) : null}
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">数据集</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-600">数据集</p>
                     <p className="mt-2 text-lg font-semibold text-graphite-900">{result.dataset || result['数据集']}</p>
                   </div>
                   <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">攻击类型</p>
+                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-600">攻击类型</p>
                     <p className="mt-2 text-lg font-semibold text-graphite-900">{result.attackType || result['攻击类型']}</p>
                   </div>
                 </div>
@@ -282,7 +282,7 @@ export default function BenchmarkPage() {
               </motion.div>
             ) : (
               <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="panel-muted flex min-h-[340px] flex-col items-center justify-center gap-3 text-center">
-                <BarChart3 className="h-8 w-8 text-graphite-400" />
+                <BarChart3 className="h-8 w-8 text-graphite-600" />
                 <p className="text-sm text-graphite-500">运行评测后，这里会显示完整结果。</p>
               </motion.div>
             )}

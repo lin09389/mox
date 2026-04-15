@@ -59,7 +59,11 @@ class Task:
 
 
 class TaskQueue:
-    """异步任务队列"""
+    """异步任务队列
+
+    修复: 使用 (priority, sequence_number) 作为 PriorityQueue 的排序键，
+    避免相同优先级任务因不可比较的 Task 对象而抛出 TypeError。
+    """
 
     def __init__(self, max_workers: int = 4):
         self.max_workers = max_workers
@@ -67,6 +71,7 @@ class TaskQueue:
         self._tasks: Dict[str, Task] = {}
         self._workers: List[asyncio.Task] = []
         self._running = False
+        self._sequence = 0
 
     async def start(self):
         """启动任务队列"""
@@ -89,7 +94,7 @@ class TaskQueue:
         """工作协程"""
         while self._running:
             try:
-                priority, task = await self._queue.get()
+                priority, seq, task = await self._queue.get()
                 await self._execute_task(task)
                 self._queue.task_done()
             except asyncio.CancelledError:
@@ -138,7 +143,8 @@ class TaskQueue:
             priority=priority,
         )
         self._tasks[task_id] = task
-        self._queue.put_nowait((priority.value, task))
+        self._sequence += 1
+        self._queue.put_nowait((priority.value, self._sequence, task))
         logger.info(f"Task submitted: {name} ({task_id})")
         return task_id
 

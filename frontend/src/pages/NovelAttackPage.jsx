@@ -104,7 +104,7 @@ export default function NovelAttackPage() {
                       setPrompt(ATTACK_TEMPLATES[item.value][0] || '')
                     }}
                     className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
-                      active ? 'border-electric-200 bg-electric-50/80' : 'border-graphite-200/70 bg-white/75'
+                      active ? 'border-electric-200 bg-electric-900/80' : 'border-graphite-200/70 bg-white/75'
                     }`}
                   >
                     <div className="mb-2 flex items-center gap-2">

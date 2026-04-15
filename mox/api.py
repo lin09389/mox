@@ -44,17 +44,51 @@ async def lifespan(app: FastAPI):
 
 def _get_cors_origins() -> list[str]:
     if settings.CORS_ORIGINS:
-        return settings.CORS_ORIGINS
-    return ["http://localhost:3000", "http://localhost:5173"]
+        # Extend with additional localhost ports if not already included
+        origins = list(settings.CORS_ORIGINS)
+        extra_origins = [
+            "http://localhost:3000",
+            "http://localhost:3001",
+            "http://localhost:3002",
+            "http://localhost:3003",
+            "http://localhost:5173",
+            "http://localhost:5174",
+            "http://127.0.0.1:3000",
+            "http://127.0.0.1:3001",
+            "http://127.0.0.1:3002",
+            "http://127.0.0.1:3003",
+            "http://127.0.0.1:5173",
+            "http://127.0.0.1:5174",
+        ]
+        for origin in extra_origins:
+            if origin not in origins:
+                origins.append(origin)
+        return origins
+    # Allow all localhost ports for development
+    return [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "http://localhost:3002",
+        "http://localhost:3003",
+        "http://localhost:5173",
+        "http://localhost:5174",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:3001",
+        "http://127.0.0.1:3002",
+        "http://127.0.0.1:3003",
+        "http://127.0.0.1:5173",
+        "http://127.0.0.1:5174",
+    ]
 
 
 def _register_middleware(app: FastAPI) -> None:
+    # Allow all origins for development - credentials must be False when using "*"
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=_get_cors_origins(),
-        allow_credentials=True,
-        allow_methods=settings.CORS_ALLOW_METHODS,
-        allow_headers=settings.CORS_ALLOW_HEADERS,
+        allow_origins=["*"],
+        allow_credentials=False,  # Must be False when allow_origins=["*"]
+        allow_methods=["*"],
+        allow_headers=["*"],
     )
     app.add_middleware(
         RateLimitMiddleware,

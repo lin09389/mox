@@ -380,15 +380,19 @@ class GeminiLLM(BaseLLM):
     ) -> LLMResponse:
         client = self._get_client()
 
-        contents = self._build_contents(messages)
+        contents, system_instruction = self._build_contents(messages)
+
+        config_kwargs = {
+            "temperature": temperature or self.temperature,
+            "max_output_tokens": max_tokens or self.max_tokens,
+        }
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
 
         response = await client.aio.models.generate_content(
             model=self.model,
             contents=contents,
-            config=types.GenerateContentConfig(
-                temperature=temperature or self.temperature,
-                max_output_tokens=max_tokens or self.max_tokens,
-            ),
+            config=types.GenerateContentConfig(**config_kwargs),
         )
 
         return LLMResponse(
@@ -411,27 +415,40 @@ class GeminiLLM(BaseLLM):
     ) -> AsyncIterator[str]:
         client = self._get_client()
 
-        contents = self._build_contents(messages)
+        contents, system_instruction = self._build_contents(messages)
+
+        config_kwargs = {
+            "temperature": temperature or self.temperature,
+            "max_output_tokens": max_tokens or self.max_tokens,
+        }
+        if system_instruction:
+            config_kwargs["system_instruction"] = system_instruction
 
         async for chunk in await client.aio.models.generate_content_stream(
             model=self.model,
             contents=contents,
-            config=types.GenerateContentConfig(
-                temperature=temperature or self.temperature,
-                max_output_tokens=max_tokens or self.max_tokens,
-            ),
+            config=types.GenerateContentConfig(**config_kwargs),
         ):
             if chunk.text:
                 yield chunk.text
 
-    def _build_contents(self, messages: List[Message]) -> List[Any]:
+    def _build_contents(self, messages: List[Message]) -> tuple:
+        """构建 Gemini 格式的 contents 和 system_instruction
+
+        修复: Gemini API 不支持在 contents 中传递 system 角色，
+        需要通过 system_instruction 参数单独传递。
+        返回 (contents, system_instruction) 元组。
+        """
         contents = []
+        system_instruction = None
         for msg in messages:
-            if msg.role == "user":
+            if msg.role == "system":
+                system_instruction = msg.content
+            elif msg.role == "user":
                 contents.append(types.Content(role="user", parts=[types.Part(text=msg.content)]))
             elif msg.role == "model":
                 contents.append(types.Content(role="model", parts=[types.Part(text=msg.content)]))
-        return contents
+        return contents, system_instruction
 
 
 class DeepSeekLLM(BaseLLM):
@@ -536,11 +553,17 @@ class CohereLLM(BaseLLM):
     ) -> LLMResponse:
         client = self._get_client()
 
-        chat_messages = [{"role": msg.role, "message": msg.content} for msg in messages]
+        chat_history = []
+        for msg in messages[:-1]:
+            chat_history.append(
+                {"role": msg.role if msg.role != "system" else "system", "message": msg.content}
+            )
+        last_message = messages[-1].content if messages else ""
 
         response = await client.chat(
             model=self.model,
-            message=chat_messages[0]["message"] if chat_messages else "",
+            message=last_message,
+            chat_history=chat_history,
             temperature=temperature or self.temperature,
             max_tokens=max_tokens or self.max_tokens,
         )
@@ -549,9 +572,17 @@ class CohereLLM(BaseLLM):
             content=response.text,
             model=self.model,
             usage={
-                "prompt_tokens": response.token_count if hasattr(response, "token_count") else 0,
-                "completion_tokens": 0,
-                "total_tokens": response.token_count if hasattr(response, "token_count") else 0,
+                "prompt_tokens": response.meta.tokens.input_tokens
+                if hasattr(response, "meta") and hasattr(response.meta, "tokens")
+                else 0,
+                "completion_tokens": response.meta.tokens.output_tokens
+                if hasattr(response, "meta") and hasattr(response.meta, "tokens")
+                else 0,
+                "total_tokens": (
+                    response.meta.tokens.input_tokens + response.meta.tokens.output_tokens
+                )
+                if hasattr(response, "meta") and hasattr(response.meta, "tokens")
+                else 0,
             },
             finish_reason="stop",
             raw_response=response,
@@ -565,11 +596,17 @@ class CohereLLM(BaseLLM):
     ) -> AsyncIterator[str]:
         client = self._get_client()
 
-        chat_messages = [{"role": msg.role, "message": msg.content} for msg in messages]
+        chat_history = []
+        for msg in messages[:-1]:
+            chat_history.append(
+                {"role": msg.role if msg.role != "system" else "system", "message": msg.content}
+            )
+        last_message = messages[-1].content if messages else ""
 
         async for event in client.chat_stream(
             model=self.model,
-            message=chat_messages[0]["message"] if chat_messages else "",
+            message=last_message,
+            chat_history=chat_history,
             temperature=temperature or self.temperature,
             max_tokens=max_tokens or self.max_tokens,
         ):
@@ -789,13 +826,19 @@ class LLMFactory:
         base_url = kwargs.get("base_url", "")
 
         # 优先检查 base_url - 如果是本地 Ollama 服务，直接返回 OllamaLLM
-        if base_url and ("localhost" in base_url or "11434" in base_url or "ollama" in base_url.lower()):
+        if base_url and (
+            "localhost" in base_url or "11434" in base_url or "ollama" in base_url.lower()
+        ):
             base_url_arg = kwargs.pop("base_url", "http://localhost:11434/v1")
             api_key = kwargs.pop("api_key", "ollama")
             return OllamaLLM(model=model, base_url=base_url_arg, api_key=api_key, **kwargs)
 
         # OpenAI models (gpt-4, gpt-3.5, o1, o3)
-        if model_lower.startswith("gpt") or model_lower.startswith("o1") or model_lower.startswith("o3"):
+        if (
+            model_lower.startswith("gpt")
+            or model_lower.startswith("o1")
+            or model_lower.startswith("o3")
+        ):
             return OpenAILLM(model=model, **kwargs)
         # Anthropic models
         elif model_lower.startswith("claude"):
@@ -816,12 +859,20 @@ class LLMFactory:
         elif "azure" in kwargs.get("base_url", "").lower() or "-azure" in model_lower:
             return AzureOpenAILLM(model=model, **kwargs)
         # Local/Ollama models - check exact matches first (before Groq)
-        elif model_lower in LLMFactory.LOCAL_MODELS or any(model_lower.startswith(m) for m in LLMFactory.LOCAL_MODELS):
+        elif model_lower in LLMFactory.LOCAL_MODELS or any(
+            model_lower.startswith(m) for m in LLMFactory.LOCAL_MODELS
+        ):
             base_url_arg = kwargs.pop("base_url", "http://localhost:11434/v1")
             api_key = kwargs.pop("api_key", "ollama")
             return OllamaLLM(model=model, base_url=base_url_arg, api_key=api_key, **kwargs)
         # Groq models - mixtral, llama-3*, qwen (when using Groq API)
-        elif model_lower.startswith("mixtral") or model_lower.startswith("llama-3") or model_lower.startswith("qwen"):
+        elif (
+            model_lower.startswith("mixtral")
+            or model_lower.startswith("llama-3")
+            or model_lower.startswith("qwen")
+        ):
             return GroqLLM(model=model, **kwargs)
         else:
-            raise ValueError(f"Unknown model: {model}. Please specify the provider explicitly using LLMFactory.create(provider, model).")
+            raise ValueError(
+                f"Unknown model: {model}. Please specify the provider explicitly using LLMFactory.create(provider, model)."
+            )

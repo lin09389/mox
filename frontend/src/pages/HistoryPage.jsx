@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   AlertTriangle,
@@ -49,6 +50,19 @@ function formatDate(dateStr) {
   if (diff < 3_600_000) return `${Math.floor(diff / 60_000)} 分钟前`
   if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`
   return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+}
+
+const containerVariants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+}
+
+const itemVariants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }
 }
 
 export default function HistoryPage() {
@@ -149,14 +163,21 @@ export default function HistoryPage() {
   }
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="HISTORY CENTER"
-        title="历史记录中心"
-        description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端降级浏览。"
-      />
+    <motion.div
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="page-shell"
+    >
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="HISTORY CENTER"
+          title="历史记录中心"
+          description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端降级浏览。"
+        />
+      </motion.div>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <MetricCard icon={BarChart3} label="总记录数" value={metrics.total} hint="当前页签下的所有记录" tone="electric" />
         <MetricCard
           icon={activeTab === 'attack' ? AlertTriangle : Shield}
@@ -173,77 +194,90 @@ export default function HistoryPage() {
           tone="neon"
         />
         <MetricCard icon={Clock3} label="今日新增" value={metrics.todayCount} hint="便于快速查看今天的变化" tone="graphite" />
-      </div>
+      </motion.div>
 
-      <section className="card">
-        <PanelHeader
-          title="筛选与操作"
-          description="优先把常用动作聚合在一行，减少来回切页。"
-        />
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
-            {TABS.map((tab) => {
-              const Icon = tab.icon
-              const active = tab.id === activeTab
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={active ? 'btn-primary' : 'btn-secondary'}
+      <motion.section variants={itemVariants} className="card relative overflow-hidden group">
+        <div className="absolute inset-0 bg-gradient-to-br from-electric-50/20 to-transparent pointer-events-none group-hover:opacity-100 opacity-0 transition-opacity duration-700" />
+        <div className="relative z-10">
+          <PanelHeader
+            title="筛选与操作"
+            description="优先把常用动作聚合在一行，减少来回切页。"
+          />
+          <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+            <div className="flex flex-wrap gap-2.5 bg-white/60 p-1.5 rounded-xl border border-white/80 shadow-sm backdrop-blur-md">
+              {TABS.map((tab) => {
+                const Icon = tab.icon
+                const active = tab.id === activeTab
+                return (
+                  <button
+                    key={tab.id}
+                    type="button"
+                    onClick={() => setActiveTab(tab.id)}
+                    className={`flex items-center gap-2 px-5 py-2 text-sm font-bold transition-all duration-300 rounded-lg ${
+                      active
+                        ? 'bg-white text-electric-700 shadow-sm border border-electric-100'
+                        : 'text-graphite-600 hover:text-graphite-900 hover:bg-white/50 border border-transparent'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 ${active ? 'text-electric-500' : 'text-graphite-600'}`} />
+                    {tab.label}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div className="flex flex-col gap-3 md:flex-row md:items-center">
+              <label className="relative min-w-[220px]">
+                <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
+                <input
+                  type="text"
+                  value={searchTerm}
+                  onChange={(event) => setSearchTerm(event.target.value)}
+                  className="input-field pl-11 !bg-white/60 !border-white/80 hover:!bg-white focus:!bg-white shadow-sm"
+                  placeholder="搜索类型或模型"
+                />
+              </label>
+
+              <label className="relative min-w-[180px]">
+                <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-600" />
+                <select 
+                  value={sortBy} 
+                  onChange={(event) => setSortBy(event.target.value)} 
+                  className="input-field pl-11 !bg-white/60 !border-white/80 hover:!bg-white focus:!bg-white shadow-sm cursor-pointer appearance-none font-medium"
                 >
-                  <Icon className="h-4 w-4" />
-                  {tab.label}
+                  <option value="newest">最新优先</option>
+                  <option value="oldest">最早优先</option>
+                  <option value={activeTab === 'attack' ? 'score' : 'confidence'}>
+                    {activeTab === 'attack' ? '分数优先' : '置信度优先'}
+                  </option>
+                </select>
+                <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-4 text-graphite-500">
+                  <svg className="h-4 w-4 fill-current" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20">
+                    <path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z" />
+                  </svg>
+                </div>
+              </label>
+
+              <div className="flex gap-2">
+                <button type="button" onClick={loadHistory} className="btn-secondary !bg-white/60 hover:!bg-white !border-white/80">
+                  <RefreshCw className={`h-4 w-4 text-graphite-500 ${loading ? 'animate-spin text-electric-700' : ''}`} />
                 </button>
-              )
-            })}
-          </div>
-
-          <div className="flex flex-col gap-3 md:flex-row md:items-center">
-            <label className="relative min-w-[220px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
-              <input
-                type="text"
-                value={searchTerm}
-                onChange={(event) => setSearchTerm(event.target.value)}
-                className="input-field pl-11"
-                placeholder="搜索类型或模型"
-              />
-            </label>
-
-            <label className="relative min-w-[180px]">
-              <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="select-field pl-11">
-                <option value="newest">最新优先</option>
-                <option value="oldest">最早优先</option>
-                <option value={activeTab === 'attack' ? 'score' : 'confidence'}>
-                  {activeTab === 'attack' ? '分数优先' : '置信度优先'}
-                </option>
-              </select>
-            </label>
-
-            <div className="flex gap-2">
-              <button type="button" onClick={loadHistory} className="btn-secondary">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                刷新
-              </button>
-              <button type="button" onClick={exportHistory} className="btn-secondary">
-                <Download className="h-4 w-4" />
-                导出
-              </button>
-              <button type="button" onClick={clearHistory} className="btn-danger">
-                <Trash2 className="h-4 w-4" />
-                清空
-              </button>
+                <button type="button" onClick={exportHistory} className="btn-secondary !bg-white/60 hover:!bg-white !border-white/80">
+                  <Download className="h-4 w-4 text-graphite-500" />
+                </button>
+                <button type="button" onClick={clearHistory} className="btn-secondary !bg-lava-900/50 hover:!bg-lava-100/50 !border-lava-200/50 !text-lava-600">
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="table-shell">
-        <div className="border-b border-graphite-200/70 px-5 py-4">
-          <h2 className="text-lg font-semibold text-graphite-950">{activeTab === 'attack' ? '攻击记录列表' : '防御记录列表'}</h2>
-          <p className="mt-1 text-sm text-graphite-500">
+      <motion.section variants={itemVariants} className="card overflow-hidden !p-0">
+        <div className="border-b border-graphite-200/50 bg-white/40 backdrop-blur-sm px-6 py-5">
+          <h2 className="text-lg font-bold text-graphite-950">{activeTab === 'attack' ? '攻击记录列表' : '防御记录列表'}</h2>
+          <p className="mt-1 text-sm font-medium text-graphite-500">
             {loading ? '正在加载数据…' : `当前共 ${filtered.length} 条可见记录。`}
           </p>
         </div>
@@ -287,26 +321,26 @@ export default function HistoryPage() {
 
         <div className="hidden md:block">
           {loading ? (
-            <div className="flex min-h-[280px] items-center justify-center">
+            <div className="flex min-h-[280px] items-center justify-center bg-white/20 backdrop-blur-sm">
               <div className="spinner-lg" />
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex min-h-[280px] items-center justify-center px-6 text-center text-sm text-graphite-500">
+            <div className="flex min-h-[280px] items-center justify-center px-6 text-center text-sm font-medium text-graphite-500 bg-white/20 backdrop-blur-sm">
               {searchTerm ? '没有找到匹配的记录。' : '当前页签还没有数据。'}
             </div>
           ) : (
-            <div className="table-container">
-              <table className="table">
-                <thead>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm whitespace-nowrap">
+                <thead className="bg-graphite-50/50 text-graphite-500">
                   <tr>
-                    <th>时间</th>
-                    <th>{activeTab === 'attack' ? '攻击类型' : '防御类型'}</th>
-                    <th>目标模型</th>
-                    <th>结果</th>
-                    <th>{activeTab === 'attack' ? '成功分数' : '置信度'}</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">时间</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">{activeTab === 'attack' ? '攻击类型' : '防御类型'}</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">目标模型</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">结果</th>
+                    <th className="px-6 py-4 font-bold uppercase tracking-wider text-[11px]">{activeTab === 'attack' ? '成功分数' : '置信度'}</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-graphite-100 bg-white/30 backdrop-blur-sm">
                   {filtered.map((item) => {
                     const typeLabel =
                       activeTab === 'attack'
@@ -315,13 +349,13 @@ export default function HistoryPage() {
                     const score = activeTab === 'attack' ? item.success_score || 0 : item.confidence || 0
 
                     return (
-                      <tr key={item.id}>
-                        <td>{formatDate(item.created_at)}</td>
-                        <td>
-                          <span className="badge badge-neutral">{typeLabel}</span>
+                      <tr key={item.id} className="transition-colors hover:bg-white/60">
+                        <td className="px-6 py-4 font-medium text-graphite-600">{formatDate(item.created_at)}</td>
+                        <td className="px-6 py-4">
+                          <span className="badge border border-graphite-200 text-graphite-700 bg-white shadow-sm">{typeLabel}</span>
                         </td>
-                        <td>{item.model_name}</td>
-                        <td>
+                        <td className="px-6 py-4 font-medium text-graphite-900">{item.model_name}</td>
+                        <td className="px-6 py-4">
                           <span
                             className={`badge ${
                               activeTab === 'attack'
@@ -338,17 +372,17 @@ export default function HistoryPage() {
                                 : '内容安全'}
                           </span>
                         </td>
-                        <td>
+                        <td className="px-6 py-4">
                           <div className="flex items-center gap-3">
-                            <div className="h-2 w-24 overflow-hidden rounded-full bg-graphite-100">
+                            <div className="h-1.5 w-24 overflow-hidden rounded-full bg-graphite-200">
                               <div
-                                className={`h-full rounded-full ${
+                                className={`h-full rounded-full transition-all duration-500 ${
                                   score >= 0.6 ? 'bg-lava-500' : 'bg-neon-500'
                                 }`}
                                 style={{ width: `${Math.round(score * 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs font-medium text-graphite-500">
+                            <span className="text-xs font-bold text-graphite-600">
                               {Math.round(score * 100)}%
                             </span>
                           </div>
@@ -361,7 +395,7 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   )
 }
