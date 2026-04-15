@@ -8,13 +8,14 @@
 """
 
 import re
-from typing import Optional, List, Dict, Any, Tuple
-from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Any
+from dataclasses import dataclass
 from enum import Enum
 from collections import Counter
 
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
+from mox.core.patterns import MaliciousPatterns, HarmfulKeywords, SanitizeReplacements
 from mox.core.logging import get_logger
 
 logger = get_logger("defense.semantic_firewall")
@@ -22,6 +23,7 @@ logger = get_logger("defense.semantic_firewall")
 
 class IntentCategory(str, Enum):
     """意图类别"""
+
     INFORMATION_SEEKING = "information_seeking"
     CREATIVE_WRITING = "creative_writing"
     CODE_GENERATION = "code_generation"
@@ -43,6 +45,7 @@ class IntentCategory(str, Enum):
 
 class RiskLevel(str, Enum):
     """风险等级"""
+
     SAFE = "safe"
     LOW = "low"
     MEDIUM = "medium"
@@ -53,6 +56,7 @@ class RiskLevel(str, Enum):
 @dataclass
 class IntentAnalysis:
     """意图分析结果"""
+
     primary_intent: IntentCategory
     secondary_intents: List[IntentCategory]
     confidence: float
@@ -63,6 +67,7 @@ class IntentAnalysis:
 @dataclass
 class RiskAssessment:
     """风险评估结果"""
+
     level: RiskLevel
     score: float  # 0.0 - 1.0
     factors: Dict[str, float]
@@ -73,6 +78,7 @@ class RiskAssessment:
 @dataclass
 class SemanticAnalysisResult:
     """语义分析完整结果"""
+
     intent: IntentAnalysis
     risk: RiskAssessment
     context_factors: Dict[str, Any]
@@ -87,41 +93,116 @@ class IntentClassifier:
     # 意图关键词映射
     INTENT_KEYWORDS = {
         IntentCategory.INFORMATION_SEEKING: [
-            "什么是", "如何", "为什么", "解释", "说明", "介绍",
-            "what is", "how to", "why", "explain", "describe",
+            "什么是",
+            "如何",
+            "为什么",
+            "解释",
+            "说明",
+            "介绍",
+            "what is",
+            "how to",
+            "why",
+            "explain",
+            "describe",
         ],
         IntentCategory.CREATIVE_WRITING: [
-            "写", "创作", "生成", "故事", "诗歌", "文章",
-            "write", "create", "generate", "story", "poem", "article",
+            "写",
+            "创作",
+            "生成",
+            "故事",
+            "诗歌",
+            "文章",
+            "write",
+            "create",
+            "generate",
+            "story",
+            "poem",
+            "article",
         ],
         IntentCategory.CODE_GENERATION: [
-            "代码", "编程", "函数", "实现", "程序",
-            "code", "program", "function", "implement", "script",
+            "代码",
+            "编程",
+            "函数",
+            "实现",
+            "程序",
+            "code",
+            "program",
+            "function",
+            "implement",
+            "script",
         ],
         IntentCategory.PROBLEM_SOLVING: [
-            "解决", "修复", "调试", "优化", "改进",
-            "solve", "fix", "debug", "optimize", "improve",
+            "解决",
+            "修复",
+            "调试",
+            "优化",
+            "改进",
+            "solve",
+            "fix",
+            "debug",
+            "optimize",
+            "improve",
         ],
         IntentCategory.ROLE_PLAY: [
-            "扮演", "假装", "模拟", "假设", "想象",
-            "pretend", "act as", "simulate", "imagine", "roleplay",
+            "扮演",
+            "假装",
+            "模拟",
+            "假设",
+            "想象",
+            "pretend",
+            "act as",
+            "simulate",
+            "imagine",
+            "roleplay",
         ],
         IntentCategory.HARMFUL_INSTRUCTION: [
-            "攻击", "入侵", "破解", "绕过", "漏洞",
-            "attack", "hack", "crack", "bypass", "exploit",
-            "炸弹", "毒药", "武器", "非法",
+            "攻击",
+            "入侵",
+            "破解",
+            "绕过",
+            "漏洞",
+            "attack",
+            "hack",
+            "crack",
+            "bypass",
+            "exploit",
+            "炸弹",
+            "毒药",
+            "武器",
+            "非法",
         ],
         IntentCategory.SOCIAL_ENGINEERING: [
-            "我是", "授权", "管理员", "紧急", "重要",
-            "I am", "authorized", "admin", "urgent", "important",
+            "我是",
+            "授权",
+            "管理员",
+            "紧急",
+            "重要",
+            "I am",
+            "authorized",
+            "admin",
+            "urgent",
+            "important",
         ],
         IntentCategory.PROMPT_INJECTION: [
-            "忽略", "忘记", "覆盖", "系统", "指令",
-            "ignore", "forget", "override", "system", "instruction",
+            "忽略",
+            "忘记",
+            "覆盖",
+            "系统",
+            "指令",
+            "ignore",
+            "forget",
+            "override",
+            "system",
+            "instruction",
         ],
         IntentCategory.JAILBREAK_ATTEMPT: [
-            "DAN", "越狱", "无限制", "开发者模式",
-            "jailbreak", "unrestricted", "developer mode",
+            "DAN",
+            "越狱",
+            "无限制",
+            "开发者模式",
+            "jailbreak",
+            "unrestricted",
+            "developer mode",
         ],
     }
 
@@ -136,17 +217,10 @@ class IntentClassifier:
         intent_scores = self._score_intents(text_lower)
 
         # 获取主要意图
-        sorted_intents = sorted(
-            intent_scores.items(),
-            key=lambda x: x[1],
-            reverse=True
-        )
+        sorted_intents = sorted(intent_scores.items(), key=lambda x: x[1], reverse=True)
 
         primary_intent = sorted_intents[0][0] if sorted_intents else IntentCategory.UNKNOWN
-        secondary_intents = [
-            intent for intent, score in sorted_intents[1:4]
-            if score > 0.1
-        ]
+        secondary_intents = [intent for intent, score in sorted_intents[1:4] if score > 0.1]
 
         # 计算置信度
         confidence = sorted_intents[0][1] if sorted_intents else 0.0
@@ -226,6 +300,7 @@ class IntentClassifier:
             response = await self.llm.generate(messages)
             # 简单解析
             import json
+
             result = json.loads(response.content)
             result["primary"] = IntentCategory(result.get("primary", "unknown"))
             return result
@@ -245,33 +320,57 @@ class RiskScorer:
         "unusual_patterns": 0.1,
     }
 
-    # 有害关键词
-    HARMFUL_KEYWORDS = {
-        "bomb", "explosive", "weapon", "poison", "drug",
-        "hack", "attack", "exploit", "malware", "virus",
-        "illegal", "fraud", "scam", "phishing",
-        "自杀", "自残", "炸弹", "毒药", "武器", "黑客", "攻击",
-    }
+    # 有害关键词 - delegate to unified HarmfulKeywords
+    HARMFUL_KEYWORDS = HarmfulKeywords.ALL
 
-    # 注入模式
+    # 注入模式 - delegate to unified MaliciousPatterns
     INJECTION_PATTERNS = [
-        r"ignore\s+(all\s+)?(previous\s+)?instructions?",
-        r"forget\s+(all\s+)?(previous\s+)?",
-        r"you\s+are\s+now",
-        r"act\s+as\s+",
-        r"pretend\s+to\s+be",
-        r"system\s*:\s*",
-        r"\[SYSTEM\]",
-        r"developer\s+mode",
-        r"DAN\s+mode",
+        p.pattern
+        for p in MaliciousPatterns.PATTERNS
+        if p.category
+        in ("instruction_override", "jailbreak", "system_override", "context_injection")
     ]
 
     # 操纵策略
     MANIPULATION_TACTICS = [
-        "urgent", "emergency", "critical", "important",
-        "authorized", "permission", "admin", "developer",
-        "research", "educational", "academic",
-        "紧急", "重要", "授权", "管理员", "研究", "教育",
+        "urgent",
+        "emergency",
+        "critical",
+        "important",
+        "authorized",
+        "permission",
+        "admin",
+        "developer",
+        "research",
+        "educational",
+        "academic",
+        "紧急",
+        "重要",
+        "授权",
+        "管理员",
+        "研究",
+        "教育",
+    ]
+
+    # 操纵策略
+    MANIPULATION_TACTICS = [
+        "urgent",
+        "emergency",
+        "critical",
+        "important",
+        "authorized",
+        "permission",
+        "admin",
+        "developer",
+        "research",
+        "educational",
+        "academic",
+        "紧急",
+        "重要",
+        "授权",
+        "管理员",
+        "研究",
+        "教育",
     ]
 
     def __init__(self, llm: Optional[BaseLLM] = None):
@@ -297,10 +396,7 @@ class RiskScorer:
             factors["harmful_keywords"] = min(factors["harmful_keywords"] + 0.3, 1.0)
 
         # 计算总分
-        total_score = sum(
-            factors[factor] * weight
-            for factor, weight in self.RISK_FACTORS.items()
-        )
+        total_score = sum(factors[factor] * weight for factor, weight in self.RISK_FACTORS.items())
 
         # 确定风险等级
         level = self._determine_level(total_score)
@@ -444,12 +540,14 @@ class SemanticFirewall(BaseDefense):
         should_block = self._should_block(risk, intent)
 
         # 记录历史
-        self._request_history.append({
-            "text": input_text[:100],  # 只保存前100字符
-            "intent": intent.primary_intent.value,
-            "risk_level": risk.level.value,
-            "timestamp": self._get_timestamp(),
-        })
+        self._request_history.append(
+            {
+                "text": input_text[:100],  # 只保存前100字符
+                "intent": intent.primary_intent.value,
+                "risk_level": risk.level.value,
+                "timestamp": self._get_timestamp(),
+            }
+        )
 
         # 限制历史记录长度
         if len(self._request_history) > 100:
@@ -475,16 +573,29 @@ class SemanticFirewall(BaseDefense):
                 },
                 "context": context,
                 "behavior_patterns": patterns,
-            }
+            },
         )
 
     async def sanitize(self, input_text: str) -> str:
         """清理输入"""
-        # 移除明显的注入模式
         sanitized = input_text
 
-        for pattern in RiskScorer.INJECTION_PATTERNS:
-            sanitized = re.sub(pattern, "[REMOVED]", sanitized, flags=re.IGNORECASE)
+        for p in MaliciousPatterns.PATTERNS:
+            if p.category in (
+                "instruction_override",
+                "jailbreak",
+                "system_override",
+                "context_injection",
+            ):
+                try:
+                    sanitized = re.sub(
+                        p.pattern,
+                        SanitizeReplacements.CONTROL_CHAR_REPLACEMENT,
+                        sanitized,
+                        flags=re.IGNORECASE,
+                    )
+                except re.error:
+                    pass
 
         return sanitized
 
@@ -495,8 +606,7 @@ class SemanticFirewall(BaseDefense):
             "word_count": len(text.split()),
             "has_questions": "?" in text,
             "has_commands": any(
-                cmd in text.lower()
-                for cmd in ["do ", "make ", "create ", "write ", "generate "]
+                cmd in text.lower() for cmd in ["do ", "make ", "create ", "write ", "generate "]
             ),
             "language": self._detect_language(text),
         }
@@ -516,9 +626,7 @@ class SemanticFirewall(BaseDefense):
 
         # 检测递进式攻击
         if len(self._request_history) > 3:
-            risk_trend = [
-                r["risk_level"] for r in self._request_history[-3:]
-            ]
+            risk_trend = [r["risk_level"] for r in self._request_history[-3:]]
             if risk_trend == ["low", "medium", "high"]:
                 patterns.append("escalating_attack")
 
@@ -528,8 +636,11 @@ class SemanticFirewall(BaseDefense):
         """判断是否应该阻止"""
         # 基于风险等级
         risk_levels = [
-            RiskLevel.SAFE, RiskLevel.LOW, RiskLevel.MEDIUM,
-            RiskLevel.HIGH, RiskLevel.CRITICAL
+            RiskLevel.SAFE,
+            RiskLevel.LOW,
+            RiskLevel.MEDIUM,
+            RiskLevel.HIGH,
+            RiskLevel.CRITICAL,
         ]
         if risk_levels.index(risk.level) >= risk_levels.index(self.block_threshold):
             return True
@@ -545,11 +656,12 @@ class SemanticFirewall(BaseDefense):
     def _get_timestamp(self) -> str:
         """获取时间戳"""
         from datetime import datetime, timezone
+
         return datetime.now(timezone.utc).isoformat()
 
     def _detect_language(self, text: str) -> str:
         """检测语言"""
-        chinese_chars = sum(1 for c in text if '\u4e00' <= c <= '\u9fff')
+        chinese_chars = sum(1 for c in text if "\u4e00" <= c <= "\u9fff")
         if chinese_chars > len(text) * 0.3:
             return "zh"
         return "en"
@@ -592,7 +704,7 @@ class ContextualAnalyzer:
 
         # 限制历史长度
         if len(self._session_data[session_id]) > self.max_history:
-            self._session_data[session_id] = self._session_data[session_id][-self.max_history:]
+            self._session_data[session_id] = self._session_data[session_id][-self.max_history :]
 
     def analyze_session(self, session_id: str) -> Dict[str, Any]:
         """分析会话"""

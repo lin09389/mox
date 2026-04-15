@@ -11,6 +11,7 @@ from enum import Enum
 
 from mox.core import BaseLLM, Message, DefenseResult, DefenseType
 from mox.defense.base import BaseDefense, DefenseConfig
+from mox.core.patterns import SanitizeReplacements
 
 
 class InjectionType(Enum):
@@ -144,6 +145,7 @@ class PromptInjectionDetector(BaseDefense):
                 except re.error as e:
                     # Log warning but don't silently skip - fail visible
                     import logging
+
                     logging.warning(f"Failed to compile regex pattern '{p}': {e}")
             if compiled:
                 self._compiled_patterns[inj_type] = compiled
@@ -260,7 +262,7 @@ class PromptInjectionDetector(BaseDefense):
 
         for patterns in self._compiled_patterns.values():
             for pattern in patterns:
-                sanitized = pattern.sub("[FILTERED]", sanitized)
+                sanitized = pattern.sub(SanitizeReplacements.PATTERN_REPLACEMENT, sanitized)
 
         return sanitized
 

@@ -56,6 +56,32 @@ from .advanced_cache import (
     cache_key,
     cached,
 )
+from .patterns import (
+    RefusalPatterns,
+    MaliciousPatterns,
+    MaliciousPatternItem,
+    HarmfulKeywords,
+    HelpfulIndicators,
+    SanitizeReplacements,
+    PatternMatch,
+)
+from .evaluation import (
+    EvaluationResult,
+    AttackEvaluator,
+    RefusalPatternEvaluator,
+    KeywordOverlapEvaluator,
+    CompositeEvaluator,
+    SemanticSimilarityEvaluator,
+    LLMBasedEvaluator,
+    get_default_evaluator,
+    create_evaluator,
+)
+from .similarity import (
+    word_overlap_score,
+    cosine_similarity,
+    semantic_similarity,
+    SimilarityCalculator,
+)
 
 __all__ = [
     "settings",
@@ -98,7 +124,7 @@ __all__ = [
     "DefenseError",
     "GatewayError",
     "RateLimitError",
-    # 缓存
+    # Cache
     "CacheEntry",
     "CacheStats",
     "CacheBackend",
@@ -108,4 +134,27 @@ __all__ = [
     "CacheManager",
     "cache_key",
     "cached",
+    # Patterns
+    "RefusalPatterns",
+    "MaliciousPatterns",
+    "MaliciousPatternItem",
+    "HarmfulKeywords",
+    "HelpfulIndicators",
+    "SanitizeReplacements",
+    "PatternMatch",
+    # Evaluation
+    "EvaluationResult",
+    "AttackEvaluator",
+    "RefusalPatternEvaluator",
+    "KeywordOverlapEvaluator",
+    "CompositeEvaluator",
+    "SemanticSimilarityEvaluator",
+    "LLMBasedEvaluator",
+    "get_default_evaluator",
+    "create_evaluator",
+    # Similarity
+    "word_overlap_score",
+    "cosine_similarity",
+    "semantic_similarity",
+    "SimilarityCalculator",
 ]

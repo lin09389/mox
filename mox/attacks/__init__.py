@@ -25,7 +25,7 @@ from .config import (
     GOATConfig,
     CodeSecurityConfig,
     CONFIG_REGISTRY,
-    create_config,
+    create_config,  # pyright: ignore[reportUnknownVariableType]
     get_default_config,
 )
 from .prompt_injection import (

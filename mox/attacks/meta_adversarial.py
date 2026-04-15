@@ -356,8 +356,10 @@ class MetaAdversarialAttack(BaseAttack):
 
         overlap = len(target_words & response_words) / len(target_words)
 
-        refusal_patterns = [r"i cannot", r"i can't", r"not able", r"sorry"]
-        refusal = any(p in response_lower for p in refusal_patterns)
+        from mox.core.patterns import RefusalPatterns
+
+        refusal_result = RefusalPatterns.check_refusal_string(response)
+        refusal = refusal_result.matched
 
         return overlap * 0.5 if refusal else overlap
 

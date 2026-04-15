@@ -5,6 +5,7 @@ from typing import Optional, List
 from dataclasses import dataclass
 
 from mox.core import DefenseType
+from mox.core.patterns import MaliciousPatterns, SanitizeReplacements
 from .base import BaseDefense, DefenseConfig, DefenseResult
 
 
@@ -66,26 +67,14 @@ class SystemPromptHardening(BaseDefense):
         self._hardened_prompt = None
 
     async def detect(self, input_text: str) -> DefenseResult:
-        manipulation_indicators = [
-            "ignore previous",
-            "forget instructions",
-            "new instructions",
-            "override",
-            "you are now",
-            "act as",
-            "pretend",
-            "roleplay",
-        ]
+        malicious_result = MaliciousPatterns.check(input_text, min_severity=0.4)
 
         detected = []
-        input_lower = input_text.lower()
+        if malicious_result.matched:
+            detected = [f"malicious_pattern:{p}" for p in malicious_result.patterns]
 
-        for indicator in manipulation_indicators:
-            if indicator in input_lower:
-                detected.append(f"manipulation_attempt:{indicator}")
-
-        is_malicious = len(detected) > 0
-        confidence = min(len(detected) * 0.3, 1.0)
+        is_malicious = malicious_result.matched
+        confidence = min(malicious_result.score, 1.0)
 
         return await self._create_result(
             is_malicious=is_malicious,
@@ -95,20 +84,18 @@ class SystemPromptHardening(BaseDefense):
         )
 
     async def sanitize(self, input_text: str) -> str:
-        manipulation_patterns = [
-            r"(?i)ignore\s+(all\s+)?previous",
-            r"(?i)forget\s+(all\s+)?instructions",
-            r"(?i)new\s+instructions",
-            r"(?i)override",
-            r"(?i)you\s+are\s+now",
-            r"(?i)act\s+as",
-            r"(?i)pretend",
-            r"(?i)roleplay\s+as",
-        ]
-
         sanitized = input_text
-        for pattern in manipulation_patterns:
-            sanitized = re.sub(pattern, "[FILTERED]", sanitized, flags=re.IGNORECASE)
+
+        for p in MaliciousPatterns.PATTERNS:
+            try:
+                sanitized = re.sub(
+                    p.pattern,
+                    SanitizeReplacements.PATTERN_REPLACEMENT,
+                    sanitized,
+                    flags=re.IGNORECASE,
+                )
+            except re.error:
+                pass
 
         return sanitized
 

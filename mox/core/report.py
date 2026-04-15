@@ -384,3 +384,108 @@ def get_report_generator() -> ReportGenerator:
     if _default_report_generator is None:
         _default_report_generator = ReportGenerator()
     return _default_report_generator
+
+
+def compute_summary(results: List[Any]) -> Dict[str, Any]:
+    """Compute summary statistics from a list of result objects.
+
+    Unified version of the summary logic that was duplicated in
+    redteam.py, framework.py, visualization.py, and owasp_tests.py.
+
+    Handles varying result types: RedTeamResult, AttackExecutionResult,
+    DefenseResult, EvaluationResult, etc.
+    """
+    if not results:
+        return {
+            "total": 0,
+            "successful": 0,
+            "failed": 0,
+            "success_rate": 0.0,
+            "avg_score": 0.0,
+            "by_type": {},
+            "by_difficulty": {},
+        }
+
+    total = len(results)
+    successful = 0
+    total_score = 0.0
+    by_type: Dict[str, Dict[str, Any]] = {}
+    by_difficulty: Dict[str, Dict[str, Any]] = {}
+
+    for r in results:
+        is_success = (
+            _extract_result_field(r, "success", bool)
+            or _extract_result_field(r, "is_successful", bool)
+            or False
+        )
+        score = (
+            _extract_result_field(r, "score", float)
+            or _extract_result_field(r, "success_score", float)
+            or 0.0
+        )
+        r_type = (
+            _extract_result_field(r, "attack_type", str)
+            or _extract_result_field(r, "defense_type", str)
+            or _extract_result_field(r, "technique", str)
+            or _extract_result_field(r, "evaluation_type", str)
+            or "unknown"
+        )
+        difficulty = _extract_result_field(r, "difficulty", str) or ""
+
+        if is_success:
+            successful += 1
+        total_score += score
+
+        if r_type not in by_type:
+            by_type[r_type] = {"total": 0, "successful": 0, "total_score": 0.0}
+        by_type[r_type]["total"] += 1
+        by_type[r_type]["total_score"] += score
+        if is_success:
+            by_type[r_type]["successful"] += 1
+
+        if difficulty:
+            if difficulty not in by_difficulty:
+                by_difficulty[difficulty] = {"total": 0, "successful": 0, "total_score": 0.0}
+            by_difficulty[difficulty]["total"] += 1
+            by_difficulty[difficulty]["total_score"] += score
+            if is_success:
+                by_difficulty[difficulty]["successful"] += 1
+
+    for key in by_type:
+        d = by_type[key]
+        d["success_rate"] = d["successful"] / d["total"] if d["total"] > 0 else 0.0
+        d["avg_score"] = d["total_score"] / d["total"] if d["total"] > 0 else 0.0
+
+    for key in by_difficulty:
+        d = by_difficulty[key]
+        d["success_rate"] = d["successful"] / d["total"] if d["total"] > 0 else 0.0
+        d["avg_score"] = d["total_score"] / d["total"] if d["total"] > 0 else 0.0
+
+    return {
+        "total": total,
+        "successful": successful,
+        "failed": total - successful,
+        "success_rate": successful / total if total > 0 else 0.0,
+        "avg_score": total_score / total if total > 0 else 0.0,
+        "by_type": by_type,
+        "by_difficulty": by_difficulty,
+    }
+
+
+def _extract_result_field(result: Any, field: str, cast_type: type) -> Any:
+    """Extract a field from a result object, checking nested scenarios."""
+    val = getattr(result, field, None)
+    if val is not None:
+        try:
+            return cast_type(val)
+        except (ValueError, TypeError):
+            return None
+    if hasattr(result, "scenario"):
+        scenario = result.scenario
+        if hasattr(scenario, field):
+            val = getattr(scenario, field)
+            try:
+                return cast_type(val)
+            except (ValueError, TypeError):
+                return None
+    return None

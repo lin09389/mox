@@ -5,6 +5,7 @@ from typing import Optional, List, Set
 from dataclasses import dataclass
 
 from mox.core import DefenseType
+from mox.core.patterns import MaliciousPatterns, HarmfulKeywords, SanitizeReplacements
 from .base import BaseDefense, DefenseConfig, DefenseResult
 
 
@@ -56,9 +57,20 @@ DANGEROUS_OUTPUT_PATTERNS = [
 ]
 
 HARMFUL_CONTENT_KEYWORDS = {
-    "violence", "harm", "kill", "murder", "attack", "weapon",
-    "drug", "illegal", "fraud", "scam", "exploit",
-    "terrorism", "extremism", "radicalization",
+    "violence",
+    "harm",
+    "kill",
+    "murder",
+    "attack",
+    "weapon",
+    "drug",
+    "illegal",
+    "fraud",
+    "scam",
+    "exploit",
+    "terrorism",
+    "extremism",
+    "radicalization",
 }
 
 
@@ -75,6 +87,8 @@ class OutputFilter(BaseDefense):
     ):
         super().__init__(config)
         self.patterns = patterns or DANGEROUS_OUTPUT_PATTERNS
+        self._unified_patterns = MaliciousPatterns
+        self._harmful_keywords = HarmfulKeywords
         self.keywords = HARMFUL_CONTENT_KEYWORDS | (custom_keywords or set())
 
     async def detect(self, output_text: str) -> DefenseResult:
@@ -86,18 +100,44 @@ class OutputFilter(BaseDefense):
             if re.search(pattern.pattern, output_text):
                 detected_patterns.append(pattern.name)
                 total_severity += pattern.severity
-                metadata["pattern_matches"].append({
-                    "name": pattern.name,
-                    "severity": pattern.severity,
-                    "description": pattern.description,
-                })
+                metadata["pattern_matches"].append(
+                    {
+                        "name": pattern.name,
+                        "severity": pattern.severity,
+                        "description": pattern.description,
+                    }
+                )
+
+        unified_result = self._unified_patterns.check(output_text)
+        if unified_result.matched:
+            for pname in unified_result.patterns:
+                if pname not in detected_patterns:
+                    detected_patterns.append(pname)
+                    total_severity += unified_result.details.get(pname, 0.5)
+                    metadata["pattern_matches"].append(
+                        {
+                            "name": pname,
+                            "severity": unified_result.details.get(pname, 0.5),
+                            "description": f"Unified pattern: {pname}",
+                        }
+                    )
+
+        keyword_result = self._harmful_keywords.check(output_text)
+        if keyword_result.matched:
+            if "harmful_keywords" not in detected_patterns:
+                detected_patterns.append("harmful_keywords")
+            for kw in keyword_result.patterns:
+                total_severity += 0.2
+            metadata["keyword_matches"] = list(
+                set(metadata.get("keyword_matches", []) + keyword_result.patterns)
+            )
 
         output_words = set(output_text.lower().split())
-        keyword_matches = output_words & self.keywords
-        if keyword_matches:
+        local_keyword_matches = output_words & self.keywords
+        if local_keyword_matches and "harmful_keywords" not in detected_patterns:
             detected_patterns.append("harmful_keywords")
-            total_severity += 0.2 * len(keyword_matches)
-            metadata["keyword_matches"] = list(keyword_matches)
+            total_severity += 0.2 * len(local_keyword_matches)
+            metadata["keyword_matches"] = list(local_keyword_matches)
 
         confidence = min(total_severity, 1.0)
         is_malicious = confidence >= self.config.confidence_threshold
@@ -120,14 +160,16 @@ class OutputFilter(BaseDefense):
         for pattern in self.patterns:
             sanitized = re.sub(
                 pattern.pattern,
-                "[REDACTED]",
+                SanitizeReplacements.KEYWORD_REPLACEMENT,
                 sanitized,
                 flags=re.IGNORECASE,
             )
 
         for keyword in self.keywords:
             pattern = r"\b" + re.escape(keyword) + r"\b"
-            sanitized = re.sub(pattern, "[FILTERED]", sanitized, flags=re.IGNORECASE)
+            sanitized = re.sub(
+                pattern, SanitizeReplacements.PATTERN_REPLACEMENT, sanitized, flags=re.IGNORECASE
+            )
 
         return sanitized
 
@@ -143,12 +185,12 @@ class ContentModerator(BaseDefense):
 
     async def detect(self, output_text: str) -> DefenseResult:
         base_result = await self.output_filter.detect(output_text)
-        
+
         additional_checks = await self._run_additional_checks(output_text)
-        
+
         combined_patterns = base_result.detected_patterns + additional_checks["patterns"]
         combined_confidence = min(base_result.confidence + additional_checks["severity"], 1.0)
-        
+
         metadata = base_result.metadata.copy()
         metadata.update(additional_checks)
 
@@ -174,7 +216,9 @@ class ContentModerator(BaseDefense):
             severity += 0.1
             metadata["length"] = length
 
-        special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / max(len(text), 1)
+        special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / max(
+            len(text), 1
+        )
         if special_char_ratio > 0.3:
             patterns.append("high_special_char_ratio")
             severity += 0.2

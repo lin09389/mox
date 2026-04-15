@@ -12,6 +12,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from mox.core import BaseLLM, Message
+from mox.core.patterns import MaliciousPatterns, SanitizeReplacements
 from mox.core.logging import get_logger
 
 logger = get_logger("gateway")
@@ -71,23 +72,12 @@ class GatewayConfig:
         r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]",
     ]
 
-    injection_patterns = [
-        (
-            r"(?i)(ignore|disregard|forget)\s+(all\s+)?(previous|above\s+)?(instructions?|rules?|directives?)",
-            0.9,
-        ),
-        (r"(?i)(DAN|do\s+anything\s+now|developer\s+(mode|assistant)|jailbreak)", 0.95),
-        (r"(?i)(you\s+are\s+now|act\s+as|pretend\s+(to\s+be|you\s+are))", 0.8),
-        (r"(?i)(\[SYSTEM\]|\[ADMIN\]|system\s+override|override\s+(the\s+)?restrictions?)", 0.9),
-        (r"(?i)(base64\s*[-+:]\s*[A-Za-z0-9+/=]|decode\s+this|execute\s+encoded)", 0.7),
-        (r"(?i)(---\s*(BEGIN|END)\s+(NEW\s+)?(CONTEXT|PROMPT|SYSTEM)---)", 0.85),
-        (r"(?i)(\{__|__\}|\{\{|\}\}|<script|</script|eval\(|exec\()", 0.9),
-        (r"(?i)(concatenate|join\s+strings?|string\s+manipulation).*(system|admin|root)", 0.8),
-        (r"(?i)(translate\s+.+\s+then\s+(execute|run|do)|first\s+translate)", 0.7),
-        (r"(?i)(hypothetically|imagine|in\s+a\s+fictional|thought\s+experiment)", 0.4),
-        (r"(?i)(for\s+(educational|academic|research)\s+purposes?|research\s+only)", 0.4),
-        (r"(?i)(show\s+(me\s+)?your\s+(prompt|instructions?|system\s+message|config))", 0.6),
-    ]
+    @property
+    def injection_patterns(self):
+        patterns = []
+        for p in MaliciousPatterns.PATTERNS:
+            patterns.append((p.pattern, p.severity))
+        return patterns
 
 
 class InputValidator:
@@ -157,7 +147,7 @@ class RegexFilter:
     def sanitize(self, text: str) -> str:
         sanitized = text
         for pattern, _ in self._compiled_patterns:
-            sanitized = pattern.sub("[FILTERED]", sanitized)
+            sanitized = pattern.sub(SanitizeReplacements.PATTERN_REPLACEMENT, sanitized)
         return sanitized
 
 

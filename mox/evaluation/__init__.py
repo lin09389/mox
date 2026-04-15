@@ -4,6 +4,15 @@
 提供攻击效果评估、困惑度计算、LLM Judge、基准测试等功能
 """
 
+# Unified core evaluation (single source of truth)
+from mox.core.evaluation import (
+    EvaluationResult as CoreEvaluationResult,
+    AttackEvaluator as CoreAttackEvaluator,
+    RefusalPatternEvaluator as CoreRefusalPatternEvaluator,
+    KeywordOverlapEvaluator as CoreKeywordOverlapEvaluator,
+    CompositeEvaluator as CoreCompositeEvaluator,
+)
+
 # 从原有评估器导入
 from mox.evaluation.evaluator import (
     EvaluationMetrics,

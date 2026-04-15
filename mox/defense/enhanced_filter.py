@@ -17,6 +17,7 @@ from datetime import datetime
 
 from mox.core import DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
+from mox.core.patterns import SanitizeReplacements
 from mox.core.logging import get_logger
 
 logger = get_logger("enhanced_filter")
@@ -680,13 +681,16 @@ class EnhancedInputFilter(BaseDefense):
         """净化输入"""
         sanitized = input_text
 
-        # 移除控制字符
-        sanitized = re.sub(r"[\u200b\u200c\u200d\u202a-\u202e\u202f\ufeff]", "", sanitized)
+        sanitized = re.sub(SanitizeReplacements.CONTROL_CHAR_REGEX, "", sanitized)
 
-        # 替换匹配的模式
         for pattern_def in self.patterns:
             for pattern in pattern_def.patterns:
-                sanitized = re.sub(pattern, "[FILTERED]", sanitized, flags=re.IGNORECASE)
+                sanitized = re.sub(
+                    pattern,
+                    SanitizeReplacements.PATTERN_REPLACEMENT,
+                    sanitized,
+                    flags=re.IGNORECASE,
+                )
 
         return sanitized
 

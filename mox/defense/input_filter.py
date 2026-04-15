@@ -8,6 +8,7 @@ from typing import Optional, List, Set, TYPE_CHECKING
 from dataclasses import dataclass
 
 from mox.core import DefenseType
+from mox.core.patterns import MaliciousPatterns as UnifiedMaliciousPatterns, SanitizeReplacements
 from .base import BaseDefense, DefenseConfig, DefenseResult
 
 try:
@@ -166,6 +167,7 @@ class InputFilter(BaseDefense):
         super().__init__(config)
         self.patterns = patterns or MALICIOUS_PATTERNS
         self.keywords = DANGEROUS_KEYWORDS | (custom_keywords or set())
+        self._unified_patterns = UnifiedMaliciousPatterns
 
     async def detect(self, input_text: str) -> DefenseResult:
         detected_patterns = []
@@ -212,22 +214,26 @@ class InputFilter(BaseDefense):
         for pattern in self.patterns:
             sanitized = re.sub(
                 pattern.pattern,
-                "[FILTERED]",
+                SanitizeReplacements.PATTERN_REPLACEMENT,
                 sanitized,
                 flags=re.IGNORECASE,
             )
 
         for keyword in self.keywords:
             pattern = r"\b" + re.escape(keyword) + r"\b"
-            sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+            sanitized = re.sub(
+                pattern, SanitizeReplacements.KEYWORD_REPLACEMENT, sanitized, flags=re.IGNORECASE
+            )
 
         return sanitized
 
 
 class PerplexityFilter(BaseDefense):
-    """基于困惑度的过滤器
+    """基于词频的异常检测过滤器
 
-    检测异常低困惑度的输入（可能是对抗样本）
+    注意: 此过滤器使用词频统计方法检测输入异常，而非真正的语言模型困惑度。
+    真正的困惑度计算需要预训练语言模型，请使用 RealPerplexityFilter。
+    本类保留 PerplexityFilter 名称以向后兼容，实际算法为词频惊喜度。
     """
 
     defense_type = DefenseType.PERPLEXITY_FILTER
@@ -318,7 +324,9 @@ class KeywordDetector(BaseDefense):
         sanitized = input_text
         for keyword in self.keywords:
             pattern = r"\b" + re.escape(keyword) + r"\b"
-            sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+            sanitized = re.sub(
+                pattern, SanitizeReplacements.KEYWORD_REPLACEMENT, sanitized, flags=re.IGNORECASE
+            )
         return sanitized
 
 

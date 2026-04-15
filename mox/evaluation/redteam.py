@@ -113,6 +113,11 @@ class RedTeamResult:
     score: float = 0.0
     details: Dict[str, Any] = field(default_factory=dict)
 
+    @property
+    def response(self) -> str:
+        """向后兼容别名"""
+        return self.model_response
+
 
 class RedTeamOrchestrator:
     """红队编排器
@@ -430,18 +435,21 @@ class RedTeamOrchestrator:
             outcome = await attack.generate_attack(payload)
 
             # 评估结果
+            response_text = outcome.response or outcome.adversarial_prompt or ""
             score = await attack.evaluate_success(
-                outcome.response,
+                response_text,
                 scenario.target_behavior or scenario.target_objective,
             )
 
             return RedTeamResult(
                 scenario=scenario,
-                success=outcome.result.value == "success",
+                success=outcome.result == AttackResult.SUCCESS,
                 attempts=outcome.iterations,
-                final_prompt=outcome.adversarial_prompt,
-                model_response=outcome.response,
-                execution_time_ms=outcome.metadata.get("execution_time_ms", 0),
+                final_prompt=outcome.adversarial_prompt or "",
+                model_response=response_text,
+                execution_time_ms=outcome.metadata.get("execution_time_ms", 0)
+                if outcome.metadata
+                else 0,
                 score=score,
                 details={
                     "technique": scenario.technique.value,

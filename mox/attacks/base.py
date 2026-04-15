@@ -11,12 +11,12 @@ from mox.core import (
     AttackOutcome,
     AttackResult,
 )
-from mox.core.logging import get_logger
-from mox.attacks.evaluation import (
+from mox.core.evaluation import (
     AttackEvaluator,
     EvaluationResult,
     get_default_evaluator,
 )
+from mox.core.logging import get_logger
 
 logger = get_logger("attacks.base")
 
@@ -24,11 +24,12 @@ logger = get_logger("attacks.base")
 @dataclass
 class AttackConfig:
     """攻击配置基类"""
+
     max_iterations: int = 100
     success_threshold: float = 0.8
     temperature: float = 0.7
     verbose: bool = False
-    timeout: int = 300  # 超时时间（秒）
+    timeout: int = 300
 
 
 class BaseAttack(ABC):
@@ -66,12 +67,13 @@ class BaseAttack(ABC):
     ) -> float:
         """评估攻击是否成功
 
-        默认使用配置的评估器，可被子类重写
+        Uses the unified evaluator from mox.core.evaluation.
+        Subclasses should NOT override this method with custom logic.
+        If custom scoring is needed, create a custom AttackEvaluator subclass
+        and pass it to the constructor.
         """
         try:
-            result: EvaluationResult = await self.evaluator.evaluate(
-                response, target_behavior
-            )
+            result: EvaluationResult = await self.evaluator.evaluate(response, target_behavior)
             return result.score
         except Exception as e:
             logger.error(f"Evaluation failed: {e}")
@@ -130,9 +132,7 @@ class BaseAttack(ABC):
         if not self.history:
             return {"total": 0}
 
-        successful = sum(
-            1 for o in self.history if o.result == AttackResult.SUCCESS
-        )
+        successful = sum(1 for o in self.history if o.result == AttackResult.SUCCESS)
         total = len(self.history)
 
         return {
@@ -140,9 +140,7 @@ class BaseAttack(ABC):
             "successful": successful,
             "failed": total - successful,
             "success_rate": successful / total if total > 0 else 0,
-            "avg_iterations": (
-                sum(o.iterations for o in self.history) / total if total > 0 else 0
-            ),
+            "avg_iterations": (sum(o.iterations for o in self.history) / total if total > 0 else 0),
         }
 
     def clear_history(self) -> None:
