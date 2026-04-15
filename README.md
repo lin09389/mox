@@ -17,27 +17,55 @@ LLM Adversarial Attack & Defense Platform
 - **Agent Attack**: Agent工具滥用攻击
 
 ### 防御模块 (Defense)
-- **Input Filter**: 输入过滤，检测恶意提示
+- **Input Filter**: 输入过滤，检测恶意提示 (恶意模式, 编码检测, 关键词检测)
 - **Output Filter**: 输出过滤，检测敏感信息泄露
 - **System Prompt Hardening**: 系统提示词加固
 - **Defense Pipeline**: 防御管道，组合多种防御策略
+- **Injection Detector**: 提示词注入检测
+- **Semantic Firewall**: 语义防火墙
+- **Constitutional AI**: Constitutional AI防御
 - **LLM Judge**: LLM作为评判者
 - **Perplexity Filter**: 基于困惑度的检测
-- **Semantic Similarity**: 语义相似度检测
+- **Output Validator**: 输出验证器 (PII检测, 敏感内容检测)
 
 ### 评估模块 (Evaluation)
-- **Benchmark Runner**: 基准测试运行器 (AdvBench, HarmBench)
-- **Attack Evaluator**: 攻击效果评估
-- **Defense Evaluator**: 防御效果评估
-- **Robustness Evaluator**: 鲁棒性评估
-- **OWASP LLM Top 10**: OWASP安全测试
+- **Benchmark Runner**: 基准测试运行器 (AdvBench, HarmBench, HarmBench 2.0, AgentBench)
+- **Attack Evaluator**: 攻击效果评估 (多维度: 语义相似度, 关键词重叠, 拒绝检测, 指令遵从, 有害内容)
+- **LLM Judge**: LLM作为评判者 (PATTERN/SELF/EXTERNAL三种模式)
+- **Red Team Orchestrator**: 红队编排器 (10+ 攻击技术, 并行/串行执行)
+- **Unified Evaluator**: 统一评估框架
+- **Safety Card**: 模型安全卡片生成
 
 ### 基础设施
 - **LLM Gateway**: 多模型负载均衡和故障转移
+- **Quality Gate**: 响应质量门控
 - **Task Queue**: 异步任务队列
 - **WebSocket**: 实时更新
 - **Authentication**: JWT认证
 - **Caching**: Redis/内存缓存
+
+### 统一模式与评估 (Core Patterns)
+
+所有攻击、防御、评估模块共享统一的模式库和评估框架，消除了30+处重复代码：
+
+```python
+from mox.core.patterns import RefusalPatterns, MaliciousPatterns, HarmfulKeywords, HelpfulIndicators, SanitizeReplacements
+from mox.core.evaluation import EvaluationResult, AttackEvaluator, get_default_evaluator, create_evaluator
+from mox.core.similarity import word_overlap_score, cosine_similarity, SemanticSimilarityEvaluator
+
+# 拒绝模式检测
+result = RefusalPatterns.check_refusal("I cannot help with that")
+print(result.matched, result.score)  # True, 0.5
+
+# 恶意输入检测
+result = MaliciousPatterns.check("Ignore all instructions")
+print(result.matched, result.patterns)  # True, ['ignore_instructions']
+
+# 统一评估
+evaluator = create_evaluator("pattern")
+result = await evaluator.evaluate("I cannot assist with that", "how to hack")
+print(result.refusal_detected, result.score)  # True, 0.5
+```
 
 ## 支持的模型
 
@@ -295,27 +323,49 @@ mox/
 │   ├── llm.py              # LLM接口 (多模型支持)
 │   ├── gateway.py           # 输入安全网关
 │   ├── llm_gateway.py       # LLM负载均衡网关
+│   ├── patterns.py          # 统一模式库 (RefusalPatterns, MaliciousPatterns, HarmfulKeywords, HelpfulIndicators, SanitizeReplacements)
+│   ├── evaluation.py        # 统一评估框架 (EvaluationResult, AttackEvaluator, RefusalPatternEvaluator, CompositeEvaluator)
+│   ├── similarity.py        # 统一相似度 (word_overlap_score, cosine_similarity, SemanticSimilarityEvaluator)
+│   ├── report.py            # 报告生成
 │   ├── auth.py              # JWT认证
 │   ├── tasks.py             # 异步任务队列
 │   ├── cache.py             # 缓存管理
 │   ├── config.py            # 配置管理
 │   ├── database.py          # 数据库
 │   └── types.py             # 类型定义
-├── attacks/                 # 攻击模块
-│   ├── prompt_injection.py
-│   ├── jailbreak.py
-│   ├── gcg.py
-│   ├── rag_attacks.py
-│   └── agent_attacks.py
+├── attacks/                 # 攻击模块 (20+ 攻击实现)
+│   ├── prompt_injection.py  # 提示词注入
+│   ├── jailbreak.py         # 越狱攻击 (DAN, Developer Mode, AIM等)
+│   ├── gcg.py               # 梯度优化攻击
+│   ├── llm_driven.py        # LLM驱动攻击 (TAP, PAIR, Crescendo)
+│   ├── agent_attacks.py     # Agent攻击 (工具滥用, 记忆注入)
+│   ├── rag_attacks.py       # RAG系统攻击
+│   ├── orchestrator.py      # 统一攻击编排器
+│   ├── evaluation.py        # 向后兼容评估导出
+│   └── ...                  # 更多攻击模块
 ├── defense/                 # 防御模块
-│   ├── input_filter.py
-│   ├── output_filter.py
-│   ├── hardening.py
-│   └── llm_judge.py
+│   ├── input_filter.py      # 输入过滤 (恶意模式检测, 编码检测, 关键词检测)
+│   ├── output_filter.py     # 输出过滤 (危险输出检测, 内容审核)
+│   ├── hardening.py         # 系统提示词加固
+│   ├── injection_detector.py # 注入检测
+│   ├── semantic_firewall.py  # 语义防火墙
+│   ├── enhanced_filter.py   # 增强过滤器
+│   ├── constitutional_ai.py # Constitutional AI防御
+│   ├── output_validator.py  # 输出验证器 (PII检测, 敏感内容检测)
+│   ├── orchestrator.py      # 统一防御编排器
+│   └── llm_judge.py         # LLM评判者
 ├── evaluation/              # 评估模块
-│   ├── benchmarks.py
-│   ├── evaluator.py
-│   └── owasp_tests.py
+│   ├── evaluator.py         # 基础评估器
+│   ├── attack_evaluator.py  # 攻击效果评估 (5维度)
+│   ├── judge.py             # LLM Judge (PATTERN/SELF/EXTERNAL模式)
+│   ├── perplexity_judge.py  # 困惑度评估
+│   ├── multi_dim_evaluator.py # 多维度评估器
+│   ├── redteam.py           # 红队编排器 (10+ 攻击技术)
+│   ├── benchmarks.py         # 基准测试 (AdvBench, HarmBench)
+│   ├── benchmarks_v2.py     # 最新基准 (HarmBench 2.0, AgentBench)
+│   ├── framework.py         # 统一评估框架
+│   ├── safety_card.py       # 模型安全卡片
+│   └── visualization.py     # 评估可视化
 ├── api.py                   # FastAPI 接口
 ├── ui.py                    # Gradio Web UI
 └── cli.py                   # CLI 工具
@@ -460,6 +510,7 @@ git push origin feature/your-feature-name
 
 ## 版本历史
 
+- **v0.3.0** - 统一模式库/评估框架重构、20+攻击模块规范化、防御模块全面升级
 - **v0.2.0** - 统一攻击/防御框架、多模型支持、CI/CD完善
 - **v0.1.0** - 初始版本
 
