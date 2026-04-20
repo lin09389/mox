@@ -435,7 +435,7 @@ class TestDefenseModuleIntegration:
         assert "[FILTERED]" in sanitized
 
     def test_gateway_config_uses_unified_patterns(self):
-        from mox.core.gateway import GatewayConfig
+        from mox.core.security_guard import GatewayConfig
 
         config = GatewayConfig()
         patterns = config.injection_patterns

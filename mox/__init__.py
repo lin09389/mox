@@ -192,7 +192,6 @@ __all__ = [
     "DefenseEvaluator",
     "SafetyCoTDefense",
     "AttackEvaluator",
-    "DefenseEvaluator",
     "RobustnessEvaluator",
     "BenchmarkRunner",
     "BenchmarkDataset",

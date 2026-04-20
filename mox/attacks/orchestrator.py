@@ -663,7 +663,7 @@ class AttackReportGenerator:
         </div>
         <div class="card">
             <h3>Success Rate</h3>
-            <p style="font-size: 32px; margin: 0;">{successful / total:.1%}</p>
+            <p style="font-size: 32px; margin: 0;">{successful / total:.1% if total > 0 else "N/A"}</p>
         </div>
     </div>
 

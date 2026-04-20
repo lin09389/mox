@@ -50,6 +50,11 @@ class QwenLLM(BaseLLM):
         self.config = config
         self.base_url = config.base_url
 
+    def _get_session(self) -> aiohttp.ClientSession:
+        if getattr(self, "_session", None) is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120))
+        return self._session
+
     async def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """生成回复"""
         headers = {
@@ -65,8 +70,8 @@ class QwenLLM(BaseLLM):
             "top_p": kwargs.get("top_p", 0.9),
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,
                 json=payload,
@@ -100,8 +105,8 @@ class QwenLLM(BaseLLM):
             "stream": True,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,
                 json=payload,
@@ -136,6 +141,11 @@ class ErnieLLM(BaseLLM):
         self._access_token: Optional[str] = None
         self._token_expires_at = 0
 
+    def _get_session(self) -> aiohttp.ClientSession:
+        if getattr(self, "_session", None) is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120))
+        return self._session
+
     async def _get_access_token(self) -> str:
         """获取访问令牌"""
         import time
@@ -150,8 +160,8 @@ class ErnieLLM(BaseLLM):
             "client_secret": self.config.secret_key,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(auth_url, data=auth_payload) as resp:
+        session = self._get_session()
+        async with session.post(auth_url, data=auth_payload) as resp:
                 result = await resp.json()
                 self._access_token = result["access_token"]
                 self._token_expires_at = time.time() + result.get("expires_in", 2592000)
@@ -170,8 +180,8 @@ class ErnieLLM(BaseLLM):
             "top_p": kwargs.get("top_p", 0.9),
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.config.base_url}/chat/completions?access_token={access_token}",
                 headers=headers,
                 json=payload,
@@ -203,8 +213,8 @@ class ErnieLLM(BaseLLM):
             "stream": True,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.config.base_url}/chat/completions?access_token={access_token}",
                 headers=headers,
                 json=payload,
@@ -238,6 +248,12 @@ class ZhipuLLM(BaseLLM):
         self.config = config
         self.base_url = config.base_url
 
+
+    def _get_session(self) -> aiohttp.ClientSession:
+        if getattr(self, "_session", None) is None or self._session.closed:
+            self._session = aiohttp.ClientSession(timeout=aiohttp.ClientTimeout(total=120))
+        return self._session
+
     async def generate(self, messages: List[Message], **kwargs) -> LLMResponse:
         """生成回复"""
         headers = {
@@ -253,12 +269,11 @@ class ZhipuLLM(BaseLLM):
             "top_p": kwargs.get("top_p", 0.9),
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,
                 json=payload,
-                timeout=aiohttp.ClientTimeout(total=120),
             ) as resp:
                 if resp.status != 200:
                     error = await resp.text()
@@ -288,8 +303,8 @@ class ZhipuLLM(BaseLLM):
             "stream": True,
         }
 
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
+        session = self._get_session()
+        async with session.post(
                 f"{self.base_url}/chat/completions",
                 headers=headers,
                 json=payload,

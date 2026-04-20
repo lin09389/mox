@@ -26,6 +26,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from mox.core.types import AttackResult
+
 
 # 攻击技术枚举 - 扩展
 class AttackTechnique(Enum):
@@ -496,7 +498,7 @@ class RedTeamOrchestrator:
                     judge = LLMJudge(self.target_llm, judge_config)
                     result = await judge.evaluate(
                         response.content,
-                        scenario.target_behavior or scenario.target_behavior,
+                        scenario.target_behavior or scenario.target_objective,
                         prompt,
                     )
                     success = result.success
@@ -530,7 +532,9 @@ class RedTeamOrchestrator:
             scenario=scenario,
             success=False,
             attempts=max_attempts,
-            final_prompt=prompts[-1] if prompts else "",
+            final_prompt=prompts[-1]
+            if prompts
+            else scenario.target_behavior or scenario.target_objective,
             model_response="",
             execution_time_ms=0,
             details={"error": "All attempts failed"},

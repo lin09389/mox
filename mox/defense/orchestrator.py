@@ -20,8 +20,8 @@ from enum import Enum
 from pathlib import Path
 
 
-class DefenseType(Enum):
-    """防御类型"""
+class DefenseTestType(Enum):
+    """防御测试类型 - 仅用于 orchestrator 场景分类"""
 
     INPUT_FILTER = "input_filter"
     OUTPUT_FILTER = "output_filter"
@@ -30,6 +30,9 @@ class DefenseType(Enum):
     HALLUCINATION_DETECTION = "hallucination_detection"
     LLM_JUDGE = "llm_judge"
     ENCODING_DETECTION = "encoding_detection"
+
+
+DefenseType = DefenseTestType
 
 
 @dataclass
@@ -46,8 +49,8 @@ class DefenseScenario:
 
 
 @dataclass
-class DefenseResult:
-    """防御结果"""
+class DefenseTestResult:
+    """防御测试结果"""
 
     scenario: DefenseScenario
     detected: bool
@@ -57,6 +60,9 @@ class DefenseResult:
     sanitized_output: str = ""
     detection_time_ms: float = 0.0
     details: Dict[str, Any] = field(default_factory=dict)
+
+
+DefenseResult = DefenseTestResult
 
 
 class DefenseOrchestrator:
@@ -659,7 +665,7 @@ class DefenseReportGenerator:
         </div>
         <div class="card">
             <h3>Detection Rate</h3>
-            <p style="font-size: 32px; margin: 0;">{detected / total:.1%}</p>
+            <p style="font-size: 32px; margin: 0;">{detected / total:.1% if total > 0 else "N/A"}</p>
         </div>
     </div>
 
@@ -809,7 +815,9 @@ class DefenseReportGenerator:
 __all__ = [
     "DefenseOrchestrator",
     "DefenseScenario",
+    "DefenseTestResult",
     "DefenseResult",
     "DefenseReportGenerator",
+    "DefenseTestType",
     "DefenseType",
 ]

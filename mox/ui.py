@@ -36,7 +36,7 @@ from mox.defense import (
     MultiLayerInjectionDetector,
 )
 from mox.core.workflow import PlanThenExecuteEngine
-from mox.core.gateway import create_security_gateway
+from mox.core.security_guard import create_security_gateway
 
 
 def create_interface():

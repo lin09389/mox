@@ -207,7 +207,7 @@ class UnifiedEvaluator:
                         target=case.payload.prompt,
                         payload=case.payload.prompt,
                         expected_result=case.expected_behavior,
-                        severity=case.severity,
+                        difficulty=case.severity,
                         category=case.category,
                     )
                 )
@@ -433,7 +433,7 @@ class UnifiedEvaluator:
         report.append(f"**Total:** {total}")
         report.append(f"**Successful:** {successful}")
         report.append(f"**Failed:** {total - successful}")
-        report.append(f"**Success Rate:** {successful / total:.1%}\n")
+        report.append(f"**Success Rate:** {successful / total:.1% if total > 0 else 'N/A'}\n")
 
         report.append("## Results\n")
         report.append("| ID | Name | Type | Success | Score |")
@@ -472,7 +472,7 @@ class UnifiedEvaluator:
     <div class="summary">
         <div class="card"><h3>Total</h3><p style="font-size:24px">{total}</p></div>
         <div class="card"><h3>Success</h3><p style="font-size:24px">{successful}</p></div>
-        <div class="card"><h3>Rate</h3><p style="font-size:24px">{successful / total:.1%}</p></div>
+        <div class="card"><h3>Rate</h3><p style="font-size:24px">{successful / total:.1% if total > 0 else "N/A"}</p></div>
     </div>
     <table>
         <tr><th>ID</th><th>Name</th><th>Type</th><th>Success</th><th>Score</th></tr>

@@ -48,10 +48,13 @@ from .injection_detector import (
 from mox.defense.orchestrator import (
     DefenseOrchestrator,
     DefenseScenario,
-    DefenseResult,
+    DefenseTestResult,
     DefenseReportGenerator,
-    DefenseType,
+    DefenseTestType,
 )
+
+DefenseResult = DefenseTestResult
+DefenseType = DefenseTestType
 
 # 新增：Constitutional AI 防御
 from .constitutional_ai import (
@@ -124,8 +127,10 @@ __all__ = [
     # 新增
     "DefenseOrchestrator",
     "DefenseScenario",
+    "DefenseTestResult",
     "DefenseResult",
     "DefenseReportGenerator",
+    "DefenseTestType",
     "DefenseType",
     # Constitutional AI
     "ConstitutionalAI",

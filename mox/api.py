@@ -158,6 +158,9 @@ def create_app() -> FastAPI:
 
 app = create_app()
 
+from fastapi import APIRouter
+api_router = APIRouter()
+
 
 @app.get("/")
 async def root():
@@ -171,8 +174,7 @@ async def root():
     }
 
 
-@app.get(f"{API_V1_PREFIX}/health")
-@app.get(f"{COMPAT_PREFIX}/health")
+@api_router.get("/health")
 async def health_check():
     """Return API health."""
     return {"status": "healthy"}
@@ -212,8 +214,7 @@ async def prometheus_metrics():
     )
 
 
-@app.get(f"{API_V1_PREFIX}/models")
-@app.get(f"{COMPAT_PREFIX}/models")
+@api_router.get("/models")
 async def list_models() -> Dict[str, List[str]]:
     """List supported models."""
     models = [
@@ -253,8 +254,7 @@ async def list_models() -> Dict[str, List[str]]:
     return {"models": models}
 
 
-@app.get(f"{API_V1_PREFIX}/templates")
-@app.get(f"{COMPAT_PREFIX}/templates")
+@api_router.get("/templates")
 async def get_templates():
     """Return attack templates for the frontend."""
     try:
@@ -300,8 +300,7 @@ async def get_templates():
         return {"success": False, "error": str(exc)}
 
 
-@app.get(f"{API_V1_PREFIX}/hardening/prompt")
-@app.get(f"{COMPAT_PREFIX}/hardening/prompt")
+@api_router.get("/hardening/prompt")
 async def get_hardened_prompt(custom_instructions: str | None = None) -> Dict[str, str]:
     """Generate a hardened system prompt."""
     from mox.defense import SystemPromptHardening
@@ -311,8 +310,7 @@ async def get_hardened_prompt(custom_instructions: str | None = None) -> Dict[st
     return {"hardened_prompt": prompt}
 
 
-@app.get(f"{API_V1_PREFIX}/hardening/injection-defense")
-@app.get(f"{COMPAT_PREFIX}/hardening/injection-defense")
+@api_router.get("/hardening/injection-defense")
 async def get_injection_defense_prompt() -> Dict[str, str]:
     """Generate an injection defense prompt."""
     from mox.defense import SystemPromptHardening
@@ -322,8 +320,7 @@ async def get_injection_defense_prompt() -> Dict[str, str]:
     return {"injection_defense_prompt": prompt}
 
 
-@app.get(f"{API_V1_PREFIX}/stats/overview")
-@app.get(f"{COMPAT_PREFIX}/stats/overview")
+@api_router.get("/stats/overview")
 async def get_stats_overview() -> Dict[str, Any]:
     """Return dashboard overview statistics."""
     total_attacks = 0
@@ -377,8 +374,7 @@ async def get_stats_overview() -> Dict[str, Any]:
         }
 
 
-@app.get(f"{API_V1_PREFIX}/cache/stats")
-@app.get(f"{COMPAT_PREFIX}/cache/stats")
+@api_router.get("/cache/stats")
 async def get_cache_stats():
     """Return cache statistics."""
     try:
@@ -394,8 +390,7 @@ async def get_cache_stats():
         return {"enabled": False, "size": 0, "error": str(e)}
 
 
-@app.post(f"{API_V1_PREFIX}/cache/clear")
-@app.post(f"{COMPAT_PREFIX}/cache/clear")
+@api_router.post("/cache/clear")
 async def clear_cache():
     """Clear runtime caches."""
     try:
@@ -412,8 +407,7 @@ class OWASPRequest(BaseModel):
     model: str = "gpt-4"
 
 
-@app.post(f"{API_V1_PREFIX}/owasp/run")
-@app.post(f"{COMPAT_PREFIX}/owasp/run")
+@api_router.post("/owasp/run")
 async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
     """Run the OWASP LLM test suite."""
     try:
@@ -456,8 +450,7 @@ class RedTeamRequest(BaseModel):
     techniques: List[str] = []
 
 
-@app.post(f"{API_V1_PREFIX}/redteam/run")
-@app.post(f"{COMPAT_PREFIX}/redteam/run")
+@api_router.post("/redteam/run")
 async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
     """Run the red-team orchestrator."""
     try:
@@ -493,8 +486,7 @@ class CodeSecurityRequest(BaseModel):
     model: str = "qwen:4b"
 
 
-@app.post(f"{API_V1_PREFIX}/code/security")
-@app.post(f"{COMPAT_PREFIX}/code/security")
+@api_router.post("/code/security")
 async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
     """Run code generation security checks."""
     try:
@@ -532,8 +524,7 @@ class BiasDetectRequest(BaseModel):
     model: str = "qwen:4b"
 
 
-@app.post(f"{API_V1_PREFIX}/bias/detect")
-@app.post(f"{COMPAT_PREFIX}/bias/detect")
+@api_router.post("/bias/detect")
 async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
     """Run demographic bias detection."""
     try:
@@ -558,12 +549,14 @@ async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
 
 
-@app.get(f"{API_V1_PREFIX}/ws/stats")
-@app.get(f"{COMPAT_PREFIX}/ws/stats")
+@api_router.get("/ws/stats")
 async def get_ws_stats():
     """Return WebSocket connection statistics."""
     return {"active_connections": len(ws_manager.active_connections)}
 
+
+app.include_router(api_router, prefix=API_V1_PREFIX)
+app.include_router(api_router, prefix=COMPAT_PREFIX)
 
 def run_server():
     """Run the API server with Uvicorn."""

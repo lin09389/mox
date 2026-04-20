@@ -89,7 +89,7 @@ from mox.evaluation.framework import (
 # 新增：最新评估基准 (2025)
 from mox.evaluation.benchmarks_v2 import (
     BenchmarkType,
-    HarmCategory,
+    HarmCategory as BenchmarkHarmCategory,
     Severity,
     BenchmarkCase as BenchmarkCaseV2,
     BenchmarkResult,
@@ -166,14 +166,12 @@ __all__ = [
     "AttackTechnique",
     # 统一评估框架
     "UnifiedEvaluator",
-    "EvaluationConfig",
     "EvaluationScenario",
-    "EvaluationResult",
     "EvaluationType",
     "EvaluationStatus",
     # 最新评估基准 (2025)
     "BenchmarkType",
-    "HarmCategory",
+    "BenchmarkHarmCategory",
     "Severity",
     "BenchmarkCaseV2",
     "BenchmarkResult",

@@ -58,36 +58,44 @@ class GatewayConfig:
     fallback_enabled: bool = True
 
 
+from collections import deque
+
 class RateLimiter:
     """速率限制器 - 修复 token 使用量随窗口自动回收"""
 
     def __init__(self, rpm: int, tpm: int):
         self.rpm = rpm
         self.tpm = tpm
-        self._request_timestamps: List[datetime] = []
-        self._token_bucket: List[Tuple[datetime, int]] = []
+        self._request_timestamps: deque[datetime] = deque()
+        self._token_bucket: deque[Tuple[datetime, int]] = deque()
+        self._current_tokens = 0
 
     async def acquire(self, estimated_tokens: int = 0) -> bool:
         now = datetime.now()
         cutoff = now - timedelta(minutes=1)
 
-        self._request_timestamps = [t for t in self._request_timestamps if t > cutoff]
-        self._token_bucket = [(ts, tokens) for ts, tokens in self._token_bucket if ts > cutoff]
+        while self._request_timestamps and self._request_timestamps[0] <= cutoff:
+            self._request_timestamps.popleft()
+
+        while self._token_bucket and self._token_bucket[0][0] <= cutoff:
+            _, tokens = self._token_bucket.popleft()
+            self._current_tokens -= tokens
 
         if len(self._request_timestamps) >= self.rpm:
             return False
 
-        current_tokens = sum(tokens for _, tokens in self._token_bucket)
-        if current_tokens + estimated_tokens >= self.tpm:
+        if self._current_tokens + estimated_tokens >= self.tpm:
             return False
 
         self._request_timestamps.append(now)
         self._token_bucket.append((now, estimated_tokens))
+        self._current_tokens += estimated_tokens
         return True
 
     def reset(self):
         self._request_timestamps.clear()
         self._token_bucket.clear()
+        self._current_tokens = 0
 
 
 class ConcurrencyLimiter:

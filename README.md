@@ -252,7 +252,7 @@ curl -X GET http://localhost:8000/api/attack/types \
 ## LLM 网关
 
 ```python
-from mox.core.llm_gateway import LLMGateway, LoadBalancingStrategy
+from mox.core.llm_router import LLMGateway, LoadBalancingStrategy
 
 gateway = LLMGateway()
 

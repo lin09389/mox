@@ -236,23 +236,25 @@ class SemanticSimilarityChecker:
             index[attack_type] = words
         return index
 
-    def check_similarity(self, text: str) -> tuple[bool, List[str], float]:
+    async def check_similarity(self, text: str) -> tuple[bool, List[str], float]:
         if not self.config.enable_semantic_similarity:
             return False, [], 0.0
 
         text_lower = text.lower()
 
         if self._use_embeddings and self._signature_embeddings is not None:
-            return self._check_similarity_embeddings(text)
+            return await self._check_similarity_embeddings(text)
 
         return self._check_similarity_keyword(text_lower)
 
-    def _check_similarity_embeddings(self, text: str) -> tuple[bool, List[str], float]:
-        """使用语义嵌入检查相似度"""
+    async def _check_similarity_embeddings(self, text: str) -> tuple[bool, List[str], float]:
+        """使用语义嵌入检查相似度 (异步，避免阻塞事件循环)"""
         try:
-            text_embedding = self._embedding_model.encode(
-                [text], convert_to_numpy=True, show_progress_bar=False
-            )[0]
+            import asyncio
+            text_embeddings = await asyncio.to_thread(
+                self._embedding_model.encode, [text], convert_to_numpy=True, show_progress_bar=False
+            )
+            text_embedding = text_embeddings[0]
 
             similarities = []
             idx = 0
@@ -357,7 +359,7 @@ class InputGateway:
             total_confidence = max(total_confidence, regex_severity)
 
         has_similarity, similarity_types, similarity_score = (
-            self.similarity_checker.check_similarity(text)
+            await self.similarity_checker.check_similarity(text)
         )
         if has_similarity:
             matched_rules.extend(similarity_types)

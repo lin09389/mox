@@ -83,7 +83,7 @@ class AddEndpointRequest(BaseModel):
 async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
     """验证输入网关"""
     try:
-        from mox.core.gateway import InputGateway, GatewayConfig
+        from mox.core.security_guard import InputGateway, GatewayConfig
 
         config = GatewayConfig()
         gateway = InputGateway(config=config)
@@ -111,7 +111,7 @@ async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
 async def get_gateway_stats():
     """获取LLM网关统计"""
     try:
-        from mox.core.llm_gateway import get_llm_gateway
+        from mox.core.llm_router import get_llm_gateway
 
         gateway = get_llm_gateway()
         return gateway.get_stats()
@@ -136,7 +136,7 @@ async def add_gateway_endpoint(
         raise HTTPException(status_code=403, detail="Admin scope required")
 
     try:
-        from mox.core.llm_gateway import get_llm_gateway
+        from mox.core.llm_router import get_llm_gateway
         from mox.core.llm import ModelProvider
 
         gateway = get_llm_gateway()
@@ -167,7 +167,7 @@ async def remove_gateway_endpoint(
         raise HTTPException(status_code=403, detail="Admin scope required")
 
     try:
-        from mox.core.llm_gateway import get_llm_gateway
+        from mox.core.llm_router import get_llm_gateway
 
         gateway = get_llm_gateway()
         gateway.remove_endpoint(name)
