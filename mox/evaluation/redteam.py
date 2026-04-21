@@ -520,7 +520,7 @@ class RedTeamOrchestrator:
                     )
 
             except Exception as e:
-                from mox.core.logging import get_logger
+                from mox.infrastructure.logging import get_logger
 
                 logger = get_logger("redteam")
                 logger.warning(

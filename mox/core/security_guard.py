@@ -13,7 +13,7 @@ from enum import Enum
 
 from mox.core import BaseLLM, Message
 from mox.core.patterns import MaliciousPatterns, SanitizeReplacements
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("gateway")
 

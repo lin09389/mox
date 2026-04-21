@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from mox.core.auth import User, get_current_active_user
+from mox.infrastructure.auth import User, get_current_active_user
 
 router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
@@ -28,7 +28,7 @@ async def submit_task(
 ):
     """提交异步任务"""
     try:
-        from mox.core.tasks import get_task_queue, TaskPriority
+        from mox.infrastructure.tasks import get_task_queue, TaskPriority
 
         task_queue = get_task_queue()
         priority = TaskPriority(request.priority) if 0 <= request.priority <= 3 else TaskPriority.NORMAL
@@ -53,7 +53,7 @@ async def get_task_status(
 ):
     """获取任务状态"""
     try:
-        from mox.core.tasks import get_task_queue
+        from mox.infrastructure.tasks import get_task_queue
 
         task_queue = get_task_queue()
         status = task_queue.get_status(task_id)

@@ -18,7 +18,7 @@ from datetime import datetime
 from mox.core import DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
 from mox.core.patterns import SanitizeReplacements
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("enhanced_filter")
 

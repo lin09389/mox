@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from mox.core import AttackPayload, AttackType
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("benchmarks")
 

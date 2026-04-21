@@ -7,8 +7,8 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, field_validator
 from urllib.parse import urlparse
 
-from mox.core.auth import User, get_current_active_user
-from mox.core.logging import get_logger
+from mox.infrastructure.auth import User, get_current_active_user
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("gateway")
 
@@ -96,7 +96,7 @@ async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
             "matched_rules": result.matched_rules,
         }
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("gateway")
         logger.error(f"Gateway validation failed, denying request: {e}")

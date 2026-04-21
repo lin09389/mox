@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from mox.routes.attack import router as attack_router
 from mox.routes.defense import router as defense_router
 from mox.routes.auth import router as auth_router
-from mox.core.auth import get_current_active_user, User
+from mox.infrastructure.auth import get_current_active_user, User
 
 
 # ============ Fixtures ============

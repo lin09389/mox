@@ -4,7 +4,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("extended_datasets")
 

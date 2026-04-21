@@ -17,7 +17,7 @@ from enum import Enum
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from mox.attacks.base import BaseAttack, AttackConfig
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("attacks.novel_v3")
 

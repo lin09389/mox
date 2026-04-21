@@ -572,7 +572,7 @@ def register_default_health_checks():
 
     async def check_database():
         try:
-            from mox.core.database import get_db_session
+            from mox.infrastructure.database import get_db_session
 
             async with get_db_session() as session:
                 await session.execute("SELECT 1")
@@ -582,7 +582,7 @@ def register_default_health_checks():
 
     async def check_redis():
         try:
-            from mox.core.cache import get_redis_client
+            from mox.infrastructure.cache import get_redis_client
 
             client = get_redis_client()
             client.ping()

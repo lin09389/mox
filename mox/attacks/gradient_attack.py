@@ -25,7 +25,7 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("gradient_attack")
 
@@ -83,7 +83,7 @@ class GradientBasedAttack(BaseAttack):
         self._victim_model = None
         self._tokenizer = None
 
-async def evaluate_success(
+    async def evaluate_success(
         self,
         response: str,
         target_behavior: str,

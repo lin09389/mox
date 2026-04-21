@@ -6,7 +6,7 @@ import pytest
 import os
 from unittest.mock import patch
 
-from mox.core.config import Settings
+from mox.infrastructure.config import Settings
 
 
 class TestSettings:

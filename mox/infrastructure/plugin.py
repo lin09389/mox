@@ -16,7 +16,7 @@ import importlib
 from pathlib import Path
 
 from .logging import get_logger
-from .types import AttackType, DefenseType
+from mox.core.types import AttackType, DefenseType
 from mox.attacks.base import BaseAttack
 from mox.defense.base import BaseDefense
 

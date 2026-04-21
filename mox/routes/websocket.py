@@ -5,7 +5,7 @@ from typing import Dict, Any, Optional, Set
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
 from pydantic import BaseModel
 
-from mox.core.auth import User, get_current_active_user
+from mox.infrastructure.auth import User, get_current_active_user
 
 router = APIRouter(tags=["WebSocket"])
 
@@ -43,7 +43,7 @@ class ConnectionManager:
 
     async def broadcast(self, message: dict):
         """广播消息到所有活跃连接"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("websocket")
 

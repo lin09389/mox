@@ -1,7 +1,7 @@
 """缓存使用示例"""
 
 import asyncio
-from mox.core.cache import LLMCache, MemoryCache, DiskCache
+from mox.infrastructure.cache import LLMCache, MemoryCache, DiskCache
 from mox.core.llm import Message
 
 

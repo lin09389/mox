@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel
 
-from mox.core.config import settings
+from mox.infrastructure.config import settings
 from mox.core.exceptions import MoxException
 from mox.core.version import PACKAGE_VERSION
 from mox.middleware.rate_limit import RateLimitMiddleware
@@ -33,7 +33,7 @@ COMPAT_PREFIX = "/api"
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Manage startup and shutdown resources."""
-    from mox.core.database import get_database, init_database
+    from mox.infrastructure.database import get_database, init_database
 
     await init_database()
     yield
@@ -190,7 +190,7 @@ async def liveness_check():
 async def readiness_check():
     """Return readiness status."""
     try:
-        from mox.core.observability import get_health_checker
+        from mox.infrastructure.observability import get_health_checker
 
         checker = get_health_checker()
         result = await checker.check_all()
@@ -246,7 +246,7 @@ async def list_models() -> Dict[str, List[str]]:
                     if model_name and model_name not in models:
                         models.append(model_name)
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("api")
         logger.warning(f"Failed to discover Ollama models: {e}")
@@ -330,7 +330,7 @@ async def get_stats_overview() -> Dict[str, Any]:
     recent_attacks_data: List[Dict[str, Any]] = []
 
     try:
-        from mox.core.database import get_database
+        from mox.infrastructure.database import get_database
 
         db = get_database()
         total_attacks = await db.count_attack_records()
@@ -360,7 +360,7 @@ async def get_stats_overview() -> Dict[str, Any]:
             "recent_attacks": recent_attacks_data,
         }
     except Exception as exc:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("api")
         logger.warning(f"Failed to get stats overview, returning fallback data: {exc}")
@@ -378,12 +378,12 @@ async def get_stats_overview() -> Dict[str, Any]:
 async def get_cache_stats():
     """Return cache statistics."""
     try:
-        from mox.core.cache import CacheManager
+        from mox.infrastructure.cache import CacheManager
 
         cache = CacheManager()
         return cache.get_stats()
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("api")
         logger.warning(f"Failed to get cache stats: {e}")
@@ -394,7 +394,7 @@ async def get_cache_stats():
 async def clear_cache():
     """Clear runtime caches."""
     try:
-        from mox.core.cache import CacheManager
+        from mox.infrastructure.cache import CacheManager
 
         cache = CacheManager()
         await cache.clear()
@@ -412,7 +412,7 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
     """Run the OWASP LLM test suite."""
     try:
         from mox.core import LLMFactory, MiniMaxLLM
-        from mox.core.config import settings as runtime_settings
+        from mox.infrastructure.config import settings as runtime_settings
         from mox.evaluation.owasp_tests import OWASPLLMTop10
 
         if request.model.startswith("abab"):
@@ -455,7 +455,7 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
     """Run the red-team orchestrator."""
     try:
         from mox.core import LLMFactory, MiniMaxLLM
-        from mox.core.config import settings as runtime_settings
+        from mox.infrastructure.config import settings as runtime_settings
         from mox.evaluation.redteam import RedTeamOrchestrator
 
         if request.model.startswith("abab"):
@@ -492,7 +492,7 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
     try:
         from mox.attacks.code_security import CodeSecurityAttacker
         from mox.core import LLMFactory, MiniMaxLLM
-        from mox.core.config import settings as runtime_settings
+        from mox.infrastructure.config import settings as runtime_settings
 
         if request.model.startswith("abab"):
             llm = MiniMaxLLM(
@@ -529,7 +529,7 @@ async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
     """Run demographic bias detection."""
     try:
         from mox.core import LLMFactory, MiniMaxLLM
-        from mox.core.config import settings as runtime_settings
+        from mox.infrastructure.config import settings as runtime_settings
         from mox.defense.hallucination import BiasDetector
 
         if request.model.startswith("abab"):

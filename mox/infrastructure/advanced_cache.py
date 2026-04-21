@@ -16,7 +16,7 @@ from datetime import datetime, timedelta
 from collections import OrderedDict
 from abc import ABC, abstractmethod
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("core.cache")
 

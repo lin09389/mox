@@ -15,7 +15,7 @@ from abc import ABC, abstractmethod
 
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense.constitutional_ai")
 

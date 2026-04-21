@@ -300,7 +300,7 @@ AI响应: {response}
             result = json.loads(judge_response.content)
             return result
         except Exception as e:
-            from mox.core.logging import get_logger
+            from mox.infrastructure.logging import get_logger
 
             logger = get_logger("judge")
             logger.warning(f"MultiDimensionJudge evaluation failed, returning defaults: {e}")

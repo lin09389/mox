@@ -12,8 +12,8 @@ from mox.core import (
     AttackPayload,
     settings,
 )
-from mox.core.database import Database
-from mox.core.auth import get_current_active_user, User
+from mox.infrastructure.database import Database
+from mox.infrastructure.auth import get_current_active_user, User
 from mox.attacks import (
     PromptInjectionAttack,
     JailbreakAttack,
@@ -647,7 +647,7 @@ async def run_advanced_attack(
 
         return {"success": True, "report": report}
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attack")
         logger.error(f"Advanced attack execution failed: {e}")
@@ -669,7 +669,7 @@ async def test_token_smuggling(
 
         return {"success": True, "results": results}
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attack")
         logger.error(f"Token smuggling test failed: {e}")
@@ -702,7 +702,7 @@ async def get_attack_history(
             ]
         }
     except Exception as e:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attack")
         logger.error(f"Failed to get attack history: {e}")

@@ -22,7 +22,7 @@ try:
 except ImportError:
     GOOGLE_GENAI_AVAILABLE = False
 
-from .config import settings
+from mox.infrastructure.config import settings
 
 
 class ModelProvider(Enum):

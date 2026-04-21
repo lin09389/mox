@@ -17,7 +17,7 @@ from enum import Enum
 from collections import defaultdict
 from datetime import datetime, timedelta
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("middleware.rate_limit")
 

@@ -7,7 +7,7 @@ from pathlib import Path
 
 sys.path.append(str(Path(__file__).resolve().parents[1]))
 
-from mox.core.database import Base
+from mox.infrastructure.database import Base
 
 config = context.config
 

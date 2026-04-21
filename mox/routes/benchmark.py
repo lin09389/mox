@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from mox.evaluation import BenchmarkRunner, BenchmarkDataset
 from mox.attacks import PromptInjectionAttack, JailbreakAttack
-from mox.core.auth import get_current_active_user, User
+from mox.infrastructure.auth import get_current_active_user, User
 
 router = APIRouter(prefix="/benchmark", tags=["Benchmark"])
 
@@ -31,7 +31,7 @@ benchmark_dataset = BenchmarkDataset()
 def _get_llm(model: str):
     """获取 LLM 实例"""
     from mox.core import LLMFactory
-    from mox.core.config import settings
+    from mox.infrastructure.config import settings
     
     if model.startswith("abab") or model.startswith("minimax"):
         from mox.core import MiniMaxLLM

@@ -124,7 +124,7 @@ class ManyShotJailbreak(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行 Many-shot Jailbreak 攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
         logger = get_logger("attacks.many_shot")
         
         # 生成示例
@@ -240,7 +240,7 @@ class SkeletonKeyAttack(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行 Skeleton Key 攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
         logger = get_logger("attacks.skeleton_key")
         
         best_outcome = None
@@ -386,7 +386,7 @@ def example():
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行间接提示注入攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
         logger = get_logger("attacks.indirect_injection")
         
         results = []
@@ -476,7 +476,7 @@ class AdaptiveAttackEnsemble(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行自适应攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
         logger = get_logger("attacks.adaptive_ensemble")
         
         best_outcome = None

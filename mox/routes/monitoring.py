@@ -3,8 +3,8 @@
 from typing import Dict, Any, List
 from fastapi import APIRouter, Depends
 
-from mox.core.auth import get_current_active_user, User
-from mox.core.logging import get_logger
+from mox.infrastructure.auth import get_current_active_user, User
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("monitoring")
 
@@ -20,7 +20,7 @@ async def get_monitoring_dashboard(
 ) -> Dict[str, Any]:
     """获取监控面板数据"""
     try:
-        from mox.core.monitoring import MonitoringDashboard
+        from mox.infrastructure.monitoring import MonitoringDashboard
 
         dashboard = MonitoringDashboard()
         return dashboard.get_dashboard_data()
@@ -39,7 +39,7 @@ async def get_monitoring_dashboard(
 async def get_anomalies() -> List[Dict[str, Any]]:
     """获取异常列表"""
     try:
-        from mox.core.monitoring import AnomalyDetector
+        from mox.infrastructure.monitoring import AnomalyDetector
 
         detector = AnomalyDetector()
         return detector.get_anomalies(limit=20)

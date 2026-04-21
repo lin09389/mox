@@ -16,7 +16,7 @@ import statistics
 import functools
 from collections import deque
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("monitoring")
 

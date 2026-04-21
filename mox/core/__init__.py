@@ -1,6 +1,6 @@
 """Core module exports"""
 
-from .config import settings, Settings
+from mox.infrastructure.config import settings, Settings
 from .version import PACKAGE_VERSION, get_version
 from .llm import (
     BaseLLM,
@@ -27,7 +27,7 @@ from .types import (
     DefenseResult,
     EvaluationReport,
 )
-from .auth import (
+from mox.infrastructure.auth import (
     User,
     TokenManager,
     PasswordManager,
@@ -45,7 +45,7 @@ from .exceptions import (
     GatewayError,
     RateLimitError,
 )
-from .advanced_cache import (
+from mox.infrastructure.advanced_cache import (
     CacheEntry,
     CacheStats,
     CacheBackend,

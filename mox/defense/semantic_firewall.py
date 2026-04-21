@@ -16,7 +16,7 @@ from collections import Counter
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
 from mox.core.patterns import MaliciousPatterns, HarmfulKeywords, SanitizeReplacements
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense.semantic_firewall")
 

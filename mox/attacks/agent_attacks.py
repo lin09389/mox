@@ -8,7 +8,7 @@ from typing import Optional, List, Dict
 from dataclasses import dataclass
 from enum import Enum
 
-from mox.core import BaseLLM, AttackPayload, AttackOutcome, AttackResult, Message
+from mox.core import BaseLLM, AttackPayload, AttackOutcome, AttackResult, Message, AttackType
 from mox.core.patterns import RefusalPatterns
 from mox.attacks.base import BaseAttack, AttackConfig
 

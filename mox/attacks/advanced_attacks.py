@@ -16,7 +16,7 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("advanced_attacks")
 

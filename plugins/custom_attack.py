@@ -1,7 +1,7 @@
 """自定义攻击插件示例"""
 
 from typing import Dict, Any
-from mox.core.plugin import BasePlugin, PluginMetadata
+from mox.infrastructure.plugin import BasePlugin, PluginMetadata
 from mox.core.types import AttackType, AttackPayload, AttackOutcome, AttackResult
 
 

@@ -11,7 +11,7 @@ from fastapi.responses import JSONResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("rate_limit")
 
@@ -181,7 +181,7 @@ def get_rate_limiter() -> RateLimiter:
     """获取全局限流器实例"""
     global _rate_limiter
     if _rate_limiter is None:
-        from mox.core.config import settings
+        from mox.infrastructure.config import settings
         _rate_limiter = RateLimiter(
             requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
             burst_size=settings.RATE_LIMIT_BURST,

@@ -16,7 +16,7 @@ except ImportError:
 from mox.core import BaseLLM, Message, AttackType
 from mox.core.patterns import RefusalPatterns
 from mox.core.similarity import word_overlap_score, cosine_similarity
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("multi_dim_evaluator")
 

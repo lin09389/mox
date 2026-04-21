@@ -20,7 +20,7 @@ from mox.evaluation.benchmarks import (
     OWASPLLMCategory,
     AutoEvaluator,
 )
-from mox.core.cache import MemoryCache, LLMCache
+from mox.infrastructure.cache import MemoryCache, LLMCache
 
 
 class TestNovelAttacks:

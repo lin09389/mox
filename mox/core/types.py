@@ -17,6 +17,7 @@ class AttackType(str, Enum):
     MANY_SHOT = "many_shot"
     SKELETON_KEY = "skeleton_key"
     ROLE_PLAY = "role_play"
+    ROLE_HIJACKING = "role_hijacking"
     ENCODING_ATTACK = "encoding_attack"
     GOAT = "goat"
     CRESCENDO = "crescendo"

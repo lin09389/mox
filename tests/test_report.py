@@ -2,7 +2,7 @@
 
 import pytest
 from datetime import datetime
-from mox.core.report import ReportGenerator, EvaluationReport
+from mox.infrastructure.report import ReportGenerator, EvaluationReport
 
 
 class TestReportGenerator:

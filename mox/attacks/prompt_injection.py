@@ -77,7 +77,7 @@ class PromptInjectionAttack(BaseAttack):
         self,
         payload: AttackPayload,
     ) -> AttackOutcome:
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attacks.prompt_injection")
 

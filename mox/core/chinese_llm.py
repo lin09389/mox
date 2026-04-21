@@ -7,7 +7,7 @@ from dataclasses import dataclass
 import aiohttp
 
 from mox.core.llm import BaseLLM, LLMResponse, Message, ModelProvider
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("chinese_llm")
 

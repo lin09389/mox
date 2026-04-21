@@ -16,7 +16,7 @@ from mox.core.evaluation import (
     EvaluationResult,
     get_default_evaluator,
 )
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("attacks.base")
 

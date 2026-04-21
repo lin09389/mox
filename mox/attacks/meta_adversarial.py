@@ -129,7 +129,7 @@ Analysis: ..."""
                 "success_likelihood": score / 10.0,
             }
         except Exception as e:
-            from mox.core.logging import get_logger
+            from mox.infrastructure.logging import get_logger
 
             logger = get_logger("meta_adversarial")
             logger.error(f"Auditor evaluation failed, returning zero score: {e}")

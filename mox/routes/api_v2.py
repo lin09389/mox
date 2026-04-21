@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
 from mox.core import BaseLLM, LLMFactory, AttackType, settings
-from mox.core.auth import get_optional_active_user, User
+from mox.infrastructure.auth import get_optional_active_user, User
 
 router = APIRouter(prefix="/api/v2", tags=["API v2"])
 

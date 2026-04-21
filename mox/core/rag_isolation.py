@@ -13,7 +13,7 @@ from enum import Enum
 import secrets
 import time
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("rag_isolation")
 

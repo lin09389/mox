@@ -14,7 +14,7 @@ from datetime import datetime
 from enum import Enum
 import json
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("evaluation.safety_card")
 

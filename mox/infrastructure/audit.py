@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
 
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("audit")
 
@@ -156,10 +156,10 @@ class AuditLogger:
         self._db = None
 
     def _get_db(self):
-        from mox.core.database_ext import get_extended_database
+        from mox.infrastructure.database import get_database
 
         if self._db is None:
-            self._db = get_extended_database()
+            self._db = get_database()
         return self._db
 
     async def log(

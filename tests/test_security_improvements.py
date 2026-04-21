@@ -1,7 +1,7 @@
 import os
 
-from mox.core.auth import AuthManager, PasswordManager
-from mox.core.config import Settings
+from mox.infrastructure.auth import AuthManager, PasswordManager
+from mox.infrastructure.config import Settings
 
 
 class TestSecurityDefaults:

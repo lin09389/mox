@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 import croniter
 
-from mox.core.logging import get_logger
-from mox.core.database_ext import get_extended_database
+from mox.infrastructure.logging import get_logger
+from mox.infrastructure.database import get_database
 
 logger = get_logger("scheduler")
 
@@ -72,7 +72,7 @@ class TaskScheduler:
 
     def _get_db(self):
         if self._db is None:
-            self._db = get_extended_database()
+            self._db = get_database()
         return self._db
 
     def add_task(

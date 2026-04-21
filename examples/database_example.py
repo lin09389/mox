@@ -1,7 +1,7 @@
 """数据库使用示例"""
 
 import asyncio
-from mox.core.database import Database, AttackRecordDB, DefenseRecordDB, init_database
+from mox.infrastructure.database import Database, AttackRecordDB, DefenseRecordDB, init_database
 
 
 async def main():

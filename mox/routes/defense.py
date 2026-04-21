@@ -5,9 +5,9 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from mox.defense import InputFilter, OutputFilter
-from mox.core.database import Database
-from mox.core.auth import get_current_active_user, User
-from mox.core.logging import get_logger
+from mox.infrastructure.database import Database
+from mox.infrastructure.auth import get_current_active_user, User
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense")
 

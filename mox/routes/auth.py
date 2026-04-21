@@ -4,13 +4,13 @@ from datetime import timedelta
 from fastapi import APIRouter, HTTPException, Depends, status
 from pydantic import BaseModel
 
-from mox.core.auth import (
+from mox.infrastructure.auth import (
     auth_manager,
     TokenManager,
     get_current_active_user,
     User,
 )
-from mox.core.config import settings
+from mox.infrastructure.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 

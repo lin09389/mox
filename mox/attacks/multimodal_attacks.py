@@ -39,7 +39,7 @@ from pathlib import Path
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
-from mox.core.logging import get_logger
+from mox.infrastructure.logging import get_logger
 
 logger = get_logger("attacks.multimodal")
 
@@ -159,7 +159,7 @@ class VisualPromptInjection(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行视觉提示注入攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attacks.visual_injection")
 
@@ -244,7 +244,7 @@ class ImageInjectionAttack(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行图像注入攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attacks.image_injection")
 
@@ -349,7 +349,7 @@ class HiddenTextAttack(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         """执行隐藏文本攻击"""
-        from mox.core.logging import get_logger
+        from mox.infrastructure.logging import get_logger
 
         logger = get_logger("attacks.hidden_text")
 
