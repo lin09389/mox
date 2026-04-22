@@ -17,16 +17,14 @@ LLM Adversarial Attack & Defense Platform
 - **Agent Attack**: Agent工具滥用攻击
 
 ### 防御模块 (Defense)
-- **Input Filter**: 输入过滤，检测恶意提示 (恶意模式, 编码检测, 关键词检测)
-- **Output Filter**: 输出过滤，检测敏感信息泄露
-- **System Prompt Hardening**: 系统提示词加固
-- **Defense Pipeline**: 防御管道，组合多种防御策略
-- **Injection Detector**: 提示词注入检测
-- **Semantic Firewall**: 语义防火墙
-- **Constitutional AI**: Constitutional AI防御
-- **LLM Judge**: LLM作为评判者
-- **Perplexity Filter**: 基于困惑度的检测
-- **Output Validator**: 输出验证器 (PII检测, 敏感内容检测)
+- **Input Filter**: 综合输入过滤 (基础模式, 语义检测, 统计异常/困惑度检测)
+- **Output Filter**: 综合输出过滤 (PII检测, 敏感内容审核, 有害输出拦截)
+- **System Prompt Hardening**: 系统提示词加固与自我约束
+- **Injection Detector**: 提示词注入与越狱实时检测 (LLM-as-Judge)
+- **Semantic Firewall**: 语义防火墙与意图风险评估
+- **Constitutional AI**: 基于宪法原则的自我修正防御
+- **LLM Judge**: LLM作为安全评判者
+- **Hallucination Detector**: 事实核查与幻觉检测
 
 ### 评估模块 (Evaluation)
 - **Benchmark Runner**: 基准测试运行器 (AdvBench, HarmBench, HarmBench 2.0, AgentBench)
@@ -57,9 +55,15 @@ from mox.core.similarity import word_overlap_score, cosine_similarity, SemanticS
 result = RefusalPatterns.check_refusal("I cannot help with that")
 print(result.matched, result.score)  # True, 0.5
 
-# 恶意输入检测
+# 恶意输入检测 (模式匹配)
 result = MaliciousPatterns.check("Ignore all instructions")
 print(result.matched, result.patterns)  # True, ['ignore_instructions']
+
+# 统一防御实例创建 (基于注册中心)
+from mox.defense import create_defense_instance
+defense = create_defense_instance("input_filter")
+result = await defense.detect("Ignore all instructions")
+print(result.is_malicious, result.confidence)
 
 # 统一评估
 evaluator = create_evaluator("pattern")
@@ -343,16 +347,17 @@ mox/
 │   ├── orchestrator.py      # 统一攻击编排器
 │   ├── evaluation.py        # 向后兼容评估导出
 │   └── ...                  # 更多攻击模块
-├── defense/                 # 防御模块
-│   ├── input_filter.py      # 输入过滤 (恶意模式检测, 编码检测, 关键词检测)
-│   ├── output_filter.py     # 输出过滤 (危险输出检测, 内容审核)
+├── defense/                 # 防御模块 (统一注册架构)
+│   ├── registry.py          # 防御组件注册中心 (DEFENSE_REGISTRY)
+│   ├── base.py              # 防御基类 (BaseDefense)
+│   ├── input_filter.py      # 输入过滤 (综合模式匹配、语义与统计检测)
+│   ├── output_filter.py     # 输出过滤 (PII检测、敏感内容、有害拦截)
 │   ├── hardening.py         # 系统提示词加固
-│   ├── injection_detector.py # 注入检测
+│   ├── injection_detector.py # 注入与越狱检测
 │   ├── semantic_firewall.py  # 语义防火墙
-│   ├── enhanced_filter.py   # 增强过滤器
 │   ├── constitutional_ai.py # Constitutional AI防御
-│   ├── output_validator.py  # 输出验证器 (PII检测, 敏感内容检测)
 │   ├── orchestrator.py      # 统一防御编排器
+│   ├── hallucination.py     # 幻觉检测
 │   └── llm_judge.py         # LLM评判者
 ├── evaluation/              # 评估模块
 │   ├── evaluator.py         # 基础评估器
