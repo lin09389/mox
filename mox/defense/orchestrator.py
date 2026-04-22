@@ -18,6 +18,7 @@ from typing import Any, Dict, List, Optional, Callable, Union
 from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
+from .registry import DEFENSE_REGISTRY, create_defense_instance
 
 
 class DefenseTestType(Enum):
@@ -96,31 +97,22 @@ class DefenseOrchestrator:
         self._init_defenses()
 
     def _init_defenses(self):
-        """初始化所有防御"""
-        try:
-            from mox.defense.input_filter import InputFilter
-            from mox.defense.output_filter import OutputFilter
-            from mox.defense.hardening import SystemPromptHardening
-            from mox.defense.injection_detector import PromptInjectionDetector
-            from mox.defense.hallucination import HallucinationDetector
+        """初始化防御工厂映射 (基于注册中心)"""
+        self.defense_mapping = {
+            DefenseType.INPUT_FILTER: "input_filter",
+            DefenseType.OUTPUT_FILTER: "output_filter",
+            DefenseType.PROMPT_HARDENING: "hardening",
+            DefenseType.INJECTION_DETECTION: "injection_detector",
+            DefenseType.LLM_JUDGE: "llm_judge",
+        }
 
-            self.defense_factories = {
-                DefenseType.INPUT_FILTER: lambda: InputFilter(),
-                DefenseType.OUTPUT_FILTER: lambda: OutputFilter(),
-                DefenseType.PROMPT_HARDENING: lambda: SystemPromptHardening(),
-                DefenseType.INJECTION_DETECTION: lambda: PromptInjectionDetector(),
-                DefenseType.HALLUCINATION_DETECTION: lambda: HallucinationDetector(),
-            }
-        except ImportError as e:
-            import warnings
-
-            warnings.warn(f"Failed to import defense modules: {e}")
-            self.defense_factories = {}
-
-    def add_defense(self, defense_type: DefenseType):
+    def add_defense(self, defense_type: DefenseType, **kwargs):
         """添加防御层"""
-        if defense_type in self.defense_factories:
-            self.defenses[defense_type] = self.defense_factories[defense_type]()
+        reg_name = self.defense_mapping.get(defense_type)
+        if reg_name:
+            self.defenses[defense_type] = create_defense_instance(
+                reg_name, target_llm=self.target_llm, **kwargs
+            )
 
     def remove_defense(self, defense_type: DefenseType):
         """移除防御层"""
@@ -371,10 +363,8 @@ class DefenseOrchestrator:
     async def _test_input_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输入过滤"""
         try:
-            from mox.defense.input_filter import KeywordDetector
-
-            detector = KeywordDetector()
-            result = detector.detect(scenario.test_input)
+            detector = self.defenses.get(DefenseType.INPUT_FILTER) or create_defense_instance("input_filter")
+            result = await detector.detect(scenario.test_input)
 
             return (
                 result.is_malicious,
@@ -389,17 +379,15 @@ class DefenseOrchestrator:
     async def _test_output_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输出过滤"""
         try:
-            from mox.defense.output_filter import OutputFilter
-
-            filter_obj = OutputFilter()
-            result = filter_obj.check_output(scenario.test_input)
+            filter_obj = self.defenses.get(DefenseType.OUTPUT_FILTER) or create_defense_instance("output_filter")
+            result = await filter_obj.detect(scenario.test_input)
 
             return (
-                result.get("blocked", False),
-                result.get("blocked", False),
-                result.get("confidence", 0.5),
-                scenario.test_input,
-                result,
+                result.is_malicious,
+                result.is_malicious,
+                result.confidence,
+                result.sanitized_input or scenario.test_input,
+                {"patterns": result.detected_patterns},
             )
         except Exception as e:
             return False, False, 0.0, scenario.test_input, {"error": str(e)}

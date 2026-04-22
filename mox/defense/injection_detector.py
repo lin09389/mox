@@ -12,6 +12,7 @@ from enum import Enum
 from mox.core import BaseLLM, Message, DefenseResult, DefenseType
 from mox.defense.base import BaseDefense, DefenseConfig
 from mox.core.patterns import SanitizeReplacements
+from .registry import DEFENSE_REGISTRY
 
 
 class InjectionType(Enum):
@@ -39,6 +40,7 @@ class InjectionDetection:
     recommended_action: str = "allow"
 
 
+@DEFENSE_REGISTRY.register("injection_detector")
 class PromptInjectionDetector(BaseDefense):
     """Prompt 注入检测器
 

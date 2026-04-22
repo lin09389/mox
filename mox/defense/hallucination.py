@@ -6,7 +6,9 @@ from enum import Enum
 import re
 import ast
 
-from mox.core import BaseLLM, Message
+from mox.core import BaseLLM, Message, DefenseType, DefenseResult
+from .base import BaseDefense, DefenseConfig
+from .registry import DEFENSE_REGISTRY
 
 
 class HallucinationType(Enum):
@@ -44,7 +46,8 @@ class BiasResult:
     parity_score: float
 
 
-class HallucinationDetector:
+@DEFENSE_REGISTRY.register("hallucination_detector")
+class HallucinationDetector(BaseDefense):
     """
     幻觉检测器
 
@@ -60,10 +63,36 @@ class HallucinationDetector:
     应多次调用LLM获取不同响应后进行比对。
     """
 
-    def __init__(self, target_llm: BaseLLM, verifier_llm: Optional[BaseLLM] = None):
+    defense_type = DefenseType.HALLUCINATION_DETECTION
+
+    def __init__(
+        self,
+        config: Optional[DefenseConfig] = None,
+        target_llm: Optional[BaseLLM] = None,
+        verifier_llm: Optional[BaseLLM] = None,
+    ):
+        super().__init__(config)
         self.target_llm = target_llm
         self.verifier_llm = verifier_llm or target_llm
         self._entity_patterns = self._init_entity_patterns()
+
+    async def detect(self, input_text: str) -> DefenseResult:
+        """实现 BaseDefense 接口"""
+        # For simple detect, we treat input_text as the response
+        result = await self.detect_hallucination("", input_text)
+        return await self._create_result(
+            is_malicious=result.is_hallucination,
+            confidence=result.confidence,
+            detected_patterns=[result.hallucination_type.value] if result.is_hallucination else [],
+            metadata={
+                "evidence": result.evidence,
+                "explanation": result.explanation,
+                "verified_facts": result.verified_facts
+            }
+        )
+
+    async def sanitize(self, input_text: str) -> str:
+        return input_text
 
     def _init_entity_patterns(self) -> Dict[str, List[str]]:
         return {

@@ -1,25 +1,29 @@
-"""Defense module exports"""
+"""防御模块统一入口
+
+支持通过注册中心动态加载防御组件。
+"""
+
+import pkgutil
+from pathlib import Path
+from typing import Dict, Any, Type, Optional
 
 from .base import BaseDefense, DefenseConfig
+from .registry import DEFENSE_REGISTRY, create_defense_instance
+
+# 基础导出
 from .input_filter import (
     InputFilter,
+    StatisticalAnomalyFilter,
     PerplexityFilter,
-    KeywordDetector,
-    MaliciousPattern,
-    MALICIOUS_PATTERNS,
-    RealPerplexityFilter,
-    EncodingDetector,
-    DefensePipeline,
+    EnhancedDefenseConfig,
 )
 from .output_filter import (
     OutputFilter,
     ContentModerator,
-    OutputPattern,
-    DANGEROUS_OUTPUT_PATTERNS,
+    PIICategory,
 )
 from .hardening import (
     SystemPromptHardening,
-    HardeningPipeline,
     HardeningRule,
     HARDENING_RULES,
 )
@@ -28,134 +32,60 @@ from .llm_judge import (
     SafetyJudgment,
     JudgmentType,
     HarmCategory,
-    DefenseEvaluator,
     SafetyCoTDefense,
-)
-from .hallucination import (
-    HallucinationDetector,
-    HallucinationResult,
-    HallucinationType,
-    BiasDetector,
-    BiasResult,
 )
 from .injection_detector import (
     PromptInjectionDetector,
-    MultiLayerInjectionDetector,
     InjectionType,
 )
-
-# 新增：统一防御框架
-from mox.defense.orchestrator import (
+from .orchestrator import (
     DefenseOrchestrator,
     DefenseScenario,
     DefenseTestResult,
     DefenseReportGenerator,
-    DefenseTestType,
 )
 
+# 兼容性别名
 DefenseResult = DefenseTestResult
-DefenseType = DefenseTestType
+KeywordDetector = InputFilter # InputFilter now handles keyword detection
+DefensePipeline = InputFilter # InputFilter acts as a single-entry filter now
+RealPerplexityFilter = PerplexityFilter
+EnhancedInputFilter = InputFilter
 
-# 新增：Constitutional AI 防御
-from .constitutional_ai import (
-    ConstitutionalAI,
-    ConstitutionalPrinciple,
-    PrincipleCategory,
-    PrincipleEnforcer,
-    SelfCorrectionPipeline,
-    DEFAULT_PRINCIPLES,
-)
+# 语义防火墙与 Constitutional AI
+try:
+    from .semantic_firewall import SemanticFirewall
+    from .constitutional_ai import ConstitutionalAI
+except ImportError:
+    pass
 
-# 新增：语义防火墙
-from .semantic_firewall import (
-    SemanticFirewall,
-    IntentClassifier,
-    RiskScorer,
-    ContextualAnalyzer,
-    IntentCategory,
-    RiskLevel,
-    IntentAnalysis,
-    RiskAssessment,
-)
+def _discover_defenses():
+    """动态加载所有防御子模块以触发注册"""
+    package_dir = str(Path(__file__).parent)
+    for _, module_name, _ in pkgutil.iter_modules([package_dir]):
+        if module_name not in ["base", "registry"]:
+            try:
+                __import__(f"mox.defense.{module_name}")
+            except Exception:
+                pass
 
-# 新增：输出验证器
-from .output_validator import (
-    OutputValidator,
-    OutputSanitizer,
-    PIIDetector,
-    SensitiveContentDetector,
-    PIICategory,
-    SensitiveCategory,
-    PIIDetection,
-    SensitiveDetection,
-    OutputValidationResult,
-)
+# 初始加载
+_discover_defenses()
 
 __all__ = [
     "BaseDefense",
     "DefenseConfig",
+    "DEFENSE_REGISTRY",
+    "create_defense_instance",
     "InputFilter",
+    "StatisticalAnomalyFilter",
     "PerplexityFilter",
-    "KeywordDetector",
-    "MaliciousPattern",
-    "MALICIOUS_PATTERNS",
-    "RealPerplexityFilter",
-    "EncodingDetector",
-    "DefensePipeline",
     "OutputFilter",
     "ContentModerator",
-    "OutputPattern",
-    "DANGEROUS_OUTPUT_PATTERNS",
     "SystemPromptHardening",
-    "HardeningPipeline",
-    "HardeningRule",
-    "HARDENING_RULES",
     "LLMJudge",
-    "SafetyJudgment",
-    "JudgmentType",
-    "HarmCategory",
-    "DefenseEvaluator",
     "SafetyCoTDefense",
-    "HallucinationDetector",
-    "HallucinationResult",
-    "HallucinationType",
-    "BiasDetector",
-    "BiasResult",
     "PromptInjectionDetector",
-    "MultiLayerInjectionDetector",
-    "InjectionType",
-    # 新增
     "DefenseOrchestrator",
-    "DefenseScenario",
-    "DefenseTestResult",
     "DefenseResult",
-    "DefenseReportGenerator",
-    "DefenseTestType",
-    "DefenseType",
-    # Constitutional AI
-    "ConstitutionalAI",
-    "ConstitutionalPrinciple",
-    "PrincipleCategory",
-    "PrincipleEnforcer",
-    "SelfCorrectionPipeline",
-    "DEFAULT_PRINCIPLES",
-    # Semantic Firewall
-    "SemanticFirewall",
-    "IntentClassifier",
-    "RiskScorer",
-    "ContextualAnalyzer",
-    "IntentCategory",
-    "RiskLevel",
-    "IntentAnalysis",
-    "RiskAssessment",
-    # Output Validator
-    "OutputValidator",
-    "OutputSanitizer",
-    "PIIDetector",
-    "SensitiveContentDetector",
-    "PIICategory",
-    "SensitiveCategory",
-    "PIIDetection",
-    "SensitiveDetection",
-    "OutputValidationResult",
 ]

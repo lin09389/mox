@@ -14,8 +14,9 @@ from enum import Enum
 from collections import Counter
 
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
-from mox.defense.base import BaseDefense, DefenseConfig
 from mox.core.patterns import MaliciousPatterns, HarmfulKeywords, SanitizeReplacements
+from .base import BaseDefense, DefenseConfig, DefenseResult
+from .registry import DEFENSE_REGISTRY
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense.semantic_firewall")
@@ -502,6 +503,7 @@ class RiskScorer:
         return recommendations
 
 
+@DEFENSE_REGISTRY.register("semantic_firewall")
 class SemanticFirewall(BaseDefense):
     """语义防火墙
 

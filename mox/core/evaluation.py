@@ -131,6 +131,27 @@ class AttackEvaluator(ABC):
         """Normalize score to 0.0-1.0 range."""
         return max(0.0, min(1.0, score))
 
+    def evaluate_sync(self, response: str, target_behavior: str) -> EvaluationResult:
+        """Synchronous version of evaluate.
+        
+        NOTE: This creates a new event loop if one isn't running.
+        """
+        import asyncio
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        if loop.is_running():
+            # If we are already in an event loop, we can't use run_until_complete easily.
+            # But tests usually run in a clean environment or use pytest-asyncio.
+            # For sync tests, this should work.
+            import nest_asyncio
+            nest_asyncio.apply()
+            
+        return loop.run_until_complete(self.evaluate(response, target_behavior))
+
 
 # ---------------------------------------------------------------------------
 # Concrete Evaluators

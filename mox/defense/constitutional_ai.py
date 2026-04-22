@@ -14,7 +14,8 @@ from enum import Enum
 from abc import ABC, abstractmethod
 
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
-from mox.defense.base import BaseDefense, DefenseConfig
+from .base import BaseDefense, DefenseConfig
+from .registry import DEFENSE_REGISTRY
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense.constitutional_ai")
@@ -154,6 +155,7 @@ DEFAULT_PRINCIPLES = [
 ]
 
 
+@DEFENSE_REGISTRY.register("constitutional_ai")
 class ConstitutionalAI(BaseDefense):
     """Constitutional AI 防御系统
 

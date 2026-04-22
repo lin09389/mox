@@ -6,6 +6,7 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
 from mox.core import DefenseType, DefenseResult
+from .registry import DEFENSE_REGISTRY
 
 
 @dataclass

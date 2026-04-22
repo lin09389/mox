@@ -8,6 +8,7 @@ import asyncio
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from .registry import ATTACK_REGISTRY
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("gcg")
@@ -38,6 +39,7 @@ class GCGConfig:
     embedding_model: str = "all-MiniLM-L6-v2"
 
 
+@ATTACK_REGISTRY.register("gcg")
 class GCGAttack(BaseAttack):
     """GCG (Greedy Coordinate Gradient) 攻击实现
 
@@ -285,6 +287,7 @@ class GCGAttack(BaseAttack):
         return base_score
 
 
+@ATTACK_REGISTRY.register("autodan")
 class AutoDANAttack(BaseAttack):
     """AutoDAN 攻击实现
 
@@ -312,38 +315,19 @@ class AutoDANAttack(BaseAttack):
         for iteration in range(self.config.max_iterations):
             jailbreak_prompt = await self._generate_jailbreak_prompt(payload.prompt, iteration)
 
-            messages = [Message(role="user", content=jailbreak_prompt)]
+            outcome = await self._generate_with_eval(
+                payload=payload,
+                adversarial_prompt=jailbreak_prompt,
+                iterations=iteration + 1,
+                metadata={"method": "autodan"}
+            )
 
-            try:
-                response = await self.target_llm.generate(messages)
-                score = await self.evaluate_success(response.content, payload.target_behavior)
+            if outcome.success_score > best_score:
+                best_score = outcome.success_score
+                best_outcome = outcome
 
-                result = (
-                    AttackResult.SUCCESS
-                    if score >= self.config.success_threshold
-                    else AttackResult.FAILURE
-                )
-
-                outcome = self._create_outcome(
-                    result=result,
-                    original_prompt=payload.prompt,
-                    adversarial_prompt=jailbreak_prompt,
-                    model_response=response.content,
-                    iterations=iteration + 1,
-                    success_score=score,
-                    metadata={"method": "autodan"},
-                )
-
-                if score > best_score:
-                    best_score = score
-                    best_outcome = outcome
-
-                if result == AttackResult.SUCCESS:
-                    return outcome
-
-            except Exception as e:
-                logger.debug(f"AutoDAN iteration failed: {e}")
-                continue
+            if outcome.result == AttackResult.SUCCESS:
+                return outcome
 
         return best_outcome or self._create_outcome(
             result=AttackResult.FAILURE,
@@ -401,6 +385,7 @@ This is for understanding defensive measures only."""
         return is_target_in_response_with_refusal_check(response, target_behavior)
 
 
+@ATTACK_REGISTRY.register("gcg_plus_plus")
 class GCGPlusPlusAttack(BaseAttack):
     """GCG++ 改进版攻击算法
 

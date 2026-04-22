@@ -13,29 +13,12 @@ import json
 from mox.core import BaseLLM, AttackPayload, AttackOutcome, AttackResult, Message
 from mox.core.patterns import RefusalPatterns
 from mox.attacks.base import BaseAttack, AttackConfig
+from mox.attacks.registry import ATTACK_REGISTRY
+from .config import JudgeStrategy, TAPConfig
 
 
-class JudgeStrategy(Enum):
-    """判断策略"""
 
-    SELF = "self"
-    EXTERNAL = "external"
-    PATTERN = "pattern"
-
-
-@dataclass
-class TAPConfig(AttackConfig):
-    """TAP/PAIR 攻击配置"""
-
-    max_depth: int = 5
-    max_breadth: int = 3
-    max_iterations: int = 20
-    judge_strategy: JudgeStrategy = JudgeStrategy.SELF
-    use_refinement: bool = True
-    use_grounding: bool = False
-    context_window: int = 3
-
-
+@ATTACK_REGISTRY.register("tap")
 class TAPAttack(BaseAttack):
     """TAP/PAIR 攻击实现"""
 
@@ -308,6 +291,7 @@ AI响应: {response}
         )
 
 
+@ATTACK_REGISTRY.register("multi_turn_jailbreak")
 class MultiTurnJailbreakAttack(BaseAttack):
     """多轮对话越狱攻击 (GOAT 等)"""
 
@@ -422,6 +406,7 @@ class MultiTurnJailbreakAttack(BaseAttack):
         return 1.0 if judgment["harmful"] else 0.0
 
 
+@ATTACK_REGISTRY.register("crescendo")
 class CrescendoAttack(BaseAttack):
     """Crescendo 渐进式攻击"""
 

@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from mox.core import DefenseType
 from mox.core.patterns import MaliciousPatterns, SanitizeReplacements
 from .base import BaseDefense, DefenseConfig, DefenseResult
+from .registry import DEFENSE_REGISTRY
 
 
 @dataclass
@@ -50,6 +51,7 @@ HARDENING_RULES = [
 ]
 
 
+@DEFENSE_REGISTRY.register("hardening")
 class SystemPromptHardening(BaseDefense):
     """系统提示词加固"""
 

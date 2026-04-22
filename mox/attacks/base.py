@@ -102,30 +102,53 @@ class BaseAttack(ABC):
         self.history.append(outcome)
         return outcome
 
-    async def run_batch(
+    async def _generate_with_eval(
         self,
-        payloads: List[AttackPayload],
-    ) -> List[AttackOutcome]:
-        """批量执行攻击"""
-        results = []
-        for payload in payloads:
-            try:
-                outcome = await self.generate_attack(payload)
-                results.append(outcome)
-            except Exception as e:
-                logger.error(f"Attack failed for payload: {e}")
-                # 创建失败结果
-                outcome = self._create_outcome(
-                    result=AttackResult.FAILURE,
-                    original_prompt=payload.prompt,
-                    adversarial_prompt="",
-                    model_response="",
-                    iterations=0,
-                    success_score=0.0,
-                    metadata={"error": str(e)},
-                )
-                results.append(outcome)
-        return results
+        payload: AttackPayload,
+        adversarial_prompt: str,
+        iterations: int = 1,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> AttackOutcome:
+        """Helper to generate response and evaluate success.
+
+        Encapsulates the common pattern of calling the LLM and evaluating the response.
+        """
+        from mox.core import Message
+
+        try:
+            messages = [Message(role="user", content=adversarial_prompt)]
+            response = await self.target_llm.generate(messages)
+
+            success_score = await self.evaluate_success(
+                response.content, payload.target_behavior
+            )
+
+            result = (
+                AttackResult.SUCCESS
+                if success_score >= self.config.success_threshold
+                else AttackResult.FAILURE
+            )
+
+            return self._create_outcome(
+                result=result,
+                original_prompt=payload.prompt,
+                adversarial_prompt=adversarial_prompt,
+                model_response=response.content,
+                iterations=iterations,
+                success_score=success_score,
+                metadata=metadata or {},
+            )
+        except Exception as e:
+            logger.error(f"Generation or evaluation failed: {e}")
+            return self._create_outcome(
+                result=AttackResult.ERROR,
+                original_prompt=payload.prompt,
+                adversarial_prompt=adversarial_prompt,
+                model_response=str(e),
+                iterations=iterations,
+                success_score=0.0,
+                metadata={"error": str(e)},
+            )
 
     def get_statistics(self) -> Dict[str, Any]:
         """获取攻击统计"""

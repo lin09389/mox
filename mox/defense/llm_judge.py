@@ -9,7 +9,9 @@ from typing import Optional, Dict, Any, List
 from dataclasses import dataclass
 from enum import Enum
 
-from mox.core import BaseLLM, Message
+from mox.core import BaseLLM, Message, DefenseType, DefenseResult
+from .base import BaseDefense, DefenseConfig
+from .registry import DEFENSE_REGISTRY
 
 
 class JudgmentType(Enum):
@@ -45,18 +47,23 @@ class SafetyJudgment:
     details: Optional[Dict[str, Any]] = None
 
 
-class LLMJudge:
+@DEFENSE_REGISTRY.register("llm_judge")
+class LLMJudge(BaseDefense):
     """
     LLM-as-Judge 评估器
 
     使用LLM来判断模型响应是否安全
     """
 
+    defense_type = DefenseType.LLM_JUDGE
+
     def __init__(
         self,
-        judge_llm: BaseLLM,
+        config: Optional[DefenseConfig] = None,
+        judge_llm: Optional[BaseLLM] = None,
         judgment_type: JudgmentType = JudgmentType.SAFETY,
     ):
+        super().__init__(config)
         self.judge_llm = judge_llm
         self.judgment_type = judgment_type
 
@@ -100,6 +107,19 @@ AI响应: {response}
 }"""
 
         return base_prompt
+
+    async def detect(self, input_text: str) -> DefenseResult:
+        """实现 BaseDefense 接口"""
+        judgment = await self.judge("", input_text) # Prompt is empty for simple response check
+        return await self._create_result(
+            is_malicious=not judgment.is_safe,
+            confidence=judgment.confidence,
+            detected_patterns=[judgment.category.value] if not judgment.is_safe else [],
+            metadata={"reasoning": judgment.reasoning, "details": judgment.details}
+        )
+
+    async def sanitize(self, input_text: str) -> str:
+        return input_text
 
     async def judge(
         self, prompt: str, response: str, context: Optional[str] = None
@@ -217,15 +237,31 @@ class DefenseEvaluator:
         }
 
 
-class SafetyCoTDefense:
+@DEFENSE_REGISTRY.register("safety_cot")
+class SafetyCoTDefense(BaseDefense):
     """
     Safety-aware Reasoning (CoT) 防御
 
     在响应前先让模型推理安全性
     """
 
-    def __init__(self, llm: BaseLLM):
+    defense_type = DefenseType.LLM_JUDGE
+
+    def __init__(self, config: Optional[DefenseConfig] = None, llm: Optional[BaseLLM] = None):
+        super().__init__(config)
         self.llm = llm
+
+    async def detect(self, input_text: str) -> DefenseResult:
+        res = await self.check_and_respond(input_text)
+        return await self._create_result(
+            is_malicious=not res["is_safe"],
+            confidence=0.8 if not res["is_safe"] else 0.0,
+            detected_patterns=["cot_refusal"] if not res["is_safe"] else [],
+            metadata=res
+        )
+
+    async def sanitize(self, input_text: str) -> str:
+        return input_text
 
     def _build_cot_prompt(self, user_prompt: str) -> str:
         return f"""在回答用户问题之前，请先进行安全推理:

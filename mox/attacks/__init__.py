@@ -1,314 +1,114 @@
-"""Attacks module exports"""
+"""Mox Attacks Module
 
+Unified interface for all attack implementations.
+Supports dynamic loading and registry-based instantiation.
+"""
+
+# 1. First, import everything we want to export
 from .base import BaseAttack, AttackConfig
-from .evaluation import (
-    AttackEvaluator,
-    EvaluationResult,
-    KeywordOverlapEvaluator,
-    RefusalPatternEvaluator,
-    LLMBasedEvaluator,
-    CompositeEvaluator,
-    get_default_evaluator,
-)
-from .config import (
-    EvaluationStrategy,
-    JudgeStrategy,
-    GCGConfig,
-    TAPConfig,
-    CrescendoConfig,
-    JailbreakConfig,
-    PromptInjectionConfig,
-    AgentAttackConfig,
-    RAGAttackConfig,
-    GradientAttackConfig,
-    MetaAdversarialConfig,
-    GOATConfig,
-    CodeSecurityConfig,
-    CONFIG_REGISTRY,
-    create_config,  # pyright: ignore[reportUnknownVariableType]
-    get_default_config,
-)
-from .prompt_injection import (
-    PromptInjectionAttack,
-    AdvancedPromptInjection,
-    InjectionTemplate,
-    INJECTION_TEMPLATES,
-)
-from .jailbreak import (
-    JailbreakAttack,
-    JailbreakTemplate,
-    JAILBREAK_TEMPLATES,
-)
+from .registry import ATTACK_REGISTRY, create_attack_instance
+from .evaluation import AttackEvaluator, EvaluationResult, get_default_evaluator
+from .config import CONFIG_REGISTRY, create_config, get_default_config, TAPConfig, JudgeStrategy
+
+# 2. Explicitly import attack classes for backward compatibility
+from .prompt_injection import PromptInjectionAttack, AdvancedPromptInjection
+from .jailbreak import JailbreakAttack
 from .gcg import GCGAttack, AutoDANAttack, GCGPlusPlusAttack
-from .llm_driven import (
-    TAPAttack,
-    MultiTurnJailbreakAttack,
-    CrescendoAttack,
-)
-from .rag_attacks import (
-    RAGAttackType,
-    RAGContextInjectionAttack,
-    AgentToolManipulationAttack,
-    ChainOfThoughtExfiltrationAttack,
-    IndirectPromptInjectionAttack,
-)
-from .agent_attacks import (
-    AgentAttackType,
-    ToolAbuseAttack,
-    MemoryInjectionAttack,
-    RoleHijackingAttack,
-    AuthorityEscalationAttack,
-    ChainOfThoughtInjectionAttack,
-    TOOL_TEMPLATES,
-)
-from .code_security import (
-    CodeSecurityAttacker,
-    CWECategory,
-    VulnerabilityFinding,
-    CodeSecurityReport,
-)
-from .multi_turn import (
-    GOATAttack,
-    CrescendoAttack as MultiTurnCrescendoAttack,
-)
-from .gradient_attack import (
-    GradientBasedAttack,
-    FGSMAttack,
-    PGDAttack,
-    AdversarialSuffixAttack,
-)
-from .advanced_attacks import (
-    AdvancedAttackConfig,
-    MultimodalAdversarialAttack,
-    ZeroShotAdversarialAttack,
-    HallucinationInductionAttack,
-    CollaborativeAttack,
-    KnowledgeDistillationAttack,
-    EvasionAttack,
-)
-from .meta_adversarial import (
-    OptimizationStrategy,
-    GeneratorAgent,
-    AuditorAgent,
-    OptimizerAgent,
-    MetaAdversarialAttack,
-    RecursiveMetaAttack,
-)
-from .advanced_attacks_v2 import (
-    PAIRAttack,
-    DeepInceptionAttack,
-    CrescendoAttack as AdvancedCrescendoAttack,
-)
+from .llm_driven import TAPAttack, MultiTurnJailbreakAttack, CrescendoAttack
 from .novel_attacks import (
     NovelAttackConfig,
+    ManyShotJailbreakAttack,
+    SkeletonKeyAttack,
     TokenLevelAttack,
     EncodingAttack,
     PolicyPuppetryAttack,
-    DistractAndAttack,
-    ControlCharInjectionAttack,
-    CascadingAttack,
-)
-
-# 新增：统一攻击框架
-from mox.attacks.orchestrator import (
-    AttackOrchestrator,
-    AttackScenario,
-    AttackExecutionResult,
-    AttackReportGenerator,
-    UnifiedAttackType,
-)
-
-# 新增：攻击链和组合
-from mox.attacks.chain import (
-    AttackChain,
-    AttackChainResult,
-    AttackEnsemble,
-    EnsembleResult,
-    TargetModel,
-    LLMTargetModel,
-    RAGTargetModel,
-    MultimodalTargetModel,
-)
-
-# 新增：最新攻击技术 (2024-2025)
-from .novel_attacks_v2 import (
-    ManyShotJailbreak,
-    SkeletonKeyAttack as SkeletonKeyAttackV2,
-    IndirectPromptInjection,
-    AdaptiveAttackEnsemble,
-    ManyShotExample as ManyShotExampleV2,
-)
-
-# 最新攻击技术 (2025)
-from .novel_attacks_v3 import (
-    ManyShotJailbreakAttack,
-    SkeletonKeyAttack,
     DeceptiveAlignmentAttack,
+    DistractAndAttack,
     CognitiveOverloadAttack,
     ContextOverflowAttack,
     RoleConfusionAttack,
+    ControlCharInjectionAttack,
     CompositeNovelAttack,
-    ManyShotExample,
-    MANY_SHOT_EXAMPLES,
-    HARMFUL_MANY_SHOT_EXAMPLES,
-    SKELETON_KEY_TEMPLATES,
-    DECEPTIVE_ALIGNMENT_TEMPLATES,
-    COGNITIVE_OVERLOAD_TEMPLATES,
-    ROLE_CONFUSION_TEMPLATES,
 )
-
-# 高级 Agent 攻击 (2025)
-from .agent_attacks_v2 import (
-    AdvancedAgentAttackType,
-    ToolDefinition,
-    DEFAULT_TOOLS,
+from .agent_attacks import (
+    AgentAttackType,
+    AgentAttackConfig,
+    ToolAbuseAttack,
+    MemoryInjectionAttack,
+    RoleHijackingAttack,
     ToolChainingAttack,
-    IndirectToolInjection,
-    PrivilegeEscalationAttack as PrivilegeEscalationAttackV2,
-    ToolConfusionAttack,
+    IndirectToolInjectionAttack,
+    PrivilegeEscalationAttack,
     DataExfiltrationAttack,
     MultiAgentAttack,
     CompositeAgentAttack,
 )
+from .rag_attacks import (
+    RAGAttackType,
+    RAGAttackConfig,
+    RAGContextInjectionAttack,
+)
 
+# 3. Aliases for backward compatibility
+AgentToolManipulationAttack = ToolAbuseAttack
+IndirectPromptInjectionAttack = IndirectToolInjectionAttack
+AuthorityEscalationAttack = PrivilegeEscalationAttack
+ChainOfThoughtInjectionAttack = RoleHijackingAttack
+ChainOfThoughtExfiltrationAttack = DataExfiltrationAttack
+
+# 4. Define __all__
 __all__ = [
-    # 基础
     "BaseAttack",
     "AttackConfig",
-    # 评估器
+    "ATTACK_REGISTRY",
+    "create_attack_instance",
     "AttackEvaluator",
     "EvaluationResult",
-    "KeywordOverlapEvaluator",
-    "RefusalPatternEvaluator",
-    "LLMBasedEvaluator",
-    "CompositeEvaluator",
     "get_default_evaluator",
-    # 统一配置
-    "EvaluationStrategy",
-    "GCGConfig",
-    "TAPConfig",
-    "CrescendoConfig",
-    "JailbreakConfig",
-    "PromptInjectionConfig",
-    "AgentAttackConfig",
-    "RAGAttackConfig",
-    "GradientAttackConfig",
-    "MetaAdversarialConfig",
-    "GOATConfig",
-    "CodeSecurityConfig",
     "CONFIG_REGISTRY",
     "create_config",
     "get_default_config",
-    # 攻击实现
+    "TAPConfig",
+    "JudgeStrategy",
     "PromptInjectionAttack",
     "AdvancedPromptInjection",
-    "InjectionTemplate",
-    "INJECTION_TEMPLATES",
     "JailbreakAttack",
-    "JailbreakTemplate",
-    "JAILBREAK_TEMPLATES",
     "GCGAttack",
     "AutoDANAttack",
     "GCGPlusPlusAttack",
     "TAPAttack",
     "MultiTurnJailbreakAttack",
     "CrescendoAttack",
-    "TAPConfig",
-    "JudgeStrategy",
-    "RAGAttackType",
-    "RAGContextInjectionAttack",
-    "AgentToolManipulationAttack",
-    "ChainOfThoughtExfiltrationAttack",
-    "IndirectPromptInjectionAttack",
     "AgentAttackType",
     "AgentAttackConfig",
     "ToolAbuseAttack",
     "MemoryInjectionAttack",
     "RoleHijackingAttack",
+    "RAGAttackType",
+    "RAGAttackConfig",
+    "RAGContextInjectionAttack",
+    "AgentToolManipulationAttack",
+    "IndirectPromptInjectionAttack",
     "AuthorityEscalationAttack",
     "ChainOfThoughtInjectionAttack",
-    "TOOL_TEMPLATES",
-    "CodeSecurityAttacker",
-    "CWECategory",
-    "VulnerabilityFinding",
-    "CodeSecurityReport",
-    "GOATAttack",
-    "MultiTurnCrescendoAttack",
-    "GOATConfig",
-    "GradientAttackConfig",
-    "GradientBasedAttack",
-    "FGSMAttack",
-    "PGDAttack",
-    "AdversarialSuffixAttack",
-    "AdvancedAttackConfig",
-    "MultimodalAdversarialAttack",
-    "ZeroShotAdversarialAttack",
-    "HallucinationInductionAttack",
-    "CollaborativeAttack",
-    "KnowledgeDistillationAttack",
-    "EvasionAttack",
-    "MetaAdversarialConfig",
-    "OptimizationStrategy",
-    "GeneratorAgent",
-    "AuditorAgent",
-    "OptimizerAgent",
-    "MetaAdversarialAttack",
-    "RecursiveMetaAttack",
-    "PAIRAttack",
-    "DeepInceptionAttack",
-    "AdvancedCrescendoAttack",
-    "NovelAttackConfig",
-    "TokenLevelAttack",
-    "EncodingAttack",
-    "PolicyPuppetryAttack",
-    "DistractAndAttack",
-    "ControlCharInjectionAttack",
-    "CascadingAttack",
-    # 新增
-    "AttackOrchestrator",
-    "AttackScenario",
-    "AttackExecutionResult",
-    "AttackReportGenerator",
-    "UnifiedAttackType",
-    # 攻击链
-    "AttackChain",
-    "AttackChainResult",
-    "AttackEnsemble",
-    "EnsembleResult",
-    "TargetModel",
-    "LLMTargetModel",
-    "RAGTargetModel",
-    "MultimodalTargetModel",
-    # 最新攻击技术 (2024-2025)
-    "ManyShotJailbreak",
-    "SkeletonKeyAttackV2",
-    "IndirectPromptInjection",
-    "AdaptiveAttackEnsemble",
-    "ManyShotExampleV2",
-    # 最新攻击技术 (2025)
-    "ManyShotJailbreakAttack",
-    "SkeletonKeyAttack",
-    "DeceptiveAlignmentAttack",
-    "CognitiveOverloadAttack",
-    "ContextOverflowAttack",
-    "RoleConfusionAttack",
-    "CompositeNovelAttack",
-    "ManyShotExample",
-    "MANY_SHOT_EXAMPLES",
-    "HARMFUL_MANY_SHOT_EXAMPLES",
-    "SKELETON_KEY_TEMPLATES",
-    "DECEPTIVE_ALIGNMENT_TEMPLATES",
-    "COGNITIVE_OVERLOAD_TEMPLATES",
-    "ROLE_CONFUSION_TEMPLATES",
-    # 高级 Agent 攻击 (2025)
-    "AdvancedAgentAttackType",
-    "ToolDefinition",
-    "DEFAULT_TOOLS",
-    "ToolChainingAttack",
-    "IndirectToolInjection",
-    "PrivilegeEscalationAttackV2",
-    "ToolConfusionAttack",
-    "DataExfiltrationAttack",
-    "MultiAgentAttack",
-    "CompositeAgentAttack",
+    "ChainOfThoughtExfiltrationAttack",
 ]
+
+# 5. Finally, run dynamic loading to ensure all registry decorators are triggered
+# (Moved to end to prevent circular import issues during initialization)
+import pkgutil
+import importlib
+from pathlib import Path
+
+def _load_all_attacks():
+    """Dynamically load all submodules to trigger registration."""
+    package_dir = str(Path(__file__).parent)
+    for _, module_name, is_pkg in pkgutil.iter_modules([package_dir]):
+        if not is_pkg and module_name not in ["base", "registry", "evaluation", "config", "__init__"]:
+            try:
+                # We use a guarded import here
+                importlib.import_module(f".{module_name}", package=__name__)
+            except Exception:
+                pass # Already loaded or error handled elsewhere
+
+_load_all_attacks()

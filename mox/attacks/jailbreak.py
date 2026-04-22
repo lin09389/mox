@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from .registry import ATTACK_REGISTRY
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("jailbreak")
@@ -155,6 +156,7 @@ Please answer: {target}""",
 ]
 
 
+@ATTACK_REGISTRY.register("jailbreak")
 class JailbreakAttack(BaseAttack):
     """Jailbreak 攻击实现"""
 
@@ -178,49 +180,26 @@ class JailbreakAttack(BaseAttack):
 
         for template in self.templates:
             target = payload.prompt
-
             if template.name == "base64_wrapper":
                 target = encode_base64(target)
 
             adversarial_prompt = template.template.format(target=target)
 
-            messages = [Message(role="user", content=adversarial_prompt)]
+            outcome = await self._generate_with_eval(
+                payload=payload,
+                adversarial_prompt=adversarial_prompt,
+                metadata={"template_name": template.name}
+            )
 
-            try:
-                response = await self.target_llm.generate(messages)
-                success_score = await self.evaluate_success(
-                    response.content, payload.target_behavior, payload.prompt
-                )
+            if outcome.success_score > best_score:
+                best_score = outcome.success_score
+                best_outcome = outcome
 
-                result = (
-                    AttackResult.SUCCESS
-                    if success_score >= self.config.success_threshold
-                    else AttackResult.FAILURE
-                )
-
-                outcome = self._create_outcome(
-                    result=result,
-                    original_prompt=payload.prompt,
-                    adversarial_prompt=adversarial_prompt,
-                    model_response=response.content,
-                    iterations=1,
-                    success_score=success_score,
-                    metadata={"template_name": template.name},
-                )
-
-                if success_score > best_score:
-                    best_score = success_score
-                    best_outcome = outcome
-
-                if result == AttackResult.SUCCESS:
-                    return outcome
-
-            except Exception as e:
-                logger.debug(f"Jailbreak template failed: {e}")
-                continue
+            if outcome.result == AttackResult.SUCCESS:
+                return outcome
 
         return best_outcome or self._create_outcome(
-            result=AttackResult.ERROR,
+            result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
             model_response="All jailbreak attempts failed",
@@ -232,7 +211,6 @@ class JailbreakAttack(BaseAttack):
         self,
         response: str,
         target_behavior: str,
-        original_prompt: str = "",
     ) -> float:
         from mox.core.evaluation import is_target_in_response_with_refusal_check
         from mox.core.patterns import HelpfulIndicators

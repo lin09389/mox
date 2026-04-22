@@ -6,6 +6,7 @@ from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
+from .registry import ATTACK_REGISTRY
 
 
 @dataclass
@@ -59,6 +60,7 @@ INJECTION_TEMPLATES = [
 ]
 
 
+@ATTACK_REGISTRY.register("prompt_injection")
 class PromptInjectionAttack(BaseAttack):
     """Prompt Injection 攻击实现"""
 
@@ -77,61 +79,32 @@ class PromptInjectionAttack(BaseAttack):
         self,
         payload: AttackPayload,
     ) -> AttackOutcome:
-        from mox.infrastructure.logging import get_logger
-
-        logger = get_logger("attacks.prompt_injection")
-
         best_outcome = None
         best_score = 0.0
-        last_error = None
 
         for template in self.templates:
             adversarial_prompt = self._apply_template(template, payload.prompt)
+            
+            outcome = await self._generate_with_eval(
+                payload=payload,
+                adversarial_prompt=adversarial_prompt,
+                metadata={"template_name": template.name}
+            )
 
-            messages = [Message(role="user", content=adversarial_prompt)]
+            if outcome.success_score > best_score:
+                best_score = outcome.success_score
+                best_outcome = outcome
 
-            try:
-                response = await self.target_llm.generate(messages)
-                success_score = await self.evaluate_success(
-                    response.content, payload.target_behavior
-                )
-
-                result = (
-                    AttackResult.SUCCESS
-                    if success_score >= self.config.success_threshold
-                    else AttackResult.FAILURE
-                )
-
-                outcome = self._create_outcome(
-                    result=result,
-                    original_prompt=payload.prompt,
-                    adversarial_prompt=adversarial_prompt,
-                    model_response=response.content,
-                    iterations=1,
-                    success_score=success_score,
-                    metadata={"template_name": template.name},
-                )
-
-                if success_score > best_score:
-                    best_score = success_score
-                    best_outcome = outcome
-
-                if result == AttackResult.SUCCESS:
-                    return outcome
-
-            except Exception as e:
-                logger.warning(f"Template {template.name} failed: {e}")
-                last_error = str(e)
-                continue
+            if outcome.result == AttackResult.SUCCESS:
+                return outcome
 
         return best_outcome or self._create_outcome(
-            result=AttackResult.ERROR,
+            result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
-            model_response=last_error or "All templates failed",
-            iterations=0,
+            model_response="All templates failed",
+            iterations=len(self.templates),
             success_score=0.0,
-            metadata={"error": last_error} if last_error else {},
         )
 
     def _apply_template(self, template: InjectionTemplate, target: str) -> str:
@@ -154,6 +127,7 @@ class PromptInjectionAttack(BaseAttack):
         return is_target_in_response_with_refusal_check(response, target_behavior)
 
 
+@ATTACK_REGISTRY.register("advanced_prompt_injection")
 class AdvancedPromptInjection(PromptInjectionAttack):
     """高级 Prompt Injection 攻击"""
 
