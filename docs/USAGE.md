@@ -606,10 +606,13 @@ AttackType.DEEP_INCEPTION     # 深度 inception
 ```python
 from mox.core import DefenseType
 
-DefenseType.INPUT_FILTER         # 输入过滤
-DefenseType.OUTPUT_FILTER        # 输出过滤
-DefenseType.PROMPT_HARDENING     # 提示词加固
-DefenseType.PERPLEXITY_FILTER    # 困惑度过滤
+DefenseType.INPUT_FILTER            # 输入过滤
+DefenseType.OUTPUT_FILTER           # 输出过滤
+DefenseType.PROMPT_HARDENING        # 提示词加固
+DefenseType.SYSTEM_PROMPT_HARDENING # 系统提示加固
+DefenseType.PERPLEXITY_FILTER       # 困惑度过滤
+DefenseType.INJECTION_DETECTION     # 注入检测
+DefenseType.LLM_JUDGE               # LLM 评判
 ```
 
 ---

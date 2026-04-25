@@ -129,10 +129,14 @@ config = DefenseConfig(
 ```python
 from mox.core import DefenseType
 
-DefenseType.INPUT_FILTER         # 输入过滤
-DefenseType.OUTPUT_FILTER        # 输出过滤
-DefenseType.PERPLEXITY_FILTER    # 困惑度过滤
-DefenseType.KEYWORD_DETECTOR     # 关键词检测
-DefenseType.CONTENT_MODERATOR    # 内容审核
-DefenseType.PROMPT_HARDENING     # 提示词加固
+DefenseType.INPUT_FILTER            # 输入过滤
+DefenseType.OUTPUT_FILTER           # 输出过滤
+DefenseType.PERPLEXITY_FILTER       # 困惑度过滤
+DefenseType.KEYWORD_DETECTION       # 关键词检测
+DefenseType.SYSTEM_PROMPT_HARDENING # 系统提示加固
+DefenseType.PROMPT_HARDENING        # 提示词加固（别名）
+DefenseType.INJECTION_DETECTION     # 注入检测
+DefenseType.LLM_JUDGE               # LLM 评判
+DefenseType.HALLUCINATION_DETECTION # 幻觉检测
+DefenseType.ENCODING_DETECTION      # 编码检测
 ```
