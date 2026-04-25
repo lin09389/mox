@@ -14,8 +14,11 @@ from datetime import datetime
 
 from mox.core import DefenseType
 from mox.core.patterns import MaliciousPatterns as UnifiedMaliciousPatterns, SanitizeReplacements
+from mox.infrastructure.logging import get_logger
 from .base import BaseDefense, DefenseConfig, DefenseResult
 from .registry import DEFENSE_REGISTRY
+
+logger = get_logger("defense.input_filter")
 
 # 可选依赖
 try:
@@ -115,7 +118,9 @@ class InputFilter(BaseDefense):
         if self.config.use_semantic_detection and EMBEDDING_AVAILABLE:
             try:
                 self._semantic_model = SentenceTransformer(self.config.embedding_model)
-            except Exception: pass
+            except Exception as e:
+                logger.warning("Failed to load SentenceTransformer model '%s': %s. Semantic detection disabled.",
+                               self.config.embedding_model, e)
 
     async def detect(self, input_text: str) -> DefenseResult:
         detected = []

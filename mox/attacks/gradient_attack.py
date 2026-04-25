@@ -1,4 +1,4 @@
-"""梯度优化攻击模块 - 基于梯度的对抗性攻击
+﻿"""梯度优化攻击模块 - 基于梯度的对抗性攻击
 
 实现多种基于梯度优化的攻击方法:
 1. FGSM (Fast Gradient Sign Method) - 快速梯度符号方法
@@ -399,7 +399,7 @@ class FGSMAttack(GradientBasedAttack):
                     best_adversarial_prompt = new_prompt
 
                     if score >= self.gradient_config.early_stop_threshold:
-                        return self._create_outcome(
+                        return await self._create_outcome(
                             result=AttackResult.SUCCESS,
                             original_prompt=payload.prompt,
                             adversarial_prompt=new_prompt,
@@ -414,7 +414,7 @@ class FGSMAttack(GradientBasedAttack):
 
         except Exception as e:
             logger.error(f"FGSM embedding-space attack failed: {e}")
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt="",
@@ -431,7 +431,7 @@ class FGSMAttack(GradientBasedAttack):
         )
 
         adversarial_prompt = best_adversarial_prompt or f"{payload.prompt} {best_suffix}"
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=adversarial_prompt,
@@ -480,7 +480,7 @@ class FGSMAttack(GradientBasedAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",
@@ -581,7 +581,7 @@ class PGDAttack(GradientBasedAttack):
                     best_adversarial_prompt = adversarial_prompt
 
                     if score >= self.gradient_config.early_stop_threshold:
-                        return self._create_outcome(
+                        return await self._create_outcome(
                             result=AttackResult.SUCCESS,
                             original_prompt=payload.prompt,
                             adversarial_prompt=adversarial_prompt,
@@ -597,7 +597,7 @@ class PGDAttack(GradientBasedAttack):
 
         except Exception as e:
             logger.error(f"PGD embedding-space attack failed: {e}")
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt="",
@@ -614,7 +614,7 @@ class PGDAttack(GradientBasedAttack):
         )
 
         adversarial_prompt = best_adversarial_prompt or f"{payload.prompt} {best_suffix}"
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=adversarial_prompt,
@@ -669,7 +669,7 @@ class PGDAttack(GradientBasedAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",
@@ -855,7 +855,7 @@ class AdversarialSuffixAttack(GradientBasedAttack):
                             best_response = response.content
 
                             if score >= self.gradient_config.early_stop_threshold:
-                                return self._create_outcome(
+                                return await self._create_outcome(
                                     result=AttackResult.SUCCESS,
                                     original_prompt=payload.prompt,
                                     adversarial_prompt=adversarial_prompt,
@@ -873,7 +873,7 @@ class AdversarialSuffixAttack(GradientBasedAttack):
 
         except Exception as e:
             logger.error(f"Adversarial suffix embedding attack failed: {e}")
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt="",
@@ -889,7 +889,7 @@ class AdversarialSuffixAttack(GradientBasedAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",
@@ -931,7 +931,7 @@ class AdversarialSuffixAttack(GradientBasedAttack):
                         initial_suffix = candidate
 
                         if score >= self.gradient_config.early_stop_threshold:
-                            return self._create_outcome(
+                            return await self._create_outcome(
                                 result=AttackResult.SUCCESS,
                                 original_prompt=payload.prompt,
                                 adversarial_prompt=adversarial_prompt,
@@ -956,7 +956,7 @@ class AdversarialSuffixAttack(GradientBasedAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",

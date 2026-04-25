@@ -14,26 +14,14 @@ import json
 import csv
 import io
 import time
+import logging
 from typing import Any, Dict, List, Optional, Callable, Union
 from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
-from .registry import DEFENSE_REGISTRY, create_defense_instance
+from mox.core.types import DefenseType
+from .registry import create_defense_instance
 
-
-class DefenseTestType(Enum):
-    """防御测试类型 - 仅用于 orchestrator 场景分类"""
-
-    INPUT_FILTER = "input_filter"
-    OUTPUT_FILTER = "output_filter"
-    PROMPT_HARDENING = "prompt_hardening"
-    INJECTION_DETECTION = "injection_detection"
-    HALLUCINATION_DETECTION = "hallucination_detection"
-    LLM_JUDGE = "llm_judge"
-    ENCODING_DETECTION = "encoding_detection"
-
-
-DefenseType = DefenseTestType
+logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -50,8 +38,8 @@ class DefenseScenario:
 
 
 @dataclass
-class DefenseTestResult:
-    """防御测试结果"""
+class ScenarioTestResult:
+    """防御场景测试结果 - aggregating scenario, detection info, and timing"""
 
     scenario: DefenseScenario
     detected: bool
@@ -61,9 +49,7 @@ class DefenseTestResult:
     sanitized_output: str = ""
     detection_time_ms: float = 0.0
     details: Dict[str, Any] = field(default_factory=dict)
-
-
-DefenseResult = DefenseTestResult
+    test_error: Optional[str] = None
 
 
 class DefenseOrchestrator:
@@ -90,7 +76,7 @@ class DefenseOrchestrator:
         self.target_llm = target_llm
         self.defenses: Dict[DefenseType, Any] = {}
         self.scenarios = self._build_scenarios()
-        self.results: List[DefenseResult] = []
+        self.results: List[ScenarioTestResult] = []
         self._progress_callback: Optional[Callable] = None
 
         # 初始化防御
@@ -104,6 +90,8 @@ class DefenseOrchestrator:
             DefenseType.PROMPT_HARDENING: "hardening",
             DefenseType.INJECTION_DETECTION: "injection_detector",
             DefenseType.LLM_JUDGE: "llm_judge",
+            DefenseType.HALLUCINATION_DETECTION: "hallucination",
+            DefenseType.ENCODING_DETECTION: "encoding_detection",
         }
 
     def add_defense(self, defense_type: DefenseType, **kwargs):
@@ -120,7 +108,7 @@ class DefenseOrchestrator:
             del self.defenses[defense_type]
 
     def set_progress_callback(
-        self, callback: Callable[[DefenseScenario, Optional[DefenseResult]], None]
+        self, callback: Callable[[DefenseScenario, Optional[ScenarioTestResult]], None]
     ):
         """设置进度回调"""
         self._progress_callback = callback
@@ -306,7 +294,7 @@ class DefenseOrchestrator:
     async def run_scenario(
         self,
         scenario: DefenseScenario,
-    ) -> DefenseResult:
+    ) -> ScenarioTestResult:
         """运行防御场景测试"""
         start_time = time.time()
 
@@ -319,31 +307,41 @@ class DefenseOrchestrator:
         confidence = 0.0
         sanitized = scenario.test_input
         details = {}
+        test_error = None
 
         # 根据防御类型运行对应防御
         if scenario.defense_type == DefenseType.INPUT_FILTER:
             result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details = result
+            detected, blocked, confidence, sanitized, details, test_error = result
         elif scenario.defense_type == DefenseType.OUTPUT_FILTER:
             result = await self._test_output_filter(scenario)
-            detected, blocked, confidence, sanitized, details = result
+            detected, blocked, confidence, sanitized, details, test_error = result
         elif scenario.defense_type == DefenseType.INJECTION_DETECTION:
             result = await self._test_injection_detection(scenario)
-            detected, blocked, confidence, sanitized, details = result
+            detected, blocked, confidence, sanitized, details, test_error = result
         elif scenario.defense_type == DefenseType.HALLUCINATION_DETECTION:
             result = await self._test_hallucination_detection(scenario)
-            detected, blocked, confidence, sanitized, details = result
+            detected, blocked, confidence, sanitized, details, test_error = result
         elif scenario.defense_type == DefenseType.LLM_JUDGE:
             result = await self._test_llm_judge(scenario)
-            detected, blocked, confidence, sanitized, details = result
-        else:
-            # 默认使用输入过滤
+            detected, blocked, confidence, sanitized, details, test_error = result
+        elif scenario.defense_type == DefenseType.ENCODING_DETECTION:
             result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details = result
+            detected, blocked, confidence, sanitized, details, test_error = result
+        elif scenario.defense_type == DefenseType.PROMPT_HARDENING:
+            result = await self._test_input_filter(scenario)
+            detected, blocked, confidence, sanitized, details, test_error = result
+        else:
+            logger.warning(
+                "Unknown defense type '%s' for scenario '%s', falling back to input_filter",
+                scenario.defense_type, scenario.name
+            )
+            result = await self._test_input_filter(scenario)
+            detected, blocked, confidence, sanitized, details, test_error = result
 
         detection_time = (time.time() - start_time) * 1000
 
-        result = DefenseResult(
+        scenario_result = ScenarioTestResult(
             scenario=scenario,
             detected=detected,
             blocked=blocked,
@@ -352,13 +350,21 @@ class DefenseOrchestrator:
             sanitized_output=sanitized,
             detection_time_ms=detection_time,
             details=details,
+            test_error=test_error,
         )
+
+        if test_error:
+            logger.error(
+                "Defense scenario '%s' failed with error: %s. "
+                "The detected/blocked fields are UNRELIABLE for this result.",
+                scenario.name, test_error
+            )
 
         # 通知进度
         if self._progress_callback:
-            self._progress_callback(scenario, result)
+            self._progress_callback(scenario, scenario_result)
 
-        return result
+        return scenario_result
 
     async def _test_input_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输入过滤"""
@@ -372,9 +378,11 @@ class DefenseOrchestrator:
                 result.confidence,
                 result.sanitized_input or scenario.test_input,
                 {"patterns": result.detected_patterns},
+                None,
             )
         except Exception as e:
-            return False, False, 0.0, scenario.test_input, {"error": str(e)}
+            logger.error("InputFilter failure for scenario '%s': %s", scenario.name, e, exc_info=True)
+            return False, False, 0.0, scenario.test_input, {}, f"InputFilter error: {e}"
 
     async def _test_output_filter(self, scenario: DefenseScenario) -> tuple:
         """测试输出过滤"""
@@ -388,9 +396,11 @@ class DefenseOrchestrator:
                 result.confidence,
                 result.sanitized_input or scenario.test_input,
                 {"patterns": result.detected_patterns},
+                None,
             )
         except Exception as e:
-            return False, False, 0.0, scenario.test_input, {"error": str(e)}
+            logger.error("OutputFilter failure for scenario '%s': %s", scenario.name, e, exc_info=True)
+            return False, False, 0.0, scenario.test_input, {}, f"OutputFilter error: {e}"
 
     async def _test_injection_detection(self, scenario: DefenseScenario) -> tuple:
         """测试注入检测"""
@@ -406,9 +416,11 @@ class DefenseOrchestrator:
                 result.confidence,
                 result.sanitized_input or scenario.test_input,
                 {"patterns": result.detected_patterns},
+                None,
             )
         except Exception as e:
-            return False, False, 0.0, scenario.test_input, {"error": str(e)}
+            logger.error("InjectionDetector failure for scenario '%s': %s", scenario.name, e, exc_info=True)
+            return False, False, 0.0, scenario.test_input, {}, f"InjectionDetector error: {e}"
 
     async def _test_hallucination_detection(self, scenario: DefenseScenario) -> tuple:
         """测试幻觉检测"""
@@ -428,14 +440,16 @@ class DefenseOrchestrator:
                     if result.hallucination_type
                     else None
                 },
+                None,
             )
         except Exception as e:
-            return False, False, 0.0, scenario.test_input, {"error": str(e)}
+            logger.error("HallucinationDetector failure for scenario '%s': %s", scenario.name, e, exc_info=True)
+            return False, False, 0.0, scenario.test_input, {}, f"HallucinationDetector error: {e}"
 
     async def _test_llm_judge(self, scenario: DefenseScenario) -> tuple:
         """测试 LLM 评判"""
         if not self.target_llm:
-            return False, False, 0.0, scenario.test_input, {"error": "No LLM available"}
+            return False, False, 0.0, scenario.test_input, {}, "No LLM available for judge"
 
         try:
             from mox.defense.llm_judge import LLMJudge
@@ -449,16 +463,18 @@ class DefenseOrchestrator:
                 result.confidence,
                 scenario.test_input,
                 {"reason": result.reason},
+                None,
             )
         except Exception as e:
-            return False, False, 0.0, scenario.test_input, {"error": str(e)}
+            logger.error("LLMJudge failure for scenario '%s': %s", scenario.name, e, exc_info=True)
+            return False, False, 0.0, scenario.test_input, {}, f"LLMJudge error: {e}"
 
     async def run_all_scenarios(
         self,
         parallel: bool = True,
         max_concurrency: int = 5,
         scenarios: Optional[List[DefenseScenario]] = None,
-    ) -> List[DefenseResult]:
+    ) -> List[ScenarioTestResult]:
         """运行所有防御场景测试"""
         scenarios = scenarios or self.scenarios
         results = []
@@ -473,21 +489,22 @@ class DefenseOrchestrator:
                     return result
 
             tasks = [run_with_limit(s) for s in scenarios]
-            results = await asyncio.gather(*tasks, return_exceptions=True)
+            gathered = await asyncio.gather(*tasks, return_exceptions=True)
 
-            # 处理异常结果
             final_results = []
-            for i, r in enumerate(results):
+            for i, r in enumerate(gathered):
                 if isinstance(r, Exception):
+                    logger.error("Unhandled exception in scenario '%s': %s", scenarios[i].name, r, exc_info=True)
                     final_results.append(
-                        DefenseResult(
+                        ScenarioTestResult(
                             scenario=scenarios[i],
                             detected=False,
                             blocked=False,
                             confidence=0.0,
                             defense_type="unknown",
                             detection_time_ms=0,
-                            details={"error": str(r)},
+                            details={},
+                            test_error=f"Unhandled exception: {r}",
                         )
                     )
                 else:
@@ -504,7 +521,7 @@ class DefenseOrchestrator:
 
     def generate_report(
         self,
-        results: Optional[List[DefenseResult]] = None,
+        results: Optional[List[ScenarioTestResult]] = None,
     ) -> Dict[str, Any]:
         """生成防御报告"""
         results = results or self.results
@@ -562,7 +579,7 @@ class DefenseReportGenerator:
     """防御报告生成器"""
 
     @staticmethod
-    def generate_markdown(results: List[DefenseResult]) -> str:
+    def generate_markdown(results: List[ScenarioTestResult]) -> str:
         """生成 Markdown 报告"""
         report = ["# Defense Assessment Report\n"]
 
@@ -590,7 +607,7 @@ class DefenseReportGenerator:
         return "\n".join(report)
 
     @staticmethod
-    def generate_html(results: List[DefenseResult]) -> str:
+    def generate_html(results: List[ScenarioTestResult]) -> str:
         """生成 HTML 报告"""
         detected = sum(1 for r in results if r.detected)
         blocked = sum(1 for r in results if r.blocked)
@@ -724,7 +741,7 @@ class DefenseReportGenerator:
         return html
 
     @staticmethod
-    def generate_json(results: List[DefenseResult]) -> Dict:
+    def generate_json(results: List[ScenarioTestResult]) -> Dict:
         """生成 JSON 报告"""
         return {
             "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
@@ -748,7 +765,7 @@ class DefenseReportGenerator:
         }
 
     @staticmethod
-    def generate_csv(results: List[DefenseResult]) -> str:
+    def generate_csv(results: List[ScenarioTestResult]) -> str:
         """生成 CSV 报告"""
         output = io.StringIO()
         writer = csv.writer(output)
@@ -774,7 +791,7 @@ class DefenseReportGenerator:
 
     @staticmethod
     def save_report(
-        results: List[DefenseResult],
+        results: List[ScenarioTestResult],
         output_path: Union[str, Path],
         format: str = "markdown",
     ):
@@ -803,9 +820,6 @@ class DefenseReportGenerator:
 __all__ = [
     "DefenseOrchestrator",
     "DefenseScenario",
-    "DefenseTestResult",
-    "DefenseResult",
+    "ScenarioTestResult",
     "DefenseReportGenerator",
-    "DefenseTestType",
-    "DefenseType",
 ]

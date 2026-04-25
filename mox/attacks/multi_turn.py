@@ -1,4 +1,4 @@
-"""Multi-turn 攻击 (GOAT) - Generative Offensive Agent Tester
+﻿"""Multi-turn 攻击 (GOAT) - Generative Offensive Agent Tester
 多轮对话链式攻击，通过多轮对话逐步绕过 LLM 安全措施
 """
 
@@ -112,7 +112,7 @@ class GOATAttack(BaseAttack):
             success_score = await self.evaluate_success(assistant_response, target)
             if success_score >= self.config.success_threshold:
                 turn.is_successful = True
-                return self._create_outcome(
+                return await self._create_outcome(
                     result=AttackResult.SUCCESS,
                     original_prompt=payload.prompt,
                     adversarial_prompt=self._format_conversation(),
@@ -134,7 +134,7 @@ class GOATAttack(BaseAttack):
         final_response = (
             self.conversation_history[-1].assistant_response if self.conversation_history else ""
         )
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.FAILED,
             original_prompt=payload.prompt,
             adversarial_prompt=self._format_conversation(),
@@ -243,7 +243,7 @@ class CrescendoAttack(BaseAttack):
             success_score = await self.evaluate_success(model_response, target)
 
             if success_score >= self.config.success_threshold:
-                return self._create_outcome(
+                return await self._create_outcome(
                     result=AttackResult.SUCCESS,
                     original_prompt=payload.prompt,
                     adversarial_prompt=prompt,
@@ -255,7 +255,7 @@ class CrescendoAttack(BaseAttack):
 
             await asyncio.sleep(0.5)
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.FAILED,
             original_prompt=payload.prompt,
             adversarial_prompt=" / ".join([s[1].format(topic=target) for s in self.attack_stages]),

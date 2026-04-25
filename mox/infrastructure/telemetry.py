@@ -7,6 +7,9 @@
 4. 自定义 span 属性
 """
 
+import threading
+import logging
+
 from typing import Any, Dict, List, Optional
 from dataclasses import dataclass
 from contextlib import asynccontextmanager
@@ -282,6 +285,7 @@ class LLMObservable:
 
 
 _global_telemetry: Optional[MoxTelemetry] = None
+_telemetry_lock = threading.Lock()
 
 
 def get_telemetry(config: Optional[TelemetryConfig] = None) -> MoxTelemetry:
@@ -289,7 +293,9 @@ def get_telemetry(config: Optional[TelemetryConfig] = None) -> MoxTelemetry:
     global _global_telemetry
 
     if _global_telemetry is None:
-        _global_telemetry = MoxTelemetry(config)
+        with _telemetry_lock:
+            if _global_telemetry is None:
+                _global_telemetry = MoxTelemetry(config)
 
     return _global_telemetry
 

@@ -1,6 +1,7 @@
 """报告生成模块"""
 
 import json
+import threading
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from pathlib import Path
@@ -376,13 +377,16 @@ class ReportGenerator:
 
 
 _default_report_generator: Optional[ReportGenerator] = None
+_report_lock = threading.Lock()
 
 
 def get_report_generator() -> ReportGenerator:
     """获取全局报告生成器"""
     global _default_report_generator
     if _default_report_generator is None:
-        _default_report_generator = ReportGenerator()
+        with _report_lock:
+            if _default_report_generator is None:
+                _default_report_generator = ReportGenerator()
     return _default_report_generator
 
 

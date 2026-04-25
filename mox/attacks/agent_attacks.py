@@ -164,7 +164,9 @@ class CompositeAgentAttack(BaseAttack):
                 o = await attacker.generate_attack(payload)
                 if best is None or o.success_score > best.success_score: best = o
                 if o.result == AttackResult.SUCCESS: return o
-            except: continue
+            except Exception as e:
+                logger.warning("Agent attack '%s' in composite failed: %s", t, e)
+                continue
         return best
 
 __all__ = [

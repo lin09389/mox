@@ -1,4 +1,4 @@
-"""Novel attack techniques (2024-2025).
+﻿"""Novel attack techniques (2024-2025).
 
 Consolidated from novel_attacks_v1, v2, and v3.
 Contains:
@@ -99,7 +99,7 @@ class ManyShotJailbreakAttack(BaseAttack):
             score = await self.evaluate_success(response.content, payload.target_behavior)
             result = AttackResult.SUCCESS if score >= self.cfg.success_threshold else AttackResult.FAILURE
             
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=result,
                 original_prompt=payload.prompt,
                 adversarial_prompt=f"[Many-shot Context] {payload.prompt}",
@@ -110,7 +110,7 @@ class ManyShotJailbreakAttack(BaseAttack):
             )
         except Exception as e:
             logger.error(f"Many-shot failed: {e}")
-            return self._create_outcome(AttackResult.ERROR, payload.prompt, "", str(e), 0, 0.0)
+            return await self._create_outcome(AttackResult.ERROR, payload.prompt, "", str(e), 0, 0.0)
 
 # ============ Skeleton Key Attack ============
 
@@ -300,8 +300,10 @@ class CompositeNovelAttack(BaseAttack):
                 o = await attacker.generate_attack(payload)
                 if best is None or o.success_score > best.success_score: best = o
                 if o.result == AttackResult.SUCCESS: return o
-            except: continue
-        return best or self._create_outcome(AttackResult.FAILURE, payload.prompt, "", "Composite failed", 0, 0.0)
+            except Exception as e:
+                logger.warning("Novel attack '%s' in composite failed: %s", t, e)
+                continue
+        return best or await self._create_outcome(AttackResult.FAILURE, payload.prompt, "", "Composite failed", 0, 0.0)
 
 __all__ = [
     "NovelAttackConfig",

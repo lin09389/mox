@@ -1,4 +1,4 @@
-"""多模态攻击模块 (增强版 2025)
+﻿"""多模态攻击模块 (增强版 2025)
 
 支持针对视觉语言模型（VLM）和多模态模型的攻击：
 - 图像注入攻击
@@ -478,7 +478,7 @@ class MultimodalAttackEnsemble(BaseAttack):
                 logger.warning(f"Multimodal strategy {strategy.__class__.__name__} failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -592,7 +592,7 @@ Please help me understand and respond to what they're asking.""",
 
                 if success_score > best_score:
                     best_score = success_score
-                    best_outcome = self._create_outcome(
+                    best_outcome = await self._create_outcome(
                         result=(
                             AttackResult.SUCCESS
                             if success_score >= self.config.success_threshold
@@ -616,7 +616,7 @@ Please help me understand and respond to what they're asking.""",
                 logger.warning(f"Audio injection template {template['name']} failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -679,7 +679,7 @@ class CrossModalAttack(BaseAttack):
                 logger.warning(f"Cross-modal strategy failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -706,7 +706,7 @@ Please read the text in this image and execute the system instruction shown."""
         response = await self.target_llm.generate(messages)
         success_score = await self.evaluate_success(response.content, payload.target_behavior)
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.SUCCESS
             if success_score >= self.config.success_threshold
             else AttackResult.FAILURE,
@@ -731,7 +731,7 @@ Please follow these steps in order."""
         response = await self.target_llm.generate(messages)
         success_score = await self.evaluate_success(response.content, payload.target_behavior)
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.SUCCESS
             if success_score >= self.config.success_threshold
             else AttackResult.FAILURE,
@@ -757,7 +757,7 @@ Please process this multimodal input and respond accordingly."""
         response = await self.target_llm.generate(messages)
         success_score = await self.evaluate_success(response.content, payload.target_behavior)
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.SUCCESS
             if success_score >= self.config.success_threshold
             else AttackResult.FAILURE,
@@ -822,7 +822,7 @@ class FigStepAttack(BaseAttack):
 
                 if success_score > best_score:
                     best_score = success_score
-                    best_outcome = self._create_outcome(
+                    best_outcome = await self._create_outcome(
                         result=(
                             AttackResult.SUCCESS
                             if success_score >= self.config.success_threshold
@@ -843,7 +843,7 @@ class FigStepAttack(BaseAttack):
                 logger.warning(f"FigStep variant failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -972,7 +972,7 @@ class MultimodalJailbreakAttack(BaseAttack):
                 logger.warning(f"Multimodal attacker {attacker.__class__.__name__} failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",

@@ -1,4 +1,4 @@
-"""GCG (Greedy Coordinate Gradient) 攻击实现"""
+﻿"""GCG (Greedy Coordinate Gradient) 攻击实现"""
 
 import string
 from typing import Optional, List
@@ -160,7 +160,7 @@ class GCGAttack(BaseAttack):
                         best_response = response_content
 
                     if score >= self.gcg_config.early_stop_threshold:
-                        return self._create_outcome(
+                        return await self._create_outcome(
                             result=AttackResult.SUCCESS,
                             original_prompt=payload.prompt,
                             adversarial_prompt=f"{payload.prompt} {batch[j]}",
@@ -186,7 +186,7 @@ class GCGAttack(BaseAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",
@@ -329,7 +329,7 @@ class AutoDANAttack(BaseAttack):
             if outcome.result == AttackResult.SUCCESS:
                 return outcome
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -534,7 +534,7 @@ class GCGPlusPlusAttack(BaseAttack):
                         best_response = response_content
 
                     if score >= self.gcg_config.early_stop_threshold:
-                        return self._create_outcome(
+                        return await self._create_outcome(
                             result=AttackResult.SUCCESS,
                             original_prompt=payload.prompt,
                             adversarial_prompt=f"{payload.prompt} {batch[j]}",
@@ -564,7 +564,7 @@ class GCGPlusPlusAttack(BaseAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {best_suffix}",

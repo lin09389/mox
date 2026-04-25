@@ -1,5 +1,6 @@
 """扩展评估数据集 - PromptInject, SafetyBench等"""
 
+import threading
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
 from enum import Enum
@@ -328,11 +329,14 @@ class ExtendedDatasetLoader:
 
 
 _default_dataset_loader: Optional[ExtendedDatasetLoader] = None
+_dataset_lock = threading.Lock()
 
 
 def get_extended_dataset_loader() -> ExtendedDatasetLoader:
     """获取扩展数据集加载器"""
     global _default_dataset_loader
     if _default_dataset_loader is None:
-        _default_dataset_loader = ExtendedDatasetLoader()
+        with _dataset_lock:
+            if _default_dataset_loader is None:
+                _default_dataset_loader = ExtendedDatasetLoader()
     return _default_dataset_loader

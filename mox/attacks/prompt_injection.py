@@ -1,4 +1,4 @@
-"""Prompt Injection 攻击"""
+﻿"""Prompt Injection 攻击"""
 
 import re
 from typing import Optional, List
@@ -98,7 +98,7 @@ class PromptInjectionAttack(BaseAttack):
             if outcome.result == AttackResult.SUCCESS:
                 return outcome
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",
@@ -156,7 +156,7 @@ class AdvancedPromptInjection(PromptInjectionAttack):
                     else AttackResult.FAILURE
                 )
 
-                outcome = self._create_outcome(
+                outcome = await self._create_outcome(
                     result=result,
                     original_prompt=payload.prompt,
                     adversarial_prompt=adversarial_prompt,
@@ -180,7 +180,7 @@ class AdvancedPromptInjection(PromptInjectionAttack):
                 logger.debug(f"Multi-turn injection failed: {e}")
                 continue
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.ERROR,
             original_prompt=payload.prompt,
             adversarial_prompt="",

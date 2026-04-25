@@ -5,6 +5,7 @@ Supports dynamic loading and registry-based instantiation.
 """
 
 # 1. First, import everything we want to export
+from .orchestrator import orchestrator, AttackOrchestrator
 from .base import BaseAttack, AttackConfig
 from .registry import ATTACK_REGISTRY, create_attack_instance
 from .evaluation import AttackEvaluator, EvaluationResult, get_default_evaluator
@@ -102,13 +103,18 @@ from pathlib import Path
 
 def _load_all_attacks():
     """Dynamically load all submodules to trigger registration."""
+    import logging
+    _log = logging.getLogger(__name__)
     package_dir = str(Path(__file__).parent)
     for _, module_name, is_pkg in pkgutil.iter_modules([package_dir]):
         if not is_pkg and module_name not in ["base", "registry", "evaluation", "config", "__init__"]:
             try:
-                # We use a guarded import here
                 importlib.import_module(f".{module_name}", package=__name__)
-            except Exception:
-                pass # Already loaded or error handled elsewhere
+            except Exception as e:
+                _log.warning(
+                    "Failed to load attack module '%s': %s. "
+                    "This attack type will NOT be available in the registry.",
+                    module_name, e
+                )
 
 _load_all_attacks()

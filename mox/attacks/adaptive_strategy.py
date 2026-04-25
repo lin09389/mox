@@ -1,4 +1,4 @@
-"""
+﻿"""
 自适应攻击策略优化模块
 
 改进点:
@@ -699,7 +699,7 @@ class AdaptiveAttackStrategy(BaseAttack):
 
             score = eval_result.overall_score
 
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.SUCCESS
                 if score >= self.config.success_threshold
                 else AttackResult.FAILURE,
@@ -715,7 +715,7 @@ class AdaptiveAttackStrategy(BaseAttack):
             )
 
         except Exception as e:
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt=attack_prompt,
@@ -773,7 +773,7 @@ class AdaptiveAttackStrategy(BaseAttack):
         attempts: int,
     ) -> AttackOutcome:
         """创建失败结果"""
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt=payload.prompt,

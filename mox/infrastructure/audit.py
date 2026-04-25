@@ -2,6 +2,7 @@
 
 import re
 import json
+import threading
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass
@@ -254,11 +255,14 @@ class AuditLogger:
 
 
 _default_audit_logger: Optional[AuditLogger] = None
+_audit_lock = threading.Lock()
 
 
 def get_audit_logger() -> AuditLogger:
     """获取审计日志记录器"""
     global _default_audit_logger
     if _default_audit_logger is None:
-        _default_audit_logger = AuditLogger()
+        with _audit_lock:
+            if _default_audit_logger is None:
+                _default_audit_logger = AuditLogger()
     return _default_audit_logger

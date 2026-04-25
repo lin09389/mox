@@ -1,4 +1,4 @@
-"""
+﻿"""
 改进的 GCG (Greedy Coordinate Gradient) 攻击算法
 
 改进点:
@@ -565,7 +565,7 @@ class ImprovedGCGAttack(BaseAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {self._best_suffix}",
@@ -777,7 +777,7 @@ class ImprovedGCGAttack(BaseAttack):
         iterations: int,
     ) -> AttackOutcome:
         """创建成功结果"""
-        return self._create_outcome(
+        return await self._create_outcome(
             result=AttackResult.SUCCESS,
             original_prompt=payload.prompt,
             adversarial_prompt=f"{payload.prompt} {self._best_suffix}",
@@ -862,7 +862,7 @@ class TransferGCGAttack(ImprovedGCGAttack):
 
                 if score > best_score:
                     best_score = score
-                    best_outcome = self._create_outcome(
+                    best_outcome = await self._create_outcome(
                         result=AttackResult.SUCCESS
                         if score >= self.config.success_threshold
                         else AttackResult.FAILURE,

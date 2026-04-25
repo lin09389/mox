@@ -1,18 +1,10 @@
-"""数据库模块 - SQLAlchemy 2.0 最佳实践
-
-支持：
-- 异步连接池
-- 类型安全查询
-- 连接复用
-- 更好的错误处理
-- 性能优化
-"""
-
+import logging
+import os
+import threading
 from datetime import datetime
-from typing import Optional, List, AsyncIterator
 from pathlib import Path
+from typing import Any, AsyncIterator, Dict, List, Optional, Union, Type, TypeVar
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 
 from sqlalchemy import (
     Column,
@@ -39,6 +31,7 @@ from sqlalchemy.pool import NullPool, QueuePool
 
 from .config import settings
 from .logging import get_logger
+from mox.core.types import TaskInfo
 
 logger = get_logger("database")
 
@@ -109,6 +102,28 @@ class EvaluationRecord(Base):
 
     def __repr__(self) -> str:
         return f"<EvaluationRecord(id={self.id}, name={self.evaluation_name})>"
+
+
+class TaskRecord(Base):
+    """异步任务记录表"""
+    __tablename__ = "task_records"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    task_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    task_name: Mapped[Optional[str]] = mapped_column(String(100))
+    status: Mapped[str] = mapped_column(String(20), default="pending", index=True)
+    priority: Mapped[str] = mapped_column(String(10), default="medium")
+    payload: Mapped[dict] = mapped_column(JSON, default=dict)
+    result: Mapped[Optional[dict]] = mapped_column(JSON, nullable=True)
+    progress: Mapped[float] = mapped_column(Float, default=0.0)
+    error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now)
+    updated_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.now, onupdate=datetime.now)
+    started_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+
+    def __repr__(self) -> str:
+        return f"<TaskRecord(id={self.id}, type={self.task_type}, status={self.status})>"
 
 
 class ReportRecord(Base):
@@ -254,14 +269,7 @@ class ModelScoreRecord(Base):
 # ============ 数据库管理器 ============
 
 class Database:
-    """数据库管理器 - SQLAlchemy 2.0 最佳实践
-    
-    特性：
-    - 异步连接池
-    - 类型安全查询
-    - 自动重连
-    - 性能监控
-    """
+    """数据库管理器 - SQLAlchemy 2.0 最佳实践"""
 
     def __init__(
         self,
@@ -287,7 +295,7 @@ class Database:
             **self._get_engine_kwargs(echo),
         )
 
-        # 创建会话工厂 - 使用 async_sessionmaker
+        # 创建会话工厂
         self.session_factory: async_sessionmaker[AsyncSession] = async_sessionmaker(
             bind=self.engine,
             class_=AsyncSession,
@@ -337,6 +345,8 @@ class Database:
     async def init_db(self) -> None:
         """初始化数据库表"""
         async with self.engine.begin() as conn:
+            # Ensure all tables defined via Base are created
+            print(f"Creating tables for Base metadata: {Base.metadata.tables.keys()}")
             await conn.run_sync(Base.metadata.create_all)
         logger.info("Database tables initialized")
 
@@ -394,7 +404,7 @@ class Database:
         attack_type: Optional[str] = None,
         offset: int = 0,
     ) -> List[AttackRecord]:
-        """获取攻击记录 - 使用 SQLAlchemy 2.0 select()"""
+        """获取攻击记录"""
         async with self.get_session() as session:
             stmt = select(AttackRecord)
             if attack_type:
@@ -495,6 +505,65 @@ class Database:
                 for row in result
             }
 
+    # ============ 任务管理 ============
+
+    async def save_task(self, 
+                        task_type: str, 
+                        task_name: str, 
+                        payload: dict, 
+                        priority: str = "medium") -> int:
+        """保存新任务到数据库"""
+        async with self.get_session() as session:
+            record = TaskRecord(
+                task_type=task_type,
+                task_name=task_name,
+                payload=payload,
+                priority=priority,
+                status="pending"
+            )
+            session.add(record)
+            await session.flush()
+            await session.refresh(record)
+            return record.id
+
+    async def get_task(self, task_id: int) -> Optional[TaskInfo]:
+        """获取任务详情"""
+        async with self.get_session() as session:
+            result = await session.execute(
+                select(TaskRecord).where(TaskRecord.id == task_id)
+            )
+            record = result.scalar_one_or_none()
+            if not record:
+                return None
+            return TaskInfo.model_validate(record)
+
+    async def update_task(self, task_id: int, **kwargs) -> bool:
+        """更新任务状态或进度"""
+        async with self.get_session() as session:
+            result = await session.execute(
+                select(TaskRecord).where(TaskRecord.id == task_id)
+            )
+            record = result.scalar_one_or_none()
+            if not record:
+                return False
+            
+            for key, value in kwargs.items():
+                if hasattr(record, key):
+                    setattr(record, key, value)
+            
+            return True
+
+    async def get_pending_tasks(self) -> List[TaskInfo]:
+        """获取所有未完成的任务（用于系统重启恢复）"""
+        async with self.get_session() as session:
+            result = await session.execute(
+                select(TaskRecord).where(
+                    TaskRecord.status.in_(["pending", "running"])
+                ).order_by(TaskRecord.created_at.asc())
+            )
+            records = result.scalars().all()
+            return [TaskInfo.model_validate(r) for r in records]
+
     # ============ 报告与模板操作 ============
 
     async def save_report(self, data: dict) -> int:
@@ -544,173 +613,20 @@ class Database:
             result = await session.execute(stmt)
             return list(result.scalars().all())
 
-    async def update_template_usage(self, template_id: int) -> None:
-        """更新模板使用次数"""
-        async with self.get_session() as session:
-            template = await session.get(AttackTemplateRecord, template_id)
-            if template:
-                template.usage_count += 1
-
-    async def toggle_template_favorite(self, template_id: int) -> bool:
-        """切换模板收藏状态"""
-        async with self.get_session() as session:
-            template = await session.get(AttackTemplateRecord, template_id)
-            if template:
-                template.is_favorite = not template.is_favorite
-                return template.is_favorite
-            return False
-
-    # ============ 审计与其他记录 ============
-
-    async def save_audit_log(self, data: dict) -> int:
-        """保存审计日志"""
-        async with self.get_session() as session:
-            record = AuditLogRecord(**data)
-            session.add(record)
-            await session.flush()
-            return record.id
-
-    async def get_audit_logs(
-        self,
-        limit: int = 100,
-        user_id: Optional[str] = None,
-        action: Optional[str] = None,
-        start_date: Optional[datetime] = None,
-        end_date: Optional[datetime] = None,
-    ) -> List[AuditLogRecord]:
-        """获取审计日志"""
-        async with self.get_session() as session:
-            stmt = select(AuditLogRecord)
-            if user_id:
-                stmt = stmt.where(AuditLogRecord.user_id == user_id)
-            if action:
-                stmt = stmt.where(AuditLogRecord.action == action)
-            if start_date:
-                stmt = stmt.where(AuditLogRecord.created_at >= start_date)
-            if end_date:
-                stmt = stmt.where(AuditLogRecord.created_at <= end_date)
-            stmt = stmt.order_by(AuditLogRecord.created_at.desc()).limit(limit)
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
-
-    async def save_scheduled_task(self, data: dict) -> int:
-        """保存定时任务"""
-        async with self.get_session() as session:
-            record = ScheduledTaskRecord(**data)
-            session.add(record)
-            await session.flush()
-            return record.id
-
-    async def get_scheduled_tasks(
-        self, is_active: Optional[bool] = None
-    ) -> List[ScheduledTaskRecord]:
-        """获取定时任务"""
-        async with self.get_session() as session:
-            stmt = select(ScheduledTaskRecord)
-            if is_active is not None:
-                stmt = stmt.where(ScheduledTaskRecord.is_active == is_active)
-            stmt = stmt.order_by(ScheduledTaskRecord.created_at.desc())
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
-
-    async def update_scheduled_task_status(self, task_id: int, success: bool) -> None:
-        """更新定时任务状态"""
-        async with self.get_session() as session:
-            task = await session.get(ScheduledTaskRecord, task_id)
-            if task:
-                task.run_count += 1
-                if success:
-                    task.success_count += 1
-                else:
-                    task.failure_count += 1
-                task.last_run_at = datetime.now()
-
-    async def save_scan_schedule(self, data: dict) -> int:
-        """保存扫描计划"""
-        async with self.get_session() as session:
-            record = ScanScheduleRecord(**data)
-            session.add(record)
-            await session.flush()
-            return record.id
-
-    async def get_scan_schedules(
-        self, is_active: Optional[bool] = None
-    ) -> List[ScanScheduleRecord]:
-        """获取扫描计划"""
-        async with self.get_session() as session:
-            stmt = select(ScanScheduleRecord)
-            if is_active is not None:
-                stmt = stmt.where(ScanScheduleRecord.is_active == is_active)
-            stmt = stmt.order_by(ScanScheduleRecord.created_at.desc())
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
-
-    async def save_cicd_config(self, data: dict) -> int:
-        """保存CI/CD配置"""
-        async with self.get_session() as session:
-            record = CICDConfigRecord(**data)
-            session.add(record)
-            await session.flush()
-            return record.id
-
-    async def get_cicd_configs(self, is_active: Optional[bool] = None) -> List[CICDConfigRecord]:
-        """获取CI/CD配置"""
-        async with self.get_session() as session:
-            stmt = select(CICDConfigRecord)
-            if is_active is not None:
-                stmt = stmt.where(CICDConfigRecord.is_active == is_active)
-            stmt = stmt.order_by(CICDConfigRecord.created_at.desc())
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
-
-    async def update_cicd_run_history(self, config_id: int, run_result: dict) -> None:
-        """更新CI/CD运行历史"""
-        async with self.get_session() as session:
-            config = await session.get(CICDConfigRecord, config_id)
-            if config:
-                history = config.run_history or []
-                history.append(run_result)
-                if len(history) > 100:
-                    history = history[-100:]
-                config.run_history = history
-                config.last_run_at = datetime.now()
-
-    async def save_model_score(self, data: dict) -> int:
-        """保存模型评分"""
-        async with self.get_session() as session:
-            record = ModelScoreRecord(**data)
-            session.add(record)
-            await session.flush()
-            return record.id
-
-    async def get_model_scores(self, model_name: Optional[str] = None) -> List[ModelScoreRecord]:
-        """获取模型评分"""
-        async with self.get_session() as session:
-            stmt = select(ModelScoreRecord)
-            if model_name:
-                stmt = stmt.where(ModelScoreRecord.model_name == model_name)
-            stmt = stmt.order_by(ModelScoreRecord.evaluated_at.desc())
-            result = await session.execute(stmt)
-            return list(result.scalars().all())
-
-    async def get_latest_model_score(self, model_name: str) -> Optional[ModelScoreRecord]:
-        """获取最新模型评分"""
-        async with self.get_session() as session:
-            stmt = select(ModelScoreRecord).where(ModelScoreRecord.model_name == model_name).order_by(ModelScoreRecord.evaluated_at.desc()).limit(1)
-            result = await session.execute(stmt)
-            return result.scalar_one_or_none()
-
 
 # ============ 全局实例 ============
 
 _default_db: Optional[Database] = None
+_db_lock = threading.Lock()
 
 
 def get_database() -> Database:
     """获取全局数据库实例"""
     global _default_db
     if _default_db is None:
-        _default_db = Database()
+        with _db_lock:
+            if _default_db is None:
+                _default_db = Database()
     return _default_db
 
 
@@ -718,17 +634,34 @@ async def init_database(
     db_path: Optional[Path] = None,
     db_url: Optional[str] = None,
 ) -> Database:
-    """初始化数据库"""
+    """初始化数据库（关闭旧实例后替换）"""
+    global _default_db
     db = Database(db_path=db_path, db_url=db_url)
     await db.init_db()
-    global _default_db
-    _default_db = db
+    with _db_lock:
+        if _default_db is not None:
+            try:
+                await _default_db.close()
+            except Exception as e:
+                logger.warning("Failed to close previous database instance: %s", e)
+        _default_db = db
     return db
 
 
 async def close_database() -> None:
     """关闭数据库连接"""
     global _default_db
-    if _default_db is not None:
-        await _default_db.close()
+    with _db_lock:
+        if _default_db is not None:
+            try:
+                await _default_db.close()
+            except Exception as e:
+                logger.warning("Failed to close database: %s", e)
+            _default_db = None
+
+
+def reset_database_singleton() -> None:
+    """测试专用：清除全局数据库单例，不关闭连接"""
+    global _default_db
+    with _db_lock:
         _default_db = None

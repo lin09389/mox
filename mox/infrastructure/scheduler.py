@@ -1,6 +1,7 @@
 """定时任务调度模块"""
 
 import asyncio
+import threading
 from datetime import datetime, timedelta
 from typing import Dict, Any, List, Optional, Callable, Awaitable
 from dataclasses import dataclass, field
@@ -240,11 +241,14 @@ class TaskScheduler:
 
 
 _default_scheduler: Optional[TaskScheduler] = None
+_scheduler_lock = threading.Lock()
 
 
 def get_scheduler() -> TaskScheduler:
     """获取全局调度器"""
     global _default_scheduler
     if _default_scheduler is None:
-        _default_scheduler = TaskScheduler()
+        with _scheduler_lock:
+            if _default_scheduler is None:
+                _default_scheduler = TaskScheduler()
     return _default_scheduler

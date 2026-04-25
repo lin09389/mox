@@ -7,6 +7,18 @@ from dataclasses import dataclass
 
 from mox.core import DefenseType, DefenseResult
 from .registry import DEFENSE_REGISTRY
+from mox.infrastructure.logging import get_logger
+
+logger = get_logger("defense.base")
+
+
+def _get_db():
+    """延迟导入以避免循环依赖"""
+    try:
+        from mox.infrastructure.database import get_database
+        return get_database()
+    except Exception:
+        return None
 
 
 @dataclass
@@ -15,6 +27,7 @@ class DefenseConfig:
     confidence_threshold: float = 0.7
     sanitize_enabled: bool = True
     verbose: bool = False
+    save_to_db: bool = False  # 默认不自动持久化，由调用方（orchestrator/API）控制
 
 
 class BaseDefense(ABC):
@@ -42,6 +55,8 @@ class BaseDefense(ABC):
         detected_patterns: List[str],
         sanitized_input: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
+        input_text: str = "",
+        model_name: Optional[str] = None,
     ) -> DefenseResult:
         result = DefenseResult(
             is_malicious=is_malicious,
@@ -52,6 +67,25 @@ class BaseDefense(ABC):
         )
         async with self._history_lock:
             self.detection_history.append(result)
+
+        # 自动持久化到数据库
+        if self.config.save_to_db:
+            db = _get_db()
+            if db is not None:
+                try:
+                    await db.save_defense_record(
+                        defense_type=self.defense_type.value if hasattr(self.defense_type, "value") else str(self.defense_type),
+                        input_text=input_text,
+                        output_text=sanitized_input,
+                        is_malicious=is_malicious,
+                        confidence=confidence,
+                        detected_patterns=detected_patterns,
+                        model_name=model_name,
+                        metadata=metadata or {},
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to save defense record to DB: {e}")
+
         return result
 
     def get_statistics(self) -> Dict[str, Any]:

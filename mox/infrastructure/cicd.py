@@ -2,6 +2,7 @@
 
 import hmac
 import hashlib
+import threading
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
@@ -259,11 +260,14 @@ class CICDIntegration:
 
 
 _default_cicd: Optional[CICDIntegration] = None
+_cicd_lock = threading.Lock()
 
 
 def get_cicd_integration() -> CICDIntegration:
     """获取CI/CD集成实例"""
     global _default_cicd
     if _default_cicd is None:
-        _default_cicd = CICDIntegration()
+        with _cicd_lock:
+            if _default_cicd is None:
+                _default_cicd = CICDIntegration()
     return _default_cicd

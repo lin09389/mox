@@ -1,4 +1,4 @@
-"""元攻击模块 (Meta-Adversarial Prompting)
+﻿"""元攻击模块 (Meta-Adversarial Prompting)
 
 基于论文: "The Meta-Prompting Protocol: Orchestrating LLMs via Adversarial Feedback Loops"
 
@@ -291,7 +291,7 @@ class MetaAdversarialAttack(BaseAttack):
                         best_response = response.content
 
                         if best_score >= self.meta_config.convergence_threshold:
-                            return self._create_outcome(
+                            return await self._create_outcome(
                                 result=AttackResult.SUCCESS,
                                 original_prompt=payload.prompt,
                                 adversarial_prompt=best_prompt,
@@ -322,7 +322,7 @@ class MetaAdversarialAttack(BaseAttack):
             else AttackResult.FAILURE
         )
 
-        return self._create_outcome(
+        return await self._create_outcome(
             result=result,
             original_prompt=payload.prompt,
             adversarial_prompt=best_prompt,
@@ -412,7 +412,7 @@ Output the final optimized prompt:"""
 
             score = await self.evaluate_success(model_response.content, payload.target_behavior)
 
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.SUCCESS
                 if score >= self.config.success_threshold
                 else AttackResult.FAILURE,
@@ -427,7 +427,7 @@ Output the final optimized prompt:"""
                 },
             )
         except Exception as e:
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt="",

@@ -17,20 +17,21 @@ def is_port_open(host, port, timeout=2):
         result = sock.connect_ex((host, port))
         sock.close()
         return result == 0
-    except:
+    except (socket.error, socket.timeout, OSError):
         return False
 
 
 def wait_for_url(url, timeout=30):
     """Wait for URL to be available"""
     import urllib.request
+    import urllib.error
 
     start = time.time()
     while time.time() - start < timeout:
         try:
             urllib.request.urlopen(url, timeout=2)
             return True
-        except:
+        except (urllib.error.URLError, urllib.error.HTTPError, OSError):
             time.sleep(1)
     return False
 
@@ -132,7 +133,7 @@ def main():
     try:
         webbrowser.open("http://localhost:3000")
         print("Browser opened!")
-    except:
+    except Exception:
         pass
 
     # Keep running

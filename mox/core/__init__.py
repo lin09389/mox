@@ -26,6 +26,11 @@ from .types import (
     AttackOutcome,
     DefenseResult,
     EvaluationReport,
+    LLMConfig,
+    RateLimitConfig,
+    TaskInfo,
+    TaskStatus,
+    TaskPriority,
 )
 from mox.infrastructure.auth import (
     User,
@@ -109,6 +114,11 @@ __all__ = [
     "AttackOutcome",
     "DefenseResult",
     "EvaluationReport",
+    "LLMConfig",
+    "RateLimitConfig",
+    "TaskInfo",
+    "TaskStatus",
+    "TaskPriority",
     "User",
     "TokenManager",
     "PasswordManager",

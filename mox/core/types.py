@@ -56,25 +56,45 @@ class AttackType(str, Enum):
     POLICY_PUPPETRY = "policy_puppetry"
     CONTROL_CHAR = "control_char"
     DISTRACT_ATTACK = "distract_attack"
-    CASCADING = "cascading"
     RAG_POISONING = "rag_poisoning"
     DECEPTIVE_ALIGNMENT = "deceptive_alignment"
     COGNITIVE_OVERLOAD = "cognitive_overload"
     CONTEXT_OVERFLOW = "context_overflow"
     ROLE_CONFUSION = "role_confusion"
+    HARDENING = "hardening"
+
+
+class TaskStatus(str, Enum):
+    """任务执行状态"""
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+    CANCELLED = "cancelled"
+
+
+class TaskPriority(str, Enum):
+    """任务优先级"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
 
 
 class DefenseType(str, Enum):
-    """防御类型枚举"""
+    """防御类型枚举 - 统一全项目的防御类型定义"""
     INPUT_FILTER = "input_filter"
     OUTPUT_FILTER = "output_filter"
     SYSTEM_PROMPT_HARDENING = "system_prompt_hardening"
+    PROMPT_HARDENING = "prompt_hardening"
     ADVERSARIAL_TRAINING = "adversarial_training"
     PERPLEXITY_FILTER = "perplexity_filter"
     KEYWORD_DETECTION = "keyword_detection"
     LLM_JUDGE = "llm_judge"
     CONSTITUTIONAL_AI = "constitutional_ai"
-    # 新增防御类型
+    INJECTION_DETECTION = "injection_detection"
+    HALLUCINATION_DETECTION = "hallucination_detection"
+    ENCODING_DETECTION = "encoding_detection"
     SEMANTIC_FIREWALL = "semantic_firewall"
     OUTPUT_VALIDATOR = "output_validator"
     INTENT_CLASSIFIER = "intent_classifier"
@@ -246,6 +266,25 @@ class CacheConfig(BaseModel):
         return v
 
 
+class TaskInfo(BaseModel):
+    """后台任务信息模型"""
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    task_type: str
+    task_name: Optional[str] = None
+    status: TaskStatus
+    priority: TaskPriority = TaskPriority.MEDIUM
+    payload: Dict[str, Any]
+    result: Optional[Dict[str, Any]] = None
+    progress: float = 0.0
+    error: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+    started_at: Optional[datetime] = None
+    finished_at: Optional[datetime] = None
+
+
 class MonitoringConfig(BaseModel):
     """监控配置模型"""
     model_config = ConfigDict(
@@ -260,7 +299,6 @@ class MonitoringConfig(BaseModel):
     tracing_endpoint: Optional[str] = None
 
 
-# 向后兼容的别名
-AttackRecord = AttackOutcome
-DefenseRecord = DefenseResult
-
+# 向后兼容的别名 (deprecated — 请使用正确的类型名)
+AttackRecord = AttackOutcome  # deprecated: use AttackOutcome
+DefenseRecord = DefenseResult  # deprecated: use DefenseResult

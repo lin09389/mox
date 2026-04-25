@@ -1,4 +1,4 @@
-"""Jailbreak 攻击实现"""
+﻿"""Jailbreak 攻击实现"""
 
 import re
 import base64
@@ -198,7 +198,7 @@ class JailbreakAttack(BaseAttack):
             if outcome.result == AttackResult.SUCCESS:
                 return outcome
 
-        return best_outcome or self._create_outcome(
+        return best_outcome or await self._create_outcome(
             result=AttackResult.FAILURE,
             original_prompt=payload.prompt,
             adversarial_prompt="",

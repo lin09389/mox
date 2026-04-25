@@ -21,6 +21,15 @@ from mox.infrastructure.logging import get_logger
 logger = get_logger("attacks.base")
 
 
+def _get_db():
+    """延迟导入以避免循环依赖"""
+    try:
+        from mox.infrastructure.database import get_database
+        return get_database()
+    except Exception:
+        return None
+
+
 @dataclass
 class AttackConfig:
     """攻击配置基类"""
@@ -30,6 +39,7 @@ class AttackConfig:
     temperature: float = 0.7
     verbose: bool = False
     timeout: int = 300
+    save_to_db: bool = False  # 默认不自动持久化，由调用方控制
 
 
 class BaseAttack(ABC):
@@ -79,7 +89,7 @@ class BaseAttack(ABC):
             logger.error(f"Evaluation failed: {e}")
             return 0.0
 
-    def _create_outcome(
+    async def _create_outcome(
         self,
         result: AttackResult,
         original_prompt: str,
@@ -89,7 +99,7 @@ class BaseAttack(ABC):
         success_score: float,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> AttackOutcome:
-        """创建攻击结果"""
+        """创建攻击结果并持久化到数据库"""
         outcome = AttackOutcome(
             result=result,
             original_prompt=original_prompt,
@@ -100,6 +110,26 @@ class BaseAttack(ABC):
             metadata=metadata or {},
         )
         self.history.append(outcome)
+
+        # 自动持久化到数据库
+        if self.config.save_to_db:
+            db = _get_db()
+            if db is not None:
+                try:
+                    await db.save_attack_record(
+                        attack_type=self.attack_type.value if hasattr(self.attack_type, "value") else str(self.attack_type),
+                        original_prompt=original_prompt,
+                        adversarial_prompt=adversarial_prompt,
+                        model_response=model_response,
+                        result=result.value if hasattr(result, "value") else str(result),
+                        success_score=success_score,
+                        iterations=iterations,
+                        model_name=getattr(self.target_llm, "model", None),
+                        metadata=metadata or {},
+                    )
+                except Exception as e:
+                    logger.warning(f"Failed to save attack record to DB: {e}")
+
         return outcome
 
     async def _generate_with_eval(
@@ -129,7 +159,7 @@ class BaseAttack(ABC):
                 else AttackResult.FAILURE
             )
 
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=result,
                 original_prompt=payload.prompt,
                 adversarial_prompt=adversarial_prompt,
@@ -140,7 +170,7 @@ class BaseAttack(ABC):
             )
         except Exception as e:
             logger.error(f"Generation or evaluation failed: {e}")
-            return self._create_outcome(
+            return await self._create_outcome(
                 result=AttackResult.ERROR,
                 original_prompt=payload.prompt,
                 adversarial_prompt=adversarial_prompt,

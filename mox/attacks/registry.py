@@ -1,6 +1,7 @@
 """Attack registry for LLM adversarial implementations."""
 from __future__ import annotations
 
+import threading
 from typing import Dict, Type, Callable, Any, Optional
 from mox.core import BaseLLM, AttackType
 from .base import BaseAttack, AttackConfig
@@ -13,22 +14,26 @@ class Registry:
 
     def __init__(self):
         self._attacks: Dict[str, Type[BaseAttack]] = {}
+        self._lock = threading.Lock()
 
     def register(self, name: str):
         """Decorator to register an attack class."""
         def decorator(cls: Type[BaseAttack]):
-            self._attacks[name] = cls
+            with self._lock:
+                self._attacks[name] = cls
             return cls
         return decorator
 
     def get(self, name: str) -> Optional[Type[BaseAttack]]:
         """Get an attack class by name."""
-        return self._attacks.get(name)
+        with self._lock:
+            return self._attacks.get(name)
 
     @property
     def registered_names(self) -> list[str]:
         """List of all registered attack names."""
-        return list(self._attacks.keys())
+        with self._lock:
+            return list(self._attacks.keys())
 
 # Global registry instance
 ATTACK_REGISTRY = Registry()

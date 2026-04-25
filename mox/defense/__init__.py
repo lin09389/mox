@@ -41,33 +41,43 @@ from .injection_detector import (
 from .orchestrator import (
     DefenseOrchestrator,
     DefenseScenario,
-    DefenseTestResult,
+    ScenarioTestResult,
     DefenseReportGenerator,
 )
 
-# 兼容性别名
-DefenseResult = DefenseTestResult
-KeywordDetector = InputFilter # InputFilter now handles keyword detection
-DefensePipeline = InputFilter # InputFilter acts as a single-entry filter now
-RealPerplexityFilter = PerplexityFilter
-EnhancedInputFilter = InputFilter
+# 兼容性别名 (deprecated — 请使用正确的类名)
+DefenseTestResult = ScenarioTestResult  # deprecated: use ScenarioTestResult
+KeywordDetector = InputFilter  # deprecated: use InputFilter
+DefensePipeline = InputFilter  # deprecated: use InputFilter
+RealPerplexityFilter = PerplexityFilter  # deprecated: use PerplexityFilter
+EnhancedInputFilter = InputFilter  # deprecated: use InputFilter
 
 # 语义防火墙与 Constitutional AI
 try:
     from .semantic_firewall import SemanticFirewall
     from .constitutional_ai import ConstitutionalAI
-except ImportError:
-    pass
+except ImportError as e:
+    import logging
+    _init_log = logging.getLogger(__name__)
+    _init_log.warning("SemanticFirewall/ConstitutionalAI not available: %s", e)
+    SemanticFirewall = None
+    ConstitutionalAI = None
 
 def _discover_defenses():
     """动态加载所有防御子模块以触发注册"""
+    import logging
+    _log = logging.getLogger(__name__)
     package_dir = str(Path(__file__).parent)
     for _, module_name, _ in pkgutil.iter_modules([package_dir]):
         if module_name not in ["base", "registry"]:
             try:
                 __import__(f"mox.defense.{module_name}")
-            except Exception:
-                pass
+            except Exception as e:
+                _log.warning(
+                    "Failed to load defense module '%s': %s. "
+                    "This defense type will NOT be available in the registry.",
+                    module_name, e
+                )
 
 # 初始加载
 _discover_defenses()
@@ -87,5 +97,6 @@ __all__ = [
     "SafetyCoTDefense",
     "PromptInjectionDetector",
     "DefenseOrchestrator",
-    "DefenseResult",
+    "ScenarioTestResult",
+    "DefenseTestResult",
 ]

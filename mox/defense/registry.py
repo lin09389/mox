@@ -3,6 +3,7 @@
 提供防御组件的统一注册和实例创建功能。
 """
 
+import threading
 from typing import Dict, Type, Optional, Any
 from mox.infrastructure.logging import get_logger
 
@@ -13,22 +14,26 @@ class DefenseRegistry:
 
     def __init__(self):
         self._registry: Dict[str, Type] = {}
+        self._lock = threading.Lock()
 
     def register(self, name: str):
         """注册装饰器"""
         def wrapper(cls):
-            self._registry[name.lower()] = cls
+            with self._lock:
+                self._registry[name.lower()] = cls
             return cls
         return wrapper
 
     def get(self, name: str) -> Optional[Type]:
         """获取防御类"""
-        return self._registry.get(name.lower())
+        with self._lock:
+            return self._registry.get(name.lower())
 
     @property
     def registered_names(self) -> list:
         """获取所有已注册的防御名称"""
-        return list(self._registry.keys())
+        with self._lock:
+            return list(self._registry.keys())
 
 # 全局单例
 DEFENSE_REGISTRY = DefenseRegistry()
