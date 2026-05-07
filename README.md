@@ -33,6 +33,7 @@ LLM Adversarial Attack & Defense Platform
 - **Red Team Orchestrator**: 红队编排器 (10+ 攻击技术, 并行/串行执行)
 - **Unified Evaluator**: 统一评估框架
 - **Safety Card**: 模型安全卡片生成
+- **Training Data Exporter**: 安全测试结果导出为训练数据 (DPO / RLHF / Safety-Tuning 格式)
 
 ### 基础设施
 - **LLM Gateway**: 多模型负载均衡和故障转移
@@ -81,14 +82,25 @@ print(result.refusal_detected, result.score)  # True, 0.5
 - **Cohere**: Command
 - **Gro R 系列q**: llama-3.1, mixtral (高吞吐量)
 - **Azure OpenAI**: Azure部署的GPT模型
-- **本地模型**: Ollama 支持的所有模型
+- **本地模型 (Ollama)**: llama3, qwen3, gemma3 等
+- **本地模型 (HuggingFace)**: 直接加载 transformers 模型，支持 4bit/8bit 量化、GPTQ、AWQ、LoRA 适配器、vLLM 推理
 
 ## 快速开始
 
 ### 安装
 
 ```bash
+# 基础安装
 pip install -e .
+
+# 本地模型支持（HuggingFace + 量化 + LoRA）
+pip install -e ".[local]"
+
+# 额外量化后端（GPTQ / AWQ）
+pip install -e ".[quantization]"
+
+# 开发依赖（测试、类型检查、代码格式化）
+pip install -e ".[dev]"
 ```
 
 ### 使用 Ollama 本地模型
@@ -117,6 +129,33 @@ python examples/ollama_attack.py
 - `mistral`, `mixtral`
 - `phi3`, `deepseek-coder`
 - 以及所有 Ollama 支持的模型
+
+### 使用 HuggingFace 本地模型
+
+```bash
+# 1. 安装本地模型依赖
+pip install -e ".[local]"
+
+# 2. 可选：安装量化支持
+pip install -e ".[quantization]"
+
+# 3. 代码中使用
+from mox import LLMFactory
+
+# 直接加载 HuggingFace 模型（支持 4bit/8bit 量化 + LoRA）
+llm = LLMFactory.create_from_model_name(
+    "meta-llama/Llama-3.2-1B-Instruct",
+    load_in_4bit=True,
+    device_map="auto",
+)
+
+# 或加载本地路径 / LoRA 适配器
+llm = LLMFactory.create_from_model_name(
+    "./my-finetuned-model",
+    adapter_path="./lora-adapter",
+    torch_dtype="bfloat16",
+)
+```
 
 ### 配置环境变量
 
@@ -152,10 +191,19 @@ AZURE_OPENAI_API_KEY=...
 AZURE_OPENAI_ENDPOINT=https://xxx.openai.azure.com/
 AZURE_OPENAI_API_VERSION=2024-02-01
 
+# 本地模型配置
+MOX_LOCAL_MODEL_PATH=                      # 本地模型路径
+MOX_LORA_ADAPTER_PATH=                     # LoRA 适配器路径
+MOX_LOAD_IN_4BIT=false                     # 启用 4bit 量化
+MOX_LOAD_IN_8BIT=false                     # 启用 8bit 量化
+MOX_DEVICE_MAP=auto                        # 设备映射: auto / cuda / cpu
+MOX_TORCH_DTYPE=bfloat16                   # 数据类型: bfloat16 / float16 / float32
+
 # 安全配置
 SECRET_KEY=your-secret-key-here
 MOX_REQUIRE_AUTH=false
 MOX_RATE_LIMIT_PER_MINUTE=60
+MOX_TRUSTED_PROXIES=                       # 可信代理 IP（逗号分隔，* 表示信任所有）
 ```
 
 ### 基本使用
@@ -370,6 +418,7 @@ mox/
 │   ├── benchmarks_v2.py     # 最新基准 (HarmBench 2.0, AgentBench)
 │   ├── framework.py         # 统一评估框架
 │   ├── safety_card.py       # 模型安全卡片
+│   ├── training_data_exporter.py # 训练数据导出 (DPO/RLHF/Safety-Tuning)
 │   └── visualization.py     # 评估可视化
 ├── api.py                   # FastAPI 接口
 ├── ui.py                    # Gradio Web UI
@@ -453,6 +502,13 @@ docker-compose --profile monitoring up -d
 | `MOX_REQUIRE_AUTH` | 是否需要认证 | `false` |
 | `MOX_REDIS_URL` | Redis连接地址 | `redis://localhost:6379` |
 | `MOX_DATABASE_URL` | 数据库连接地址 | SQLite本地文件 |
+| `MOX_LOCAL_MODEL_PATH` | 本地 HuggingFace 模型路径 | - |
+| `MOX_LORA_ADAPTER_PATH` | LoRA 适配器路径 | - |
+| `MOX_LOAD_IN_4BIT` | 启用 4bit 量化 | `false` |
+| `MOX_LOAD_IN_8BIT` | 启用 8bit 量化 | `false` |
+| `MOX_DEVICE_MAP` | 设备映射策略 | `auto` |
+| `MOX_TORCH_DTYPE` | 模型加载数据类型 | `bfloat16` |
+| `MOX_TRUSTED_PROXIES` | 可信代理 IP 列表 | - |
 
 **重要**: 生产环境请务必设置 `MOX_SECRET_KEY` 和 `MOX_REQUIRE_AUTH=true`
 
@@ -515,6 +571,7 @@ git push origin feature/your-feature-name
 
 ## 版本历史
 
+- **v0.3.1** - HuggingFace 本地模型支持（4bit/8bit 量化、LoRA）、训练数据导出（DPO/RLHF）、安全加固（登录爆破防护、WebSocket 认证、代理 IP 信任）
 - **v0.3.0** - 统一模式库/评估框架重构、20+攻击模块规范化、防御模块全面升级
 - **v0.2.0** - 统一攻击/防御框架、多模型支持、CI/CD完善
 - **v0.1.0** - 初始版本
