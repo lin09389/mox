@@ -259,19 +259,37 @@ class ToolSandbox:
         tool_def: ToolDefinition,
         parameters: Dict[str, Any],
     ) -> RiskLevel:
-        """评估风险"""
-
         if tool_def.dangerous:
             return RiskLevel.CRITICAL
 
         dangerous_params = ["password", "secret", "token", "key", "admin"]
-        if any(k.lower() in dangerous_params for k in parameters.keys()):
-            return RiskLevel.MEDIUM
+        for k in self._flatten_keys(parameters):
+            if any(d in k.lower() for d in dangerous_params):
+                return RiskLevel.MEDIUM
 
-        if "exec" in str(parameters) or "eval" in str(parameters):
-            return RiskLevel.HIGH
+        param_str = str(parameters).lower()
+        dangerous_patterns = [
+            "exec", "eval", "compile", "__import__",
+            "subprocess", "os.system", "os.popen",
+            "__exec__", "__eval__",
+        ]
+        for pattern in dangerous_patterns:
+            if pattern in param_str:
+                return RiskLevel.HIGH
 
         return RiskLevel.SAFE
+
+    def _flatten_keys(self, obj: Any, prefix: str = "") -> List[str]:
+        keys = []
+        if isinstance(obj, dict):
+            for k, v in obj.items():
+                full_key = f"{prefix}.{k}" if prefix else k
+                keys.append(full_key)
+                keys.extend(self._flatten_keys(v, full_key))
+        elif isinstance(obj, list):
+            for i, v in enumerate(obj):
+                keys.extend(self._flatten_keys(v, f"{prefix}[{i}]"))
+        return keys
 
     def _filter_result(
         self,

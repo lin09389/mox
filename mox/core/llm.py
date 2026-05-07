@@ -38,6 +38,7 @@ class ModelProvider(Enum):
     QWEN = "qwen"
     ERNIE = "ernie"
     ZHIPU = "zhipu"
+    HUGGINGFACE = "huggingface"
 
 
 @dataclass
@@ -350,6 +351,236 @@ class OllamaLLM(BaseLLM):
         async for chunk in stream:
             if chunk.choices[0].delta.content:
                 yield chunk.choices[0].delta.content
+
+
+class HuggingFaceLLM(BaseLLM):
+    """HuggingFace Transformers 本地模型接口
+
+    直接加载 transformers 格式的本地模型或 HuggingFace Hub 模型，
+    支持 PEFT/LoRA 适配器、4-bit/8-bit 量化、多 GPU 加载。
+    """
+
+    def __init__(
+        self,
+        model: str = "gpt2",
+        adapter_path: Optional[str] = None,
+        device_map: str = "auto",
+        torch_dtype: str = "bfloat16",
+        load_in_4bit: bool = False,
+        load_in_8bit: bool = False,
+        trust_remote_code: bool = False,
+        **kwargs,
+    ):
+        super().__init__(model, **kwargs)
+        self.model_name_or_path = model
+        self.adapter_path = adapter_path
+        self.device_map = device_map
+        self.load_in_4bit = load_in_4bit
+        self.load_in_8bit = load_in_8bit
+        self.trust_remote_code = trust_remote_code
+
+        # Parse torch_dtype
+        dtype_map = {
+            "float32": "float32",
+            "float16": "float16",
+            "bfloat16": "bfloat16",
+            "bf16": "bfloat16",
+            "fp16": "float16",
+            "fp32": "float32",
+        }
+        self.torch_dtype_str = dtype_map.get(torch_dtype.lower(), "bfloat16")
+
+        self._model = None
+        self._tokenizer = None
+        self._device = None
+
+        self._init_model()
+
+    def _init_model(self):
+        """初始化模型和 tokenizer"""
+        try:
+            import torch
+            from transformers import AutoModelForCausalLM, AutoTokenizer
+        except ImportError:
+            raise ImportError(
+                "transformers and torch are required for HuggingFaceLLM. "
+                "Install with: pip install transformers torch"
+            )
+
+        dtype_map = {
+            "float32": torch.float32,
+            "float16": torch.float16,
+            "bfloat16": torch.bfloat16,
+        }
+        torch_dtype = dtype_map.get(self.torch_dtype_str, torch.bfloat16)
+
+        # Build load kwargs
+        load_kwargs = {
+            "torch_dtype": torch_dtype,
+            "trust_remote_code": self.trust_remote_code,
+        }
+
+        if self.device_map != "cpu":
+            load_kwargs["device_map"] = self.device_map
+
+        # Quantization config
+        if self.load_in_4bit or self.load_in_8bit:
+            try:
+                from transformers import BitsAndBytesConfig
+
+                bnb_config = BitsAndBytesConfig(
+                    load_in_4bit=self.load_in_4bit,
+                    load_in_8bit=self.load_in_8bit,
+                    bnb_4bit_compute_dtype=torch_dtype,
+                    bnb_4bit_use_double_quant=True,
+                    bnb_4bit_quant_type="nf4",
+                )
+                load_kwargs["quantization_config"] = bnb_config
+            except ImportError:
+                raise ImportError(
+                    "bitsandbytes is required for quantization. "
+                    "Install with: pip install bitsandbytes"
+                )
+
+        # Load model
+        self._model = AutoModelForCausalLM.from_pretrained(
+            self.model_name_or_path,
+            **load_kwargs,
+        )
+
+        # Load LoRA adapter if specified
+        if self.adapter_path:
+            try:
+                from peft import PeftModel
+
+                self._model = PeftModel.from_pretrained(
+                    self._model,
+                    self.adapter_path,
+                )
+            except ImportError:
+                raise ImportError(
+                    "peft is required for LoRA adapter loading. "
+                    "Install with: pip install peft"
+                )
+
+        # Load tokenizer
+        self._tokenizer = AutoTokenizer.from_pretrained(
+            self.model_name_or_path,
+            trust_remote_code=self.trust_remote_code,
+        )
+        if self._tokenizer.pad_token is None:
+            self._tokenizer.pad_token = self._tokenizer.eos_token
+
+        # Determine device
+        if hasattr(self._model, "device"):
+            self._device = str(self._model.device)
+        elif self.device_map == "cpu":
+            self._device = "cpu"
+        else:
+            self._device = "cuda" if torch.cuda.is_available() else "cpu"
+            if self.device_map == "cpu":
+                self._model = self._model.to(self._device)
+
+    async def generate(
+        self,
+        messages: List[Message],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> LLMResponse:
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("Model not initialized")
+
+        import torch
+
+        # Build prompt from messages
+        prompt = self._build_prompt(messages)
+
+        inputs = self._tokenizer(prompt, return_tensors="pt")
+        if self._device and self._device != "cpu":
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+
+        gen_kwargs = {
+            "max_new_tokens": max_tokens or self.max_tokens,
+            "do_sample": True,
+            "temperature": temperature or self.temperature,
+            "pad_token_id": self._tokenizer.pad_token_id,
+            "eos_token_id": self._tokenizer.eos_token_id,
+        }
+
+        with torch.no_grad():
+            outputs = self._model.generate(**inputs, **gen_kwargs)
+
+        generated_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+        content = self._tokenizer.decode(generated_tokens, skip_special_tokens=True)
+
+        return LLMResponse(
+            content=content,
+            model=self.model,
+            usage={
+                "prompt_tokens": inputs["input_ids"].shape[1],
+                "completion_tokens": len(generated_tokens),
+                "total_tokens": inputs["input_ids"].shape[1] + len(generated_tokens),
+            },
+            finish_reason="stop",
+            raw_response=None,
+        )
+
+    async def generate_stream(
+        self,
+        messages: List[Message],
+        temperature: Optional[float] = None,
+        max_tokens: Optional[int] = None,
+    ) -> AsyncIterator[str]:
+        if self._model is None or self._tokenizer is None:
+            raise RuntimeError("Model not initialized")
+
+        import torch
+
+        prompt = self._build_prompt(messages)
+        inputs = self._tokenizer(prompt, return_tensors="pt")
+        if self._device and self._device != "cpu":
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+
+        gen_kwargs = {
+            "max_new_tokens": max_tokens or self.max_tokens,
+            "do_sample": True,
+            "temperature": temperature or self.temperature,
+            "pad_token_id": self._tokenizer.pad_token_id,
+            "eos_token_id": self._tokenizer.eos_token_id,
+        }
+
+        with torch.no_grad():
+            outputs = self._model.generate(**inputs, **gen_kwargs)
+
+        generated_tokens = outputs[0][inputs["input_ids"].shape[1]:]
+
+        # Stream token by token
+        for i in range(1, len(generated_tokens) + 1):
+            chunk = self._tokenizer.decode(generated_tokens[:i], skip_special_tokens=True)
+            prev_chunk = self._tokenizer.decode(generated_tokens[:i - 1], skip_special_tokens=True) if i > 1 else ""
+            yield chunk[len(prev_chunk):]
+
+    def _build_prompt(self, messages: List[Message]) -> str:
+        """将消息列表转换为模型输入 prompt"""
+        parts = []
+        for msg in messages:
+            if msg.role == "system":
+                parts.append(f"System: {msg.content}")
+            elif msg.role == "user":
+                parts.append(f"User: {msg.content}")
+            elif msg.role == "assistant":
+                parts.append(f"Assistant: {msg.content}")
+        return "\n\n".join(parts) + "\n\nAssistant:"
+
+    @property
+    def model_instance(self):
+        """返回底层 transformers 模型实例，供白盒攻击使用"""
+        return self._model
+
+    @property
+    def tokenizer_instance(self):
+        """返回 tokenizer 实例，供白盒攻击使用"""
+        return self._tokenizer
 
 
 class GeminiLLM(BaseLLM):
@@ -817,6 +1048,16 @@ class LLMFactory:
             return GroqLLM(model=model or "llama-3.1-70b-versatile", **kwargs)
         elif provider == ModelProvider.AZURE:
             return AzureOpenAILLM(model=model or "gpt-4", **kwargs)
+        elif provider == ModelProvider.HUGGINGFACE:
+            return HuggingFaceLLM(
+                model=model or "gpt2",
+                device_map=kwargs.pop("device_map", settings.DEVICE_MAP),
+                torch_dtype=kwargs.pop("torch_dtype", settings.TORCH_DTYPE),
+                load_in_4bit=kwargs.pop("load_in_4bit", settings.LOAD_IN_4BIT),
+                load_in_8bit=kwargs.pop("load_in_8bit", settings.LOAD_IN_8BIT),
+                adapter_path=kwargs.pop("adapter_path", settings.LORA_ADAPTER_PATH),
+                **kwargs,
+            )
         else:
             raise ValueError(f"Unsupported provider: {provider}")
 
@@ -824,6 +1065,28 @@ class LLMFactory:
     def create_from_model_name(model: str, **kwargs) -> BaseLLM:
         model_lower = model.lower()
         base_url = kwargs.get("base_url", "")
+        provider = kwargs.get("provider", "")
+
+        # Explicit provider override
+        if provider:
+            provider_map = {
+                "openai": ModelProvider.OPENAI,
+                "anthropic": ModelProvider.ANTHROPIC,
+                "minimax": ModelProvider.MINIMAX,
+                "google": ModelProvider.GOOGLE,
+                "local": ModelProvider.LOCAL,
+                "ollama": ModelProvider.LOCAL,
+                "deepseek": ModelProvider.DEEPSEEK,
+                "cohere": ModelProvider.COHERE,
+                "groq": ModelProvider.GROQ,
+                "azure": ModelProvider.AZURE,
+                "huggingface": ModelProvider.HUGGINGFACE,
+                "hf": ModelProvider.HUGGINGFACE,
+            }
+            p = provider_map.get(provider.lower())
+            if p:
+                kwargs.pop("provider", None)
+                return LLMFactory.create(p, model=model, **kwargs)
 
         # 优先检查 base_url - 如果是本地 Ollama 服务，直接返回 OllamaLLM
         if base_url and (
@@ -832,6 +1095,22 @@ class LLMFactory:
             base_url_arg = kwargs.pop("base_url", "http://localhost:11434/v1")
             api_key = kwargs.pop("api_key", "ollama")
             return OllamaLLM(model=model, base_url=base_url_arg, api_key=api_key, **kwargs)
+
+        # HuggingFace model name format: "org/model-name" or local path
+        if "/" in model or model.startswith(".") or model.startswith("/") or model.startswith("~"):
+            import os
+
+            is_local_path = os.path.exists(os.path.expanduser(model))
+            if "/" in model or is_local_path:
+                return HuggingFaceLLM(
+                    model=model,
+                    device_map=kwargs.pop("device_map", settings.DEVICE_MAP),
+                    torch_dtype=kwargs.pop("torch_dtype", settings.TORCH_DTYPE),
+                    load_in_4bit=kwargs.pop("load_in_4bit", settings.LOAD_IN_4BIT),
+                    load_in_8bit=kwargs.pop("load_in_8bit", settings.LOAD_IN_8BIT),
+                    adapter_path=kwargs.pop("adapter_path", settings.LORA_ADAPTER_PATH),
+                    **kwargs,
+                )
 
         # OpenAI models (gpt-4, gpt-3.5, o1, o3)
         if (
@@ -873,6 +1152,13 @@ class LLMFactory:
         ):
             return GroqLLM(model=model, **kwargs)
         else:
-            raise ValueError(
-                f"Unknown model: {model}. Please specify the provider explicitly using LLMFactory.create(provider, model)."
+            # Default to HuggingFace for unknown models instead of raising error
+            return HuggingFaceLLM(
+                model=model,
+                device_map=kwargs.pop("device_map", settings.DEVICE_MAP),
+                torch_dtype=kwargs.pop("torch_dtype", settings.TORCH_DTYPE),
+                load_in_4bit=kwargs.pop("load_in_4bit", settings.LOAD_IN_4BIT),
+                load_in_8bit=kwargs.pop("load_in_8bit", settings.LOAD_IN_8BIT),
+                adapter_path=kwargs.pop("adapter_path", settings.LORA_ADAPTER_PATH),
+                **kwargs,
             )

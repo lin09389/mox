@@ -13,6 +13,7 @@ from .llm import (
     CohereLLM,
     GroqLLM,
     AzureOpenAILLM,
+    HuggingFaceLLM,
     LLMFactory,
     ModelProvider,
     Message,

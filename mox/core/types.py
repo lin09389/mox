@@ -141,13 +141,30 @@ class AttackPayload(BaseModel):
         return v.strip()
 
 
+class ModelInfo(BaseModel):
+    """模型信息模型"""
+    model_config = ConfigDict(
+        validate_assignment=True,
+    )
+
+    model_name: str
+    model_path: Optional[str] = None
+    base_model: Optional[str] = None
+    adapter_path: Optional[str] = None
+    checkpoint: Optional[str] = None
+    quantization: Optional[str] = None  # "4bit", "8bit", "gptq", "awq", None
+    torch_dtype: Optional[str] = None
+    device_map: Optional[str] = None
+    model_hash: Optional[str] = None  # SHA256 hash of model files (optional)
+
+
 class AttackOutcome(BaseModel):
     """攻击结果模型"""
     model_config = ConfigDict(
         validate_assignment=True,
         populate_by_name=True,
     )
-    
+
     result: AttackResult
     success_score: float = Field(..., ge=0.0, le=1.0)
     response: Optional[str] = None
@@ -157,7 +174,8 @@ class AttackOutcome(BaseModel):
     iterations: int = Field(default=1, ge=1)
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+    model_info: Optional[ModelInfo] = None
+
     @computed_field
     @property
     def is_successful(self) -> bool:
@@ -169,14 +187,15 @@ class DefenseResult(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     is_malicious: bool
     confidence: float = Field(..., ge=0.0, le=1.0)
     detected_patterns: List[str] = Field(default_factory=list)
     filtered_content: Optional[str] = Field(default=None, alias="sanitized_input")
     threat_level: ThreatLevel = ThreatLevel.MEDIUM
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+    model_info: Optional[ModelInfo] = None
+
     @computed_field
     @property
     def is_safe(self) -> bool:
@@ -197,7 +216,7 @@ class EvaluationReport(BaseModel):
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     total_attacks: int = Field(..., ge=0)
     successful_attacks: int = Field(..., ge=0)
     failed_attacks: int = Field(..., ge=0)
@@ -206,7 +225,8 @@ class EvaluationReport(BaseModel):
     avg_iterations: float = Field(..., ge=0.0)
     detailed_results: List[AttackOutcome] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=datetime.now)
-    
+    model_info: Optional[ModelInfo] = None
+
     @computed_field
     @property
     def summary(self) -> str:

@@ -127,7 +127,14 @@ class InputFilter(BaseDefense):
         severity = 0.0
         metadata = {"pattern_matches": [], "keyword_matches": []}
 
-        # 1. 模式匹配
+        # 1. 使用统一模式库检测
+        unified_res = UnifiedMaliciousPatterns.check(input_text)
+        if unified_res.matched:
+            detected.extend(unified_res.patterns)
+            severity += unified_res.score
+            metadata["pattern_matches"].extend(unified_res.patterns)
+
+        # 2. 本地补充模式检测（模糊匹配等）
         for p in self.patterns:
             matched = False
             for pattern in p.patterns:
@@ -141,18 +148,18 @@ class InputFilter(BaseDefense):
                         matched = True
                         break
             
-            if matched:
+            if matched and p.name not in detected:
                 detected.append(p.name)
                 severity += p.severity
                 metadata["pattern_matches"].append(p.name)
 
-        # 2. 关键词匹配
-        input_words = set(input_text.lower().split())
-        matches = input_words & self.keywords
-        if matches:
+        # 3. 关键词检测（使用统一关键词库）
+        from mox.core.patterns import HarmfulKeywords
+        kw_result = HarmfulKeywords.check(input_text)
+        if kw_result.matched:
             detected.append("dangerous_keywords")
-            severity += 0.3 * len(matches)
-            metadata["keyword_matches"] = list(matches)
+            severity += 0.3 * len(kw_result.patterns)
+            metadata["keyword_matches"] = kw_result.patterns
 
         confidence = min(severity, 1.0)
         is_malicious = confidence >= self.config.confidence_threshold
@@ -194,10 +201,27 @@ class StatisticalAnomalyFilter(BaseDefense):
         )
 
     def _calculate_score(self, text: str) -> float:
+        if not text or len(text) < 10:
+            return 100.0
+
+        from collections import Counter
+        import math
+
+        char_counts = Counter(text.lower())
+        if len(char_counts) < 3:
+            return 10.0
+
+        total = sum(char_counts.values())
+        entropy = -sum((c / total) * math.log2(c / total) for c in char_counts.values())
+
         words = text.split()
-        if not words: return 0.0
-        unique_ratio = len(set(words)) / len(words)
-        return unique_ratio * 100.0 # Simple heuristic
+        if words:
+            unique_ratio = len(set(words)) / len(words)
+        else:
+            unique_ratio = 1.0
+
+        score = (entropy / 5.0) * 50 + unique_ratio * 50
+        return score
 
     async def sanitize(self, input_text: str) -> str:
         return input_text
@@ -207,25 +231,84 @@ class PerplexityFilter(BaseDefense):
     """基于 LLM 的困惑度检测器 (原 RealPerplexityFilter)"""
     defense_type = DefenseType.PERPLEXITY_FILTER
 
-    def __init__(self, config: Optional[DefenseConfig] = None, model_name: str = "gpt2", **kwargs):
+    def __init__(self, config: Optional[DefenseConfig] = None, model_name: Optional[str] = None, **kwargs):
         super().__init__(config)
-        self.model_name = model_name
+        self.model_name = model_name  # None = use target model
         self._model = None
         self._tokenizer = None
+        self._external_model = kwargs.get("external_model")
+        self._external_tokenizer = kwargs.get("external_tokenizer")
+
+    def set_external_model(self, model, tokenizer):
+        """设置外部模型（如目标模型）用于困惑度计算"""
+        self._external_model = model
+        self._external_tokenizer = tokenizer
+
+    def _get_model(self):
+        if self._external_model is not None:
+            return self._external_model
+        return self._model
+
+    def _get_tokenizer(self):
+        if self._external_tokenizer is not None:
+            return self._external_tokenizer
+        return self._tokenizer
 
     def _init_model(self):
-        if LM_AVAILABLE and self._model is None:
-            self._model = GPT2LMHeadModel.from_pretrained(self.model_name)
-            self._tokenizer = GPT2Tokenizer.from_pretrained(self.model_name)
+        if not LM_AVAILABLE or self._model is not None or self._external_model is not None:
+            return
+
+        model_name = self.model_name or "gpt2"
+        try:
+            self._model = GPT2LMHeadModel.from_pretrained(model_name)
+            self._tokenizer = GPT2Tokenizer.from_pretrained(model_name)
             self._model.eval()
+        except Exception as e:
+            logger.warning(f"Failed to load perplexity model {model_name}: {e}")
 
     async def detect(self, input_text: str) -> DefenseResult:
         if not LM_AVAILABLE:
             return await self._create_result(False, 0.0, [], metadata={"error": "LM not available"})
-        
+
         self._init_model()
-        # ... calculation logic ...
-        return await self._create_result(False, 0.5, [], metadata={"note": "Simplified for refactoring"})
+        model = self._get_model()
+        tokenizer = self._get_tokenizer()
+
+        if model is None or tokenizer is None:
+            return await self._create_result(False, 0.0, [], metadata={"error": "Model not loaded"})
+
+        try:
+            import torch
+
+            encodings = tokenizer(input_text, return_tensors="pt")
+            input_ids = encodings["input_ids"]
+            device = next(model.parameters()).device
+            input_ids = input_ids.to(device)
+
+            with torch.no_grad():
+                outputs = model(input_ids, labels=input_ids)
+                loss = outputs.loss
+                perplexity = torch.exp(loss).item()
+
+            # Higher perplexity = more anomalous
+            threshold = 100.0
+            is_anomalous = perplexity > threshold
+            confidence = min(perplexity / threshold, 1.0) if perplexity > 0 else 0.0
+
+            return await self._create_result(
+                is_anomalous,
+                confidence,
+                ["high_perplexity"] if is_anomalous else [],
+                metadata={
+                    "perplexity": perplexity,
+                    "threshold": threshold,
+                    "model": self.model_name or "target_model",
+                    "external_model": self._external_model is not None,
+                },
+            )
+        except Exception as e:
+            logger.warning(f"Perplexity calculation failed: {e}")
+            return await self._create_result(False, 0.0, [], metadata={"error": str(e)})
 
     async def sanitize(self, input_text: str) -> str:
         return input_text

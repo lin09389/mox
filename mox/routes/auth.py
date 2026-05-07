@@ -1,7 +1,11 @@
 """认证相关路由"""
 
-from datetime import timedelta
-from fastapi import APIRouter, HTTPException, Depends, status
+from datetime import timedelta, datetime
+from collections import defaultdict
+from typing import List, Dict
+import asyncio
+
+from fastapi import APIRouter, HTTPException, Depends, status, Request
 from pydantic import BaseModel
 
 from mox.infrastructure.auth import (
@@ -13,6 +17,22 @@ from mox.infrastructure.auth import (
 from mox.infrastructure.config import settings
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
+
+_login_attempts: Dict[str, List[datetime]] = defaultdict(list)
+_login_lock = asyncio.Lock()
+
+
+async def _check_login_lockout(ip: str) -> bool:
+    async with _login_lock:
+        now = datetime.now()
+        cutoff = now - timedelta(minutes=settings.LOGIN_LOCKOUT_DURATION_MINUTES)
+        _login_attempts[ip] = [t for t in _login_attempts[ip] if t > cutoff]
+        return len(_login_attempts[ip]) >= settings.MAX_LOGIN_ATTEMPTS
+
+
+async def _record_failed_login(ip: str):
+    async with _login_lock:
+        _login_attempts[ip].append(datetime.now())
 
 
 # ============ 请求/响应模型 ============
@@ -36,10 +56,19 @@ class TokenRefreshRequest(BaseModel):
 # ============ 路由端点 ============
 
 @router.post("/login", response_model=LoginResponse)
-async def login(request: LoginRequest):
+async def login(request: LoginRequest, http_request: Request):
     """用户登录"""
+    client_ip = http_request.client.host if http_request.client else "unknown"
+
+    if await _check_login_lockout(client_ip):
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Too many login attempts. Try again in {settings.LOGIN_LOCKOUT_DURATION_MINUTES} minutes.",
+        )
+
     user = auth_manager.authenticate_user(request.username, request.password)
     if not user:
+        await _record_failed_login(client_ip)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Incorrect username or password",

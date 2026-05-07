@@ -15,6 +15,7 @@ from enum import Enum
 import json
 
 from mox.infrastructure.logging import get_logger
+from mox.core.types import ModelInfo
 
 logger = get_logger("evaluation.safety_card")
 
@@ -88,6 +89,9 @@ class ModelSafetyCard:
     card_version: str = "1.0"
     created_at: str = field(default_factory=lambda: datetime.now().isoformat())
 
+    # 模型指纹信息 (用于本地模型版本追踪)
+    model_info: Optional[ModelInfo] = None
+
     # 安全指标
     safety_metrics: List[SafetyMetric] = field(default_factory=list)
 
@@ -112,7 +116,7 @@ class ModelSafetyCard:
 
     def to_dict(self) -> Dict[str, Any]:
         """转换为字典"""
-        return {
+        result = {
             "model_name": self.model_name,
             "model_version": self.model_version,
             "provider": self.provider,
@@ -162,6 +166,9 @@ class ModelSafetyCard:
             "recommendations": self.recommendations,
             "metadata": self.metadata,
         }
+        if self.model_info:
+            result["model_info"] = self.model_info.model_dump()
+        return result
 
     def to_json(self, indent: int = 2) -> str:
         """转换为 JSON"""
@@ -177,6 +184,33 @@ class ModelSafetyCard:
             f"**卡片版本**: {self.card_version}",
             f"**生成时间**: {self.created_at}",
             "",
+        ]
+
+        # 添加模型指纹信息
+        if self.model_info:
+            lines.extend([
+                "## 模型指纹信息",
+                "",
+            ])
+            if self.model_info.model_path:
+                lines.append(f"- **模型路径**: `{self.model_info.model_path}`")
+            if self.model_info.base_model:
+                lines.append(f"- **基础模型**: {self.model_info.base_model}")
+            if self.model_info.adapter_path:
+                lines.append(f"- **适配器路径**: `{self.model_info.adapter_path}`")
+            if self.model_info.checkpoint:
+                lines.append(f"- **检查点**: {self.model_info.checkpoint}")
+            if self.model_info.quantization:
+                lines.append(f"- **量化方式**: {self.model_info.quantization}")
+            if self.model_info.torch_dtype:
+                lines.append(f"- **数据类型**: {self.model_info.torch_dtype}")
+            if self.model_info.device_map:
+                lines.append(f"- **设备映射**: {self.model_info.device_map}")
+            if self.model_info.model_hash:
+                lines.append(f"- **模型哈希**: `{self.model_info.model_hash[:16]}...`")
+            lines.append("")
+
+        lines.extend([
             "---",
             "",
             "## 总体评估",
@@ -190,7 +224,7 @@ class ModelSafetyCard:
             "",
             "| 指标 | 值 | 基准 | 状态 |",
             "|------|-----|------|------|",
-        ]
+        ])
 
         for m in self.safety_metrics:
             status = "✅ 通过" if m.value >= m.pass_threshold else "❌ 未通过"
@@ -271,12 +305,14 @@ class SafetyCardGenerator:
         provider: str,
         test_results: Optional[List[SafetyTestResult]] = None,
         benchmark_scores: Optional[Dict[str, float]] = None,
+        model_info: Optional[ModelInfo] = None,
     ) -> ModelSafetyCard:
         """生成模型安全卡片"""
         card = ModelSafetyCard(
             model_name=model_name,
             model_version=model_version,
             provider=provider,
+            model_info=model_info,
         )
 
         # 添加安全指标

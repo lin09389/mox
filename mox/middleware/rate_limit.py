@@ -12,6 +12,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 import asyncio
 
 from mox.infrastructure.logging import get_logger
+from mox.infrastructure.config import settings
 
 logger = get_logger("rate_limit")
 
@@ -102,21 +103,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
 
     def _get_client_ip(self, request: Request) -> str:
         """获取客户端 IP"""
-        # 优先使用 X-Forwarded-For 头
+        if request.client:
+            client_ip = request.client.host
+        else:
+            client_ip = "unknown"
+
+        trust_proxies = settings.TRUSTED_PROXIES
+        trust_all = "*" in trust_proxies
+
         forwarded = request.headers.get("x-forwarded-for")
         if forwarded:
-            return forwarded.split(",")[0].strip()
+            first_ip = forwarded.split(",")[0].strip()
+            if trust_all or client_ip in trust_proxies:
+                return first_ip
 
-        # 其次使用 X-Real-IP 头
         real_ip = request.headers.get("x-real-ip")
-        if real_ip:
+        if real_ip and (trust_all or client_ip in trust_proxies):
             return real_ip
 
-        # 最后使用客户端 host
-        if request.client:
-            return request.client.host
-
-        return "unknown"
+        return client_ip
 
     def _is_exempt(self, path: str) -> bool:
         """检查路径是否豁免限流"""

@@ -4,7 +4,12 @@ from typing import Dict, Any, List
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
-from mox.evaluation import BenchmarkRunner, BenchmarkDataset
+from mox.evaluation import (
+    BenchmarkRunner,
+    BenchmarkDataset,
+    TrainingDataExporter,
+    TrainingDataFormat,
+)
 from mox.attacks import PromptInjectionAttack, JailbreakAttack
 from mox.infrastructure.auth import get_current_active_user, User
 
@@ -18,6 +23,12 @@ class BenchmarkRequest(BaseModel):
     attack_type: str = "prompt_injection"
     model: str = "abab2.5-chat"
     max_cases: int = Field(default=10, ge=1, le=500)  # Upper bound to prevent DoS
+
+
+class ExportTrainingDataRequest(BaseModel):
+    format: TrainingDataFormat = TrainingDataFormat.DPO
+    output_path: str = "./training_data.json"
+    include_metadata: bool = True
 
 
 # ============ 依赖 ============
@@ -96,3 +107,27 @@ async def list_datasets() -> Dict[str, List[Dict[str, Any]]]:
     """列出可用的基准测试数据集"""
     datasets = benchmark_dataset.list_datasets()
     return {"datasets": [benchmark_dataset.get_dataset_info(name) for name in datasets]}
+
+
+@router.post("/export-training-data")
+async def export_training_data(
+    request: ExportTrainingDataRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """导出安全测试结果为训练数据 (DPO/RLHF/Safety-Tuning)"""
+    try:
+        exporter = TrainingDataExporter()
+        output_path = exporter.export(
+            format=request.format,
+            output_path=request.output_path,
+            include_metadata=request.include_metadata,
+        )
+        stats = exporter.get_statistics()
+        return {
+            "status": "success",
+            "output_path": output_path,
+            "format": request.format.value,
+            "statistics": stats,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))

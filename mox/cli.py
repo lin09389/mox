@@ -33,6 +33,8 @@ from mox.defense import (
 from mox.defense.llm_judge import LLMJudge, SafetyCoTDefense, JudgmentType
 from mox.evaluation import (
     BenchmarkDataset,
+    TrainingDataExporter,
+    TrainingDataFormat,
 )
 
 console = Console()
@@ -153,6 +155,7 @@ async def run_benchmark(args):
     payloads = benchmark.get_attack_payloads(args.dataset)[: args.max_cases]
 
     results = []
+    exporter = TrainingDataExporter()
     with Progress(console=console) as progress:
         task = progress.add_task("运行测试...", total=len(payloads))
 
@@ -165,6 +168,7 @@ async def run_benchmark(args):
                     "score": outcome.success_score,
                 }
             )
+            exporter.add_attack_outcome(outcome)
             progress.advance(task)
 
     successful = sum(1 for r in results if r["result"] == "success")
@@ -190,6 +194,16 @@ async def run_benchmark(args):
         detail_table.add_row(str(r["case"]), r["result"], f"{r['score']:.2f}")
 
     console.print(detail_table)
+
+    # 导出训练数据
+    if getattr(args, "export_training_data", False):
+        fmt = getattr(args, "export_format", "dpo")
+        output = getattr(args, "export_output", "./training_data.json")
+        training_format = TrainingDataFormat(fmt)
+        output_path = exporter.export(training_format, output)
+        stats = exporter.get_statistics()
+        console.print(f"\n[bold green]训练数据已导出:[/bold green] {output_path}")
+        console.print(f"  DPO: {stats['dpo_examples']}, RLHF: {stats['rlhf_examples']}, Safety: {stats['safety_examples']}")
 
 
 async def run_llm_judge_test(args):
@@ -358,6 +372,18 @@ def main():
     )
     benchmark_parser.add_argument("--model", "-m", default="gpt-4", help="目标模型")
     benchmark_parser.add_argument("--max-cases", type=int, default=5, help="最大测试用例数")
+    benchmark_parser.add_argument(
+        "--export-training-data", action="store_true", help="导出训练数据 (DPO/RLHF)"
+    )
+    benchmark_parser.add_argument(
+        "--export-format",
+        default="dpo",
+        choices=["dpo", "rlhf", "safety_tuning", "custom_jsonl"],
+        help="训练数据格式",
+    )
+    benchmark_parser.add_argument(
+        "--export-output", default="./training_data.json", help="训练数据输出路径"
+    )
 
     judge_parser = subparsers.add_parser("judge", help="LLM-as-Judge 评估")
     judge_parser.add_argument("--text", "-t", required=True, help="原始文本")

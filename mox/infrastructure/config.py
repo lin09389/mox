@@ -2,7 +2,7 @@
 
 import os
 from typing import Optional, List
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -38,6 +38,14 @@ class Settings(BaseSettings):
     DEFAULT_TEMPERATURE: float = 0.7
     MAX_TOKENS: int = 2048
 
+    # ============ 本地模型配置 ============
+    LOCAL_MODEL_PATH: Optional[str] = None
+    LORA_ADAPTER_PATH: Optional[str] = None
+    LOAD_IN_4BIT: bool = False
+    LOAD_IN_8BIT: bool = False
+    DEVICE_MAP: str = "auto"
+    TORCH_DTYPE: str = "bfloat16"
+
     # ============ 攻击配置 ============
     MAX_ITERATIONS: int = 100
     ATTACK_SUCCESS_THRESHOLD: float = 0.8
@@ -72,6 +80,7 @@ class Settings(BaseSettings):
     MAX_LOGIN_ATTEMPTS: int = 5
     LOGIN_LOCKOUT_DURATION_MINUTES: int = 15
     ALLOWED_IPS: List[str] = Field(default_factory=list)
+    TRUSTED_PROXIES: List[str] = Field(default_factory=list)
 
     # ============ 默认用户配置 ============
     # 格式: List["username:password:email:scopes"]
@@ -98,11 +107,6 @@ class Settings(BaseSettings):
     )
     CORS_MAX_AGE: int = 600
 
-    # ============ 监控配置 ============
-    METRICS_ENABLED: bool = True
-    TRACING_ENABLED: bool = False
-    METRICS_PORT: int = 9090
-
     @field_validator('CORS_ORIGINS', mode='before')
     @classmethod
     def parse_cors_origins(cls, v):
@@ -115,6 +119,16 @@ class Settings(BaseSettings):
     def parse_allowed_ips(cls, v):
         if isinstance(v, str):
             return [ip.strip() for ip in v.split(',') if ip.strip()]
+        return v
+
+    @field_validator('TRUSTED_PROXIES', mode='before')
+    @classmethod
+    def parse_trusted_proxies(cls, v):
+        if isinstance(v, str):
+            parts = [p.strip() for p in v.split(',') if p.strip()]
+            if parts == ["*"]:
+                return ["*"]
+            return parts
         return v
 
     @field_validator('CORS_ALLOW_METHODS', mode='before')
@@ -135,9 +149,17 @@ class Settings(BaseSettings):
     @classmethod
     def parse_default_users(cls, v):
         if isinstance(v, str):
-            # 使用 | 分隔多个用户配置
             return [user.strip() for user in v.split('|') if user.strip()]
         return v
+
+    @model_validator(mode='after')
+    def validate_production_security(self):
+        if self.REQUIRE_AUTH and not os.environ.get('MOX_SECRET_KEY'):
+            raise ValueError(
+                "MOX_SECRET_KEY must be explicitly set when REQUIRE_AUTH=True. "
+                "Auto-generated keys are not allowed in production."
+            )
+        return self
 
 
     def get_database_config(self) -> dict:

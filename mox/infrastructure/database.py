@@ -538,20 +538,11 @@ class Database:
             return TaskInfo.model_validate(record)
 
     async def update_task(self, task_id: int, **kwargs) -> bool:
-        """更新任务状态或进度"""
+        """更新任务状态或进度（修复了高并发下的覆盖问题）"""
         async with self.get_session() as session:
-            result = await session.execute(
-                select(TaskRecord).where(TaskRecord.id == task_id)
-            )
-            record = result.scalar_one_or_none()
-            if not record:
-                return False
-            
-            for key, value in kwargs.items():
-                if hasattr(record, key):
-                    setattr(record, key, value)
-            
-            return True
+            stmt = update(TaskRecord).where(TaskRecord.id == task_id).values(**kwargs)
+            result = await session.execute(stmt)
+            return result.rowcount > 0
 
     async def get_pending_tasks(self) -> List[TaskInfo]:
         """获取所有未完成的任务（用于系统重启恢复）"""
@@ -638,26 +629,33 @@ async def init_database(
     global _default_db
     db = Database(db_path=db_path, db_url=db_url)
     await db.init_db()
+    
+    old_db = None
     with _db_lock:
-        if _default_db is not None:
-            try:
-                await _default_db.close()
-            except Exception as e:
-                logger.warning("Failed to close previous database instance: %s", e)
+        old_db = _default_db
         _default_db = db
+        
+    if old_db is not None:
+        try:
+            await old_db.close()
+        except Exception as e:
+            logger.warning("Failed to close previous database instance: %s", e)
     return db
 
 
 async def close_database() -> None:
     """关闭数据库连接"""
     global _default_db
+    db_to_close = None
     with _db_lock:
-        if _default_db is not None:
-            try:
-                await _default_db.close()
-            except Exception as e:
-                logger.warning("Failed to close database: %s", e)
-            _default_db = None
+        db_to_close = _default_db
+        _default_db = None
+        
+    if db_to_close is not None:
+        try:
+            await db_to_close.close()
+        except Exception as e:
+            logger.warning("Failed to close database: %s", e)
 
 
 def reset_database_singleton() -> None:

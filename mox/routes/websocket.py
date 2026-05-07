@@ -2,12 +2,32 @@
 
 import json
 from typing import Dict, Any, Optional, Set
-from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect, Depends, HTTPException
 from pydantic import BaseModel
 
-from mox.infrastructure.auth import User, get_current_active_user
+from mox.infrastructure.auth import User, get_current_active_user, TokenManager, auth_manager
+from mox.infrastructure.config import settings
 
 router = APIRouter(tags=["WebSocket"])
+
+MAX_MESSAGE_SIZE = 1024 * 1024
+
+
+async def _authenticate_ws(websocket: WebSocket) -> Optional[User]:
+    token = websocket.query_params.get("token")
+    if not token:
+        await websocket.close(code=4001, reason="Authentication required")
+        return None
+    try:
+        token_data = TokenManager.verify_token(token)
+        user = auth_manager.get_user(token_data.sub)
+        if not user or user.disabled:
+            await websocket.close(code=4003, reason="Invalid user")
+            return None
+        return user
+    except Exception:
+        await websocket.close(code=4001, reason="Invalid token")
+        return None
 
 
 # ============ 连接管理器 ============
@@ -96,10 +116,24 @@ class WebSocketMessage(BaseModel):
 @router.websocket("/ws")
 async def websocket_endpoint(websocket: WebSocket):
     """WebSocket实时通信端点"""
-    await manager.connect(websocket)
+    if not settings.REQUIRE_AUTH:
+        connected = await manager.connect(websocket)
+        if not connected:
+            return
+    else:
+        await websocket.accept()
+        user = await _authenticate_ws(websocket)
+        if user is None:
+            return
+        manager.active_connections.add(websocket)
     try:
         while True:
             data = await websocket.receive_text()
+            if len(data) > MAX_MESSAGE_SIZE:
+                await manager.send_personal_message(
+                    {"type": "error", "message": "Message too large"}, websocket
+                )
+                continue
             try:
                 message = json.loads(data)
                 msg_type = message.get("type")
@@ -145,7 +179,16 @@ async def websocket_endpoint(websocket: WebSocket):
 @router.websocket("/ws/attack/{task_id}")
 async def websocket_attack(websocket: WebSocket, task_id: str):
     """WebSocket攻击任务跟踪"""
-    await manager.connect(websocket)
+    if not settings.REQUIRE_AUTH:
+        connected = await manager.connect(websocket)
+        if not connected:
+            return
+    else:
+        await websocket.accept()
+        user = await _authenticate_ws(websocket)
+        if user is None:
+            return
+        manager.active_connections.add(websocket)
     try:
         await manager.send_personal_message(
             {"type": "connected", "task_id": task_id, "status": "listening"}, websocket
@@ -186,7 +229,7 @@ async def broadcast_message(
 
 
 @router.get("/api/ws/stats")
-async def get_ws_stats():
+async def get_ws_stats(current_user: User = Depends(get_current_active_user)):
     """获取WebSocket连接统计"""
     return {
         "active_connections": len(manager.active_connections),

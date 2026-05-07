@@ -1,4 +1,4 @@
-﻿"""
+"""
 改进的 GCG (Greedy Coordinate Gradient) 攻击算法
 
 改进点:
@@ -117,10 +117,24 @@ class GradientOptimizer:
     def _init_model(self):
         """初始化模型"""
         try:
+            dtype_map = {
+                "float32": torch.float32,
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+            }
+            torch_dtype = dtype_map.get(settings.TORCH_DTYPE, torch.float32)
+            device_map = settings.DEVICE_MAP if settings.DEVICE_MAP != "cpu" else None
+
+            load_kwargs = {
+                "revision": "main",
+                "torch_dtype": torch_dtype,
+            }
+            if device_map:
+                load_kwargs["device_map"] = device_map
+
             self._model = AutoModelForCausalLM.from_pretrained(
                 self.model_name,
-                revision="main",
-                torch_dtype=torch.float32,
+                **load_kwargs,
             )
             self._tokenizer = AutoTokenizer.from_pretrained(
                 self.model_name,
@@ -128,9 +142,11 @@ class GradientOptimizer:
             )
             self._model.eval()
 
-            if torch.cuda.is_available():
+            if device_map is None and torch.cuda.is_available():
                 self._model = self._model.to("cuda")
                 self._device = "cuda"
+            elif device_map:
+                self._device = str(next(self._model.parameters()).device)
         except Exception as e:
             print(f"Failed to init gradient model: {e}")
             self._model = None

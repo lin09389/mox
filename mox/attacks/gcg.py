@@ -1,4 +1,4 @@
-﻿"""GCG (Greedy Coordinate Gradient) 攻击实现"""
+"""GCG (Greedy Coordinate Gradient) 攻击实现"""
 
 import string
 from typing import Optional, List
@@ -433,21 +433,41 @@ class GCGPlusPlusAttack(BaseAttack):
         if not TORCH_AVAILABLE:
             return
 
-        if self._victim_model is None:
-            try:
-                self._victim_model = AutoModelForCausalLM.from_pretrained(
-                    self.victim_model_name,
-                    revision="main",
-                    torch_dtype=torch.float32,
-                    device_map="cpu",
-                )
-                self._tokenizer = AutoTokenizer.from_pretrained(
-                    self.victim_model_name,
-                    revision="main",
-                )
+        if self._victim_model is not None:
+            return
+
+        # Try to use target_llm's internal model if it's a HuggingFaceLLM
+        from mox.core.llm import HuggingFaceLLM
+
+        if isinstance(self.target_llm, HuggingFaceLLM):
+            self._victim_model = self.target_llm.model_instance
+            self._tokenizer = self.target_llm.tokenizer_instance
+            if self._victim_model is not None:
                 self._victim_model.eval()
-            except Exception as e:
-                logger.warning(f"Failed to load victim model: {e}")
+            return
+
+        try:
+            dtype_map = {
+                "float32": torch.float32,
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+            }
+            torch_dtype = dtype_map.get(settings.TORCH_DTYPE, torch.float32)
+            device_map = settings.DEVICE_MAP if settings.DEVICE_MAP != "cpu" else "cpu"
+
+            self._victim_model = AutoModelForCausalLM.from_pretrained(
+                self.victim_model_name,
+                revision="main",
+                torch_dtype=torch_dtype,
+                device_map=device_map,
+            )
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                self.victim_model_name,
+                revision="main",
+            )
+            self._victim_model.eval()
+        except Exception as e:
+            logger.warning(f"Failed to load victim model: {e}")
 
     def _get_embedding(self, text: str):
         if self._embedding_model is None:
@@ -575,26 +595,58 @@ class GCGPlusPlusAttack(BaseAttack):
         )
 
     async def _compute_gradient_info(self, prompt: str, target: str) -> "Optional[torch.Tensor]":
-        """Compute token-level gradient information for greedy search."""
+        """Compute token-level gradient information for greedy search.
+
+        Uses the target model's gradients to identify which tokens in the prompt
+        have the most influence on generating the target output.
+        """
         try:
             if self._victim_model is None or self._tokenizer is None:
                 return None
 
-            inputs = self._tokenizer(prompt, return_tensors="pt")
+            import torch
 
-            with torch.no_grad():
-                outputs = self._victim_model(**inputs)
-                logits = outputs.logits[0, -1, :]
-
+            # Encode prompt and target
+            prompt_ids = self._tokenizer.encode(prompt, return_tensors="pt")
             target_ids = self._tokenizer.encode(target, add_special_tokens=False)
-            if target_ids:
-                target_id = target_ids[0]
-                logits_at_target = logits[target_id]
-            else:
-                logits_at_target = logits.max()
+            if not target_ids:
+                return None
 
-            importance = torch.softmax(logits, dim=-1) * torch.abs(logits - logits_at_target)
-            return importance
+            # Move to same device as model
+            device = next(self._victim_model.parameters()).device
+            prompt_ids = prompt_ids.to(device)
+            target_tensor = torch.tensor([target_ids], device=device)
+
+            # Compute gradients w.r.t. input embeddings
+            embedding_layer = self._victim_model.get_input_embeddings()
+            inputs_embeds = embedding_layer(prompt_ids).detach().clone()
+            inputs_embeds.requires_grad_(True)
+
+            outputs = self._victim_model(inputs_embeds=inputs_embeds)
+            logits = outputs.logits
+
+            # Compute loss on target tokens
+            shift_logits = logits[..., :-1, :].contiguous()
+            shift_labels = target_tensor[..., :].contiguous()
+
+            if shift_logits.size(1) >= shift_labels.size(1):
+                loss_logits = shift_logits[0, -shift_labels.size(1):, :]
+            else:
+                loss_logits = shift_logits[0, :, :]
+
+            loss = torch.nn.functional.cross_entropy(
+                loss_logits.view(-1, loss_logits.size(-1)),
+                shift_labels.view(-1),
+            )
+
+            loss.backward()
+
+            if inputs_embeds.grad is not None:
+                # Compute per-token gradient magnitude
+                grad_magnitudes = inputs_embeds.grad.norm(dim=-1)[0]
+                return grad_magnitudes.detach()
+
+            return None
 
         except Exception as e:
             logger.debug(f"Gradient computation failed: {e}")

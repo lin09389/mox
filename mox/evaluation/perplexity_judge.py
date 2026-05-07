@@ -30,13 +30,14 @@ except ImportError:
 class PerplexityConfig:
     """困惑度计算配置"""
 
-    model_name: str = "gpt2"
+    model_name: Optional[str] = None  # None = use target model
     model_revision: str = "v1.1"  # Fixed revision for security
     max_length: int = 1024
     stride: int = 512
     batch_size: int = 8
     normalize: bool = True
     use_log_perplexity: bool = True
+    use_target_model: bool = True  # Whether to use the target model for perplexity calculation
 
 
 @dataclass
@@ -62,32 +63,70 @@ class AccuratePerplexityCalculator:
     3. 分段计算检测异常区域
     """
 
-    def __init__(self, config: Optional[PerplexityConfig] = None):
+    def __init__(self, config: Optional[PerplexityConfig] = None, external_model=None, external_tokenizer=None):
         self.config = config or PerplexityConfig()
         self._model = None
         self._tokenizer = None
         self._device = "cpu"
+        self._external_model = external_model
+        self._external_tokenizer = external_tokenizer
 
-        if TORCH_AVAILABLE:
+        if TORCH_AVAILABLE and external_model is None:
             self._init_model()
+
+    def set_external_model(self, model, tokenizer):
+        """设置外部模型（如目标模型）用于困惑度计算"""
+        self._external_model = model
+        self._external_tokenizer = tokenizer
+        if model is not None:
+            self._device = str(next(model.parameters()).device)
+
+    def _get_model(self):
+        """获取当前使用的模型"""
+        if self._external_model is not None:
+            return self._external_model
+        return self._model
+
+    def _get_tokenizer(self):
+        """获取当前使用的 tokenizer"""
+        if self._external_tokenizer is not None:
+            return self._external_tokenizer
+        return self._tokenizer
 
     def _init_model(self):
         """初始化模型"""
+        model_name = self.config.model_name or "gpt2"
         try:
+            dtype_map = {
+                "float32": torch.float32,
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+            }
+            torch_dtype = dtype_map.get(settings.TORCH_DTYPE, torch.float32)
+            device_map = settings.DEVICE_MAP if settings.DEVICE_MAP != "cpu" else None
+
+            load_kwargs = {
+                "revision": self.config.model_revision,
+                "torch_dtype": torch_dtype,
+            }
+            if device_map:
+                load_kwargs["device_map"] = device_map
+
             self._model = AutoModelForCausalLM.from_pretrained(
-                self.config.model_name,
-                revision=self.config.model_revision,
-                torch_dtype=torch.float32,
+                model_name,
+                **load_kwargs,
             )
             self._tokenizer = AutoTokenizer.from_pretrained(
-                self.config.model_name,
+                model_name,
                 revision=self.config.model_revision,
             )
             self._model.eval()
 
-            if torch.cuda.is_available():
+            if device_map is None and torch.cuda.is_available():
                 self._model = self._model.to("cuda")
                 self._device = "cuda"
+            elif device_map:
+                self._device = str(next(self._model.parameters()).device)
 
             # 设置 pad token
             if self._tokenizer.pad_token is None:
@@ -107,12 +146,15 @@ class AccuratePerplexityCalculator:
         Returns:
             PerplexityResult: 困惑度结果
         """
-        if self._model is None:
+        model = self._get_model()
+        tokenizer = self._get_tokenizer()
+
+        if model is None or tokenizer is None:
             return self._fallback_calculate(text)
 
         try:
             # 编码
-            encodings = self._tokenizer(
+            encodings = tokenizer(
                 text,
                 return_tensors="pt",
                 truncation=True,
@@ -120,8 +162,8 @@ class AccuratePerplexityCalculator:
             )
 
             input_ids = encodings["input_ids"]
-            if self._device == "cuda":
-                input_ids = input_ids.to("cuda")
+            device = next(model.parameters()).device
+            input_ids = input_ids.to(device)
 
             nlls = []
             segment_scores = []
@@ -136,7 +178,7 @@ class AccuratePerplexityCalculator:
                 target_chunk = input_chunk.clone()
 
                 with torch.no_grad():
-                    outputs = self._model(input_chunk, labels=target_chunk)
+                    outputs = model(input_chunk, labels=target_chunk)
                     neg_log_likelihood = outputs.loss * trg_len
 
                 nlls.append(neg_log_likelihood)
@@ -159,6 +201,7 @@ class AccuratePerplexityCalculator:
             # 检测异常
             is_anomalous, anomaly_score = self._detect_anomaly(ppl, segment_scores)
 
+            model_name = self.config.model_name or "target_model"
             return PerplexityResult(
                 perplexity=ppl,
                 log_perplexity=log_ppl,
@@ -167,8 +210,9 @@ class AccuratePerplexityCalculator:
                 anomaly_score=anomaly_score,
                 segment_scores=segment_scores,
                 metadata={
-                    "model": self.config.model_name,
+                    "model": model_name,
                     "method": "sliding_window",
+                    "external_model": self._external_model is not None,
                 },
             )
 

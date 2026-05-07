@@ -3,11 +3,13 @@
 from contextlib import asynccontextmanager
 from typing import Any, Dict, List
 
-from fastapi import FastAPI, HTTPException, Request, Response, status
+from fastapi import FastAPI, HTTPException, Request, Response, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from prometheus_client import CONTENT_TYPE_LATEST, generate_latest
 from pydantic import BaseModel
+
+from mox.infrastructure.auth import get_current_active_user, User
 
 from mox.infrastructure.config import settings
 from mox.core.exceptions import MoxException
@@ -82,19 +84,22 @@ def _get_cors_origins() -> list[str]:
 
 
 def _register_middleware(app: FastAPI) -> None:
-    # Allow all origins for development - credentials must be False when using "*"
+    cors_origins = _get_cors_origins()
+    allow_credentials = settings.CORS_ALLOW_CREDENTIALS
+    if cors_origins == ["*"]:
+        allow_credentials = False
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=False,  # Must be False when allow_origins=["*"]
-        allow_methods=["*"],
-        allow_headers=["*"],
+        allow_origins=cors_origins,
+        allow_credentials=allow_credentials,
+        allow_methods=settings.CORS_ALLOW_METHODS,
+        allow_headers=settings.CORS_ALLOW_HEADERS,
     )
     app.add_middleware(
         RateLimitMiddleware,
         requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
         burst_size=settings.RATE_LIMIT_BURST,
-        enabled=settings.REQUIRE_AUTH,
+        enabled=True,
     )
 
     @app.middleware("http")
@@ -297,7 +302,11 @@ async def get_templates():
             "templates_by_category": templates_by_category,
         }
     except Exception as exc:
-        return {"success": False, "error": str(exc)}
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"Failed to get templates: {exc}")
+        return {"success": False, "error": "Failed to load templates"}
 
 
 @api_router.get("/hardening/prompt")
@@ -363,14 +372,13 @@ async def get_stats_overview() -> Dict[str, Any]:
         from mox.infrastructure.logging import get_logger
 
         logger = get_logger("api")
-        logger.warning(f"Failed to get stats overview, returning fallback data: {exc}")
+        logger.error(f"Failed to get stats overview: {exc}")
         return {
             "total_attacks": total_attacks,
             "successful_attacks": successful_attacks,
             "total_defenses": total_defenses,
             "blocked_attacks": blocked_attacks,
             "recent_attacks": recent_attacks_data,
-            "error": str(exc),
         }
 
 
@@ -386,12 +394,12 @@ async def get_cache_stats():
         from mox.infrastructure.logging import get_logger
 
         logger = get_logger("api")
-        logger.warning(f"Failed to get cache stats: {e}")
-        return {"enabled": False, "size": 0, "error": str(e)}
+        logger.error(f"Failed to get cache stats: {e}")
+        return {"enabled": False, "size": 0}
 
 
 @api_router.post("/cache/clear")
-async def clear_cache():
+async def clear_cache(current_user: User = Depends(get_current_active_user)):
     """Clear runtime caches."""
     try:
         from mox.infrastructure.cache import CacheManager
@@ -400,7 +408,11 @@ async def clear_cache():
         await cache.clear()
         return {"success": True}
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"Failed to clear cache: {exc}")
+        raise HTTPException(status_code=500, detail="Failed to clear cache") from exc
 
 
 class OWASPRequest(BaseModel):
@@ -442,7 +454,11 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
 
         return {"results": test_results}
     except Exception as exc:
-        return {"results": [], "error": str(exc)}
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"OWASP test execution failed: {exc}")
+        return {"results": [], "error": "OWASP test execution failed"}
 
 
 class RedTeamRequest(BaseModel):
@@ -470,13 +486,17 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
         orchestrator = RedTeamOrchestrator(llm)
         return await orchestrator.run_comprehensive_evaluation(techniques=request.techniques)
     except Exception as exc:
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"Red team execution failed: {exc}")
         return {
             "results": [],
-            "error": str(exc),
+            "error": "Red team execution failed",
             "summary": {
-                "total_scenarios": 8,
-                "successful_attacks": 3,
-                "success_rate": "37.5%",
+                "total_scenarios": 0,
+                "successful_attacks": 0,
+                "success_rate": "0%",
             },
         }
 
@@ -516,7 +536,11 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
             "passed": report.passed,
         }
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"Code security scan failed: {exc}")
+        raise HTTPException(status_code=500, detail="Code security scan failed") from exc
 
 
 class BiasDetectRequest(BaseModel):
@@ -546,7 +570,11 @@ async def bias_detection(request: BiasDetectRequest) -> Dict[str, Any]:
         result = await detector.test_demographic_parity(request.prompt, groups)
         return result.get("bias_result", {"bias_detected": False})
     except Exception as exc:
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        from mox.infrastructure.logging import get_logger
+
+        logger = get_logger("api")
+        logger.error(f"Bias detection failed: {exc}")
+        raise HTTPException(status_code=500, detail="Bias detection failed") from exc
 
 
 @api_router.get("/ws/stats")

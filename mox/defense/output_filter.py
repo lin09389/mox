@@ -21,11 +21,16 @@ class PIICategory(str, Enum):
     CREDIT_CARD = "credit_card"
     API_KEY = "api_key"
     PASSWORD = "password"
+    IP_ADDRESS = "ip_address"
 
 PII_PATTERNS = {
-    PIICategory.PHONE_NUMBER: r"1[3-9]\d{9}",
+    PIICategory.PHONE_NUMBER: r"(?<!\d)1[3-9]\d{9}(?!\d)",
     PIICategory.EMAIL: r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
-    PIICategory.API_KEY: r"(api[_-]?key|token)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_-]{20,}",
+    PIICategory.SSN: r"(?<!\d)\d{6}(?:19|20)\d{2}(?:0[1-9]|1[0-2])(?:0[1-9]|[12]\d|3[01])\d{3}[\dXx](?!\d)",
+    PIICategory.CREDIT_CARD: r"(?<!\d)(?:\d{4}[-\s]?){3}\d{4}(?!\d)",
+    PIICategory.API_KEY: r"(?:api[_-]?key|token|secret[_-]?key|access[_-]?key)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_-]{20,}",
+    PIICategory.PASSWORD: r"(?:password|passwd|pwd)[\"']?\s*[:=]\s*[\"']?[^\s\"']{8,}",
+    PIICategory.IP_ADDRESS: r"(?<!\d)(?:(?:25[0-5]|2[0-4]\d|[01]?\d\d?)\.){3}(?:25[0-5]|2[0-4]\d|[01]?\d\d?)(?!\d)",
 }
 
 @DEFENSE_REGISTRY.register("output_filter")

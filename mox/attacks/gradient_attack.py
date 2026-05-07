@@ -1,4 +1,4 @@
-﻿"""梯度优化攻击模块 - 基于梯度的对抗性攻击
+"""梯度优化攻击模块 - 基于梯度的对抗性攻击
 
 实现多种基于梯度优化的攻击方法:
 1. FGSM (Fast Gradient Sign Method) - 快速梯度符号方法
@@ -48,7 +48,7 @@ class GradientAttackConfig:
     epsilon: float = 0.25
     step_size: float = 0.01
     num_restarts: int = 5
-    target_model: str = "gpt2"
+    target_model: Optional[str] = None
     use_targeted: bool = False
     early_stop_threshold: float = 0.9
     verbose: bool = True
@@ -100,27 +100,59 @@ class GradientBasedAttack(BaseAttack):
                 "embedding space. Install with: pip install torch transformers"
             )
 
-        if self._victim_model is None:
-            try:
-                self._victim_model = AutoModelForCausalLM.from_pretrained(
-                    self.gradient_config.target_model,
-                    revision="main",
-                    torch_dtype=torch.float32,
-                    device_map="cpu",
-                )
-                self._tokenizer = AutoTokenizer.from_pretrained(
-                    self.gradient_config.target_model,
-                    revision="main",
-                )
-                if self._tokenizer.pad_token is None:
+        if self._victim_model is not None:
+            return
+
+        # Try to use target_llm's internal model if it's a HuggingFaceLLM
+        target_model_name = self.gradient_config.target_model
+        if target_model_name is None:
+            from mox.core.llm import HuggingFaceLLM
+
+            if isinstance(self.target_llm, HuggingFaceLLM):
+                self._victim_model = self.target_llm.model_instance
+                self._tokenizer = self.target_llm.tokenizer_instance
+                if self._tokenizer and self._tokenizer.pad_token is None:
                     self._tokenizer.pad_token = self._tokenizer.eos_token
-            except Exception as e:
-                self._victim_model = None
-                self._tokenizer = None
-                raise ImportError(
-                    f"Failed to load victim model '{self.gradient_config.target_model}': {e}. "
-                    f"Ensure the model name is valid and accessible."
-                ) from e
+                return
+            else:
+                # Fallback to gpt2 if target_llm is not HuggingFaceLLM and no target_model specified
+                target_model_name = "gpt2"
+                warnings.warn(
+                    "target_model not specified and target_llm is not a HuggingFaceLLM. "
+                    "Falling back to gpt2 for gradient computation. "
+                    "For better results, use a HuggingFaceLLM target or specify target_model.",
+                    UserWarning,
+                    stacklevel=2,
+                )
+
+        try:
+            dtype_map = {
+                "float32": torch.float32,
+                "float16": torch.float16,
+                "bfloat16": torch.bfloat16,
+            }
+            torch_dtype = dtype_map.get(settings.TORCH_DTYPE, torch.float32)
+            device_map = settings.DEVICE_MAP if settings.DEVICE_MAP != "cpu" else "cpu"
+
+            self._victim_model = AutoModelForCausalLM.from_pretrained(
+                target_model_name,
+                revision="main",
+                torch_dtype=torch_dtype,
+                device_map=device_map,
+            )
+            self._tokenizer = AutoTokenizer.from_pretrained(
+                target_model_name,
+                revision="main",
+            )
+            if self._tokenizer.pad_token is None:
+                self._tokenizer.pad_token = self._tokenizer.eos_token
+        except Exception as e:
+            self._victim_model = None
+            self._tokenizer = None
+            raise ImportError(
+                f"Failed to load victim model '{target_model_name}': {e}. "
+                f"Ensure the model name is valid and accessible."
+            ) from e
 
     def _embed_and_perturb(
         self,

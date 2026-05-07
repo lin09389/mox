@@ -116,6 +116,15 @@ from mox.evaluation.safety_card import (
     SafetyCardGenerator,
 )
 
+# 新增：训练数据导出
+from mox.evaluation.training_data_exporter import (
+    TrainingDataFormat,
+    DPOExample,
+    RLHFExample,
+    SafetyTuningExample,
+    TrainingDataExporter,
+)
+
 # 为了向后兼容，使用原有的名称
 AttackEvaluator = EnhancedAttackEvaluator
 
@@ -193,4 +202,10 @@ __all__ = [
     "SafetyTestResult",
     "ModelSafetyCard",
     "SafetyCardGenerator",
+    # 训练数据导出
+    "TrainingDataFormat",
+    "DPOExample",
+    "RLHFExample",
+    "SafetyTuningExample",
+    "TrainingDataExporter",
 ]
