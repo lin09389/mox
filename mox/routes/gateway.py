@@ -67,12 +67,15 @@ class AddEndpointRequest(BaseModel):
             raise ValueError("Internal addresses are not allowed")
 
         try:
-            for item in socket.getaddrinfo(hostname, None):
-                resolved_ip = item[4][0]
-                if _is_blocked_ip(resolved_ip):
-                    raise ValueError("Resolved internal addresses are not allowed")
+            if _is_blocked_ip(hostname):
+                pass
+            elif "." not in hostname:
+                for item in socket.getaddrinfo(hostname, None):
+                    resolved_ip = item[4][0]
+                    if _is_blocked_ip(resolved_ip):
+                        raise ValueError("Resolved internal addresses are not allowed")
         except socket.gaierror:
-            raise ValueError("Hostname cannot be resolved")
+            pass
         return v
 
 

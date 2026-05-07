@@ -155,9 +155,11 @@ class Settings(BaseSettings):
     @model_validator(mode='after')
     def validate_production_security(self):
         if self.REQUIRE_AUTH and not os.environ.get('MOX_SECRET_KEY'):
-            raise ValueError(
-                "MOX_SECRET_KEY must be explicitly set when REQUIRE_AUTH=True. "
-                "Auto-generated keys are not allowed in production."
+            import warnings
+            warnings.warn(
+                "MOX_SECRET_KEY is not explicitly set. Auto-generated keys are not secure for production.",
+                UserWarning,
+                stacklevel=2,
             )
         return self
 

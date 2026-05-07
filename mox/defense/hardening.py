@@ -90,12 +90,13 @@ class SystemPromptHardening(BaseDefense):
 
         for p in MaliciousPatterns.PATTERNS:
             try:
-                sanitized = re.sub(
-                    p.pattern,
-                    SanitizeReplacements.PATTERN_REPLACEMENT,
-                    sanitized,
-                    flags=re.IGNORECASE,
-                )
+                if re.search(p.pattern, sanitized, re.IGNORECASE):
+                    sanitized = re.sub(
+                        p.pattern,
+                        SanitizeReplacements.PATTERN_REPLACEMENT,
+                        sanitized,
+                        flags=re.IGNORECASE,
+                    )
             except re.error:
                 pass
 

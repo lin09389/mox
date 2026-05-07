@@ -47,18 +47,22 @@ class OutputFilter(BaseDefense):
         severity = 0.0
         metadata = {"pii_matches": []}
 
-        # 1. PII 检测
         for cat, pattern in self.pii_patterns.items():
             if re.search(pattern, output_text, re.IGNORECASE):
                 detected.append(f"pii_{cat.value}")
                 severity += 0.8
                 metadata["pii_matches"].append(cat.value)
 
-        # 2. 有害内容检测 (Unified)
         unified_res = MaliciousPatterns.check(output_text)
         if unified_res.matched:
             detected.extend(unified_res.patterns)
             severity += 0.5 * len(unified_res.patterns)
+
+        kw_result = HarmfulKeywords.check(output_text)
+        if kw_result.matched:
+            detected.append("harmful_keywords")
+            severity += 0.4 * len(kw_result.patterns)
+            metadata["harmful_keywords"] = kw_result.patterns
 
         confidence = min(severity, 1.0)
         is_malicious = confidence >= self.config.confidence_threshold
@@ -76,7 +80,16 @@ class OutputFilter(BaseDefense):
     async def sanitize(self, output_text: str) -> str:
         sanitized = output_text
         for cat, pattern in self.pii_patterns.items():
-            sanitized = re.sub(pattern, "[REDACTED]", sanitized, flags=re.IGNORECASE)
+            sanitized = re.sub(pattern, SanitizeReplacements.KEYWORD_REPLACEMENT, sanitized, flags=re.IGNORECASE)
+        for p in MaliciousPatterns.PATTERNS:
+            try:
+                sanitized = re.sub(p.pattern, SanitizeReplacements.PATTERN_REPLACEMENT, sanitized, flags=re.IGNORECASE)
+            except re.error:
+                pass
+        kw_result = HarmfulKeywords.check(sanitized)
+        if kw_result.matched:
+            for kw in kw_result.patterns:
+                sanitized = re.sub(re.escape(kw), SanitizeReplacements.KEYWORD_REPLACEMENT, sanitized, flags=re.IGNORECASE)
         return sanitized
 
 @DEFENSE_REGISTRY.register("content_moderator")

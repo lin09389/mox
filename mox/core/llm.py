@@ -261,7 +261,7 @@ class MiniMaxLLM(BaseLLM):
         )
 
         return LLMResponse(
-            content=response.choices[0].message.content,
+            content=response.choices[0].message.content or "",
             model=response.model,
             usage={
                 "prompt_tokens": response.usage.prompt_tokens if response.usage else 0,
@@ -280,17 +280,20 @@ class MiniMaxLLM(BaseLLM):
     ) -> AsyncIterator[str]:
         client = self._get_client()
 
-        stream = await client.chat.completions.create(
-            model=self.model,
-            messages=self._build_messages(messages),
-            temperature=temperature or self.temperature,
-            max_tokens=max_tokens or self.max_tokens,
-            stream=True,
-        )
+        try:
+            stream = await client.chat.completions.create(
+                model=self.model,
+                messages=self._build_messages(messages),
+                temperature=temperature or self.temperature,
+                max_tokens=max_tokens or self.max_tokens,
+                stream=True,
+            )
 
-        async for chunk in stream:
-            if chunk.choices[0].delta.content:
-                yield chunk.choices[0].delta.content
+            async for chunk in stream:
+                if chunk.choices[0].delta.content:
+                    yield chunk.choices[0].delta.content
+        except Exception as e:
+            raise RuntimeError(f"MiniMax API streaming error: {str(e)}") from e
 
 
 class OllamaLLM(BaseLLM):
@@ -1152,13 +1155,4 @@ class LLMFactory:
         ):
             return GroqLLM(model=model, **kwargs)
         else:
-            # Default to HuggingFace for unknown models instead of raising error
-            return HuggingFaceLLM(
-                model=model,
-                device_map=kwargs.pop("device_map", settings.DEVICE_MAP),
-                torch_dtype=kwargs.pop("torch_dtype", settings.TORCH_DTYPE),
-                load_in_4bit=kwargs.pop("load_in_4bit", settings.LOAD_IN_4BIT),
-                load_in_8bit=kwargs.pop("load_in_8bit", settings.LOAD_IN_8BIT),
-                adapter_path=kwargs.pop("adapter_path", settings.LORA_ADAPTER_PATH),
-                **kwargs,
-            )
+            raise ValueError(f"Unknown model: {model}")

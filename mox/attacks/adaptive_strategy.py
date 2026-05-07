@@ -1,4 +1,4 @@
-﻿"""
+"""
 自适应攻击策略优化模块
 
 改进点:
@@ -767,7 +767,7 @@ class AdaptiveAttackStrategy(BaseAttack):
 
         return chain
 
-    def _create_failure_outcome(
+    async def _create_failure_outcome(
         self,
         payload: AttackPayload,
         attempts: int,

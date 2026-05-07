@@ -102,7 +102,7 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         self.enabled = enabled
 
     def _get_client_ip(self, request: Request) -> str:
-        """获取客户端 IP"""
+        """获取客户端 IP（支持反向代理）"""
         if request.client:
             client_ip = request.client.host
         else:
@@ -111,15 +111,25 @@ class RateLimitMiddleware(BaseHTTPMiddleware):
         trust_proxies = settings.TRUSTED_PROXIES
         trust_all = "*" in trust_proxies
 
-        forwarded = request.headers.get("x-forwarded-for")
-        if forwarded:
-            first_ip = forwarded.split(",")[0].strip()
-            if trust_all or client_ip in trust_proxies:
-                return first_ip
+        # Only trust proxy headers if the direct client is a trusted proxy
+        is_trusted_proxy = trust_all or client_ip in trust_proxies
 
-        real_ip = request.headers.get("x-real-ip")
-        if real_ip and (trust_all or client_ip in trust_proxies):
-            return real_ip
+        if is_trusted_proxy:
+            # X-Forwarded-For can contain multiple IPs; use the leftmost untrusted one
+            forwarded = request.headers.get("x-forwarded-for")
+            if forwarded:
+                # Iterate from left to right to find the first non-trusted IP
+                for ip in forwarded.split(","):
+                    ip = ip.strip()
+                    if ip and (trust_all or ip not in trust_proxies):
+                        return ip
+                # All IPs are trusted proxies, fall through
+
+            real_ip = request.headers.get("x-real-ip")
+            if real_ip:
+                real_ip = real_ip.strip()
+                if real_ip and (trust_all or real_ip not in trust_proxies):
+                    return real_ip
 
         return client_ip
 

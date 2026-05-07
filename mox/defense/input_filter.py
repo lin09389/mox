@@ -17,6 +17,7 @@ from mox.core.patterns import MaliciousPatterns as UnifiedMaliciousPatterns, San
 from mox.infrastructure.logging import get_logger
 from .base import BaseDefense, DefenseConfig, DefenseResult
 from .registry import DEFENSE_REGISTRY
+from .encoding_detector import EncodingDetector, DefensePipeline
 
 logger = get_logger("defense.input_filter")
 
@@ -71,6 +72,7 @@ MALICIOUS_PATTERNS = [
         patterns=[
             r"(?i)ignore\s+(all\s+)?(previous|above|prior)\s+(instructions?|rules?|directives?)",
             r"(?i)disregard\s+(all\s+)?(previous|above|prior)\s+(instructions?|rules?)",
+            r"(?i)(ignore|disregard|forget)\s+(all\s+)?(instructions?|rules?|directives?)",
         ],
         severity=0.9,
         description="尝试忽略系统指令",
@@ -96,6 +98,39 @@ MALICIOUS_PATTERNS = [
         ],
         severity=0.95,
         description="DAN/越狱模式尝试",
+    ),
+    MaliciousPattern(
+        name="encoding_injection",
+        patterns=[
+            r"(?i)decode\s+this\s+base64",
+            r"(?i)rot13\s+encoded",
+            r"(?i)base64:\s*[A-Za-z0-9+/]{10,}={0,2}",
+        ],
+        severity=0.7,
+        description="编码注入尝试",
+        fuzzy_variants=["base64", "rot13", "decode"],
+    ),
+    MaliciousPattern(
+        name="context_injection",
+        patterns=[
+            r"(?i)---\s*BEGIN\s+NEW\s+CONTEXT\s*---",
+            r"(?i)ignore\s+all\s+previous\s+context",
+            r"(?i)override\s+system\s+context",
+        ],
+        severity=0.85,
+        description="上下文注入尝试",
+        fuzzy_variants=["new context", "override context"],
+    ),
+    MaliciousPattern(
+        name="prompt_leak",
+        patterns=[
+            r"(?i)show\s+me\s+your\s+system\s+prompt",
+            r"(?i)what\s+are\s+your\s+instructions\?",
+            r"(?i)reveal\s+your\s+system\s+instructions",
+        ],
+        severity=0.75,
+        description="提示词泄露尝试",
+        fuzzy_variants=["system prompt", "your instructions"],
     ),
 ]
 
@@ -127,14 +162,16 @@ class InputFilter(BaseDefense):
         severity = 0.0
         metadata = {"pattern_matches": [], "keyword_matches": []}
 
-        # 1. 使用统一模式库检测
         unified_res = UnifiedMaliciousPatterns.check(input_text)
         if unified_res.matched:
             detected.extend(unified_res.patterns)
-            severity += unified_res.score
+            for name in unified_res.patterns:
+                for p in UnifiedMaliciousPatterns.PATTERNS:
+                    if p.name == name:
+                        severity += p.severity
+                        break
             metadata["pattern_matches"].extend(unified_res.patterns)
 
-        # 2. 本地补充模式检测（模糊匹配等）
         for p in self.patterns:
             matched = False
             for pattern in p.patterns:
@@ -153,7 +190,6 @@ class InputFilter(BaseDefense):
                 severity += p.severity
                 metadata["pattern_matches"].append(p.name)
 
-        # 3. 关键词检测（使用统一关键词库）
         from mox.core.patterns import HarmfulKeywords
         kw_result = HarmfulKeywords.check(input_text)
         if kw_result.matched:
@@ -176,10 +212,25 @@ class InputFilter(BaseDefense):
 
     async def sanitize(self, input_text: str) -> str:
         sanitized = input_text
+        for p in UnifiedMaliciousPatterns.PATTERNS:
+            try:
+                if re.search(p.pattern, sanitized, re.IGNORECASE):
+                    sanitized = re.sub(p.pattern, SanitizeReplacements.PATTERN_REPLACEMENT, sanitized, flags=re.IGNORECASE)
+            except re.error:
+                pass
         for p in self.patterns:
             for pattern in p.patterns:
-                sanitized = re.sub(pattern, SanitizeReplacements.PATTERN_REPLACEMENT, sanitized, flags=re.IGNORECASE)
+                try:
+                    sanitized = re.sub(pattern, SanitizeReplacements.PATTERN_REPLACEMENT, sanitized, flags=re.IGNORECASE)
+                except re.error:
+                    pass
         return sanitized
+
+    def add_malicious_sample(self, sample: str) -> None:
+        """添加已知恶意样本到检测库"""
+        if not hasattr(self, "_known_malicious_samples"):
+            self._known_malicious_samples = set()
+        self._known_malicious_samples.add(sample)
 
 @DEFENSE_REGISTRY.register("statistical_anomaly")
 class StatisticalAnomalyFilter(BaseDefense):

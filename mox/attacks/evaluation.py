@@ -4,10 +4,9 @@ All implementations now live in mox.core.evaluation and mox.core.patterns.
 This file re-exports them for backward compatibility.
 """
 
-# Import from the unified core module
 from mox.core.evaluation import (
     EvaluationResult,
-    AttackEvaluator,
+    AttackEvaluator as BaseAttackEvaluator,
     KeywordOverlapEvaluator,
     RefusalPatternEvaluator,
     LLMBasedEvaluator,
@@ -16,9 +15,23 @@ from mox.core.evaluation import (
     create_evaluator,
 )
 
-# Also import patterns for backward compatibility with code that
-# imported refusal patterns from this module
 from mox.core.patterns import RefusalPatterns
+
+
+class AttackEvaluator(BaseAttackEvaluator):
+    """Backward-compatible concrete AttackEvaluator.
+
+    Previous versions allowed direct instantiation. This concrete subclass
+    delegates to RefusalPatternEvaluator by default.
+    """
+
+    def __init__(self, config=None, **kwargs):
+        self._delegate = RefusalPatternEvaluator()
+        self.config = config
+
+    async def evaluate(self, response: str, target_behavior: str) -> EvaluationResult:
+        return await self._delegate.evaluate(response, target_behavior)
+
 
 __all__ = [
     "EvaluationResult",
@@ -29,6 +42,5 @@ __all__ = [
     "CompositeEvaluator",
     "get_default_evaluator",
     "create_evaluator",
-    # Backward compat re-exports
     "RefusalPatterns",
 ]

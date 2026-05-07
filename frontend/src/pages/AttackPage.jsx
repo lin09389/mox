@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { BarChart3, ShieldAlert, Sparkles, TerminalSquare } from 'lucide-react'
@@ -68,7 +68,7 @@ export default function AttackPage() {
   useEffect(() => {
     void checkApiStatus()
     void loadModels()
-  }, [])
+  }, [checkApiStatus, loadModels])
 
   const quickFacts = useMemo(
     () => [
@@ -84,7 +84,7 @@ export default function AttackPage() {
     [apiConnected, form.max_iterations, form.model]
   )
 
-  async function loadModels() {
+  const loadModels = useCallback(async () => {
     try {
       const models = await getModels()
       if (models.length > 0) {
@@ -93,18 +93,18 @@ export default function AttackPage() {
     } catch {
       setModelList(DEFAULT_MODELS)
     }
-  }
+  }, [])
 
-  async function checkApiStatus() {
+  const checkApiStatus = useCallback(async () => {
     try {
       await attackApi.test()
       setApiConnected(true)
     } catch {
       setApiConnected(false)
     }
-  }
+  }, [])
 
-  async function handleSubmit(formData) {
+  const handleSubmit = useCallback(async (formData) => {
     setLoading(true)
     setResult(null)
 
@@ -125,6 +125,9 @@ export default function AttackPage() {
       setResult(data)
       toast.success('Attack execution completed successfully.')
     } catch (error) {
+      if (error.name === 'CanceledError' || error.name === 'AbortError') {
+        return
+      }
       const detail = error.response?.data?.detail || error.response?.data?.message || 'Request failed.'
       toast.error(detail)
       if (isDemoModeEnabled) {
@@ -133,7 +136,7 @@ export default function AttackPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [apiConnected])
 
   function handleLoadTemplate(template) {
     setForm((current) => ({

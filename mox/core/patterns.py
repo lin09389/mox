@@ -205,7 +205,7 @@ class MaliciousPatterns:
     PATTERNS: List[MaliciousPatternItem] = [
         MaliciousPatternItem(
             "ignore_instructions",
-            r"(?i)(ignore|disregard|forget)(\s+all|\s+previous|\s+above)?(\s+instructions?|\s+rules?|\s+directives?)",
+            r"(?i)(ignore|disregard|forget)\s+(all\s+)?(previous\s+|above\s+|prior\s+)?(instructions?|rules?|directives?)",
             0.9,
             "Attempt to ignore system instructions",
             "instruction_override",

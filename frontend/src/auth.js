@@ -11,6 +11,17 @@ function emitAuthChange() {
   }
 }
 
+function isValidSession(obj) {
+  return (
+    obj !== null &&
+    typeof obj === 'object' &&
+    typeof obj.accessToken === 'string' &&
+    obj.accessToken.length > 0 &&
+    typeof obj.expiresAt === 'number' &&
+    obj.expiresAt > 0
+  )
+}
+
 export function getStoredSession() {
   if (typeof window === 'undefined') {
     return null
@@ -23,7 +34,11 @@ export function getStoredSession() {
 
   try {
     const session = JSON.parse(raw)
-    if (session.expiresAt && Date.now() > session.expiresAt) {
+    if (!isValidSession(session)) {
+      window.localStorage.removeItem(STORAGE_KEY)
+      return null
+    }
+    if (Date.now() > session.expiresAt) {
       window.localStorage.removeItem(STORAGE_KEY)
       return null
     }

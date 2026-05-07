@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from enum import Enum
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -46,17 +46,23 @@ class User:
 
 
 class PasswordManager:
-    """密码管理"""
-
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
-        return PasswordManager.pwd_context.verify(plain_password, hashed_password)
+        try:
+            return bcrypt.checkpw(
+                plain_password[:72].encode("utf-8"),
+                hashed_password.encode("utf-8") if isinstance(hashed_password, str) else hashed_password,
+            )
+        except Exception:
+            return False
 
     @staticmethod
     def get_password_hash(password: str) -> str:
-        return PasswordManager.pwd_context.hash(password)
+        return bcrypt.hashpw(
+            password[:72].encode("utf-8"),
+            bcrypt.gensalt(rounds=12),
+        ).decode("utf-8")
 
 
 class TokenManager:
@@ -113,7 +119,12 @@ class TokenManager:
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="Invalid token algorithm",
                 )
-            payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[ALGORITHM])
+            payload = jwt.decode(
+                token,
+                settings.SECRET_KEY,
+                algorithms=[ALGORITHM],
+                options={"require": ["exp"]},
+            )
             sub: str = payload.get("sub")
             exp: int = payload.get("exp")
             token_type: str = payload.get("token_type", "access")
@@ -124,9 +135,16 @@ class TokenManager:
                     detail="Invalid token payload",
                 )
 
+            # Explicitly check token expiration
+            if exp is not None and datetime.now(timezone.utc) > datetime.fromtimestamp(exp, tz=timezone.utc):
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="Token has expired",
+                )
+
             return TokenData(
                 sub=sub,
-                exp=datetime.fromtimestamp(exp),
+                exp=datetime.fromtimestamp(exp, tz=timezone.utc) if exp else datetime.now(timezone.utc),
                 token_type=TokenType(token_type),
             )
         except JWTError:

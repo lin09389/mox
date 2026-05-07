@@ -787,7 +787,7 @@ class ImprovedGCGAttack(BaseAttack):
         """生成随机后缀"""
         return "".join(random.choices(self.candidate_tokens, k=length))
 
-    def _create_success_outcome(
+    async def _create_success_outcome(
         self,
         payload: AttackPayload,
         iterations: int,

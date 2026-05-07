@@ -2,11 +2,13 @@
 
 import json
 import hashlib
+import threading
 from abc import ABC, abstractmethod
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Optional, TypeVar, Generic
 from dataclasses import dataclass
+from collections import OrderedDict
 
 from .logging import get_logger
 
@@ -46,72 +48,69 @@ class CacheBackend(ABC):
 
 
 class MemoryCache(CacheBackend):
-    """内存缓存 - LRU策略
+    """内存缓存 - 线程安全LRU策略
 
-    修复: delete 时同步移除 _access_order，避免 LRU 状态不一致
+    使用 OrderedDict 实现 O(1) 的 LRU 操作，并添加线程锁保证并发安全。
     """
 
     def __init__(self, max_size: int = 1000):
-        self._cache: dict[str, CacheEntry] = {}
+        self._cache: OrderedDict[str, CacheEntry] = OrderedDict()
         self._max_size = max_size
-        self._access_order: list[str] = []
         self._hits: int = 0
         self._misses: int = 0
+        self._lock = threading.RLock()
 
     def get(self, key: str) -> Optional[Any]:
-        entry = self._cache.get(key)
-        if entry is None:
-            self._misses += 1
-            return None
+        with self._lock:
+            entry = self._cache.get(key)
+            if entry is None:
+                self._misses += 1
+                return None
 
-        if entry.expires_at and entry.expires_at < datetime.now():
-            del self._cache[key]
-            self._access_order = [k for k in self._access_order if k != key]
-            self._misses += 1
-            return None
+            if entry.expires_at and entry.expires_at < datetime.now():
+                del self._cache[key]
+                self._misses += 1
+                return None
 
-        if key in self._access_order:
-            self._access_order.remove(key)
-        self._access_order.append(key)
-        self._hits += 1
+            self._cache.move_to_end(key)
+            self._hits += 1
 
-        logger.debug(f"Cache hit: {key}")
-        return entry.value
+            logger.debug(f"Cache hit: {key}")
+            return entry.value
 
     def set(self, key: str, value: Any, ttl: Optional[int] = None) -> None:
-        if key in self._cache and key in self._access_order:
-            self._access_order.remove(key)
+        with self._lock:
+            if key in self._cache:
+                self._cache.move_to_end(key)
 
-        if len(self._cache) >= self._max_size and key not in self._cache:
-            oldest = self._access_order.pop(0)
-            del self._cache[oldest]
-            logger.debug(f"Cache evicted: {oldest}")
+            if len(self._cache) >= self._max_size and key not in self._cache:
+                oldest_key, _ = self._cache.popitem(last=False)
+                logger.debug(f"Cache evicted: {oldest_key}")
 
-        expires_at = None
-        if ttl:
-            expires_at = datetime.now() + timedelta(seconds=ttl)
+            expires_at = None
+            if ttl:
+                expires_at = datetime.now() + timedelta(seconds=ttl)
 
-        self._cache[key] = CacheEntry(
-            key=key,
-            value=value,
-            created_at=datetime.now(),
-            expires_at=expires_at,
-        )
-        self._access_order.append(key)
-        logger.debug(f"Cache set: {key} (ttl={ttl}s)")
+            self._cache[key] = CacheEntry(
+                key=key,
+                value=value,
+                created_at=datetime.now(),
+                expires_at=expires_at,
+            )
+            logger.debug(f"Cache set: {key} (ttl={ttl}s)")
 
     def delete(self, key: str) -> None:
-        if key in self._cache:
-            del self._cache[key]
-            self._access_order = [k for k in self._access_order if k != key]
-            logger.debug(f"Cache deleted: {key}")
+        with self._lock:
+            if key in self._cache:
+                del self._cache[key]
+                logger.debug(f"Cache deleted: {key}")
 
     def clear(self) -> None:
-        self._cache.clear()
-        self._access_order.clear()
-        self._hits = 0
-        self._misses = 0
-        logger.info("Cache cleared")
+        with self._lock:
+            self._cache.clear()
+            self._hits = 0
+            self._misses = 0
+            logger.info("Cache cleared")
 
     def size(self) -> int:
         return len(self._cache)

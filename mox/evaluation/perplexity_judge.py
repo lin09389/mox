@@ -30,7 +30,7 @@ except ImportError:
 class PerplexityConfig:
     """困惑度计算配置"""
 
-    model_name: Optional[str] = None  # None = use target model
+    model_name: Optional[str] = "gpt2"
     model_revision: str = "v1.1"  # Fixed revision for security
     max_length: int = 1024
     stride: int = 512

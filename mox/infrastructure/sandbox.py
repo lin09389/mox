@@ -195,7 +195,9 @@ class ToolSandbox:
                     func(**parameters), timeout=tool_def.timeout_seconds
                 )
             else:
-                result = func(**parameters)
+                result = await asyncio.wait_for(
+                    asyncio.to_thread(func, **parameters), timeout=tool_def.timeout_seconds
+                )
 
             call.duration_ms = (time.time() - start_time) * 1000
             call.result = result

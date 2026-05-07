@@ -1,5 +1,6 @@
 """攻击相关路由"""
 
+import logging
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -65,12 +66,22 @@ class StreamingAttackRequest(BaseModel):
 
 # ============ 依赖注入 ============
 
+import asyncio
+
 _llm_cache: Dict[str, BaseLLM] = {}
+_llm_cache_lock = asyncio.Lock()
 
 
-def get_llm(model: str) -> BaseLLM:
-    """获取 LLM 实例（带缓存）"""
-    if model not in _llm_cache:
+async def get_llm(model: str) -> BaseLLM:
+    """获取 LLM 实例（带缓存，线程安全）"""
+    if model in _llm_cache:
+        return _llm_cache[model]
+
+    async with _llm_cache_lock:
+        # 双重检查，避免多个协程同时创建
+        if model in _llm_cache:
+            return _llm_cache[model]
+
         if model.startswith("abab") or model.startswith("minimax"):
             from mox.core import MiniMaxLLM
 
@@ -81,18 +92,24 @@ def get_llm(model: str) -> BaseLLM:
             )
         else:
             _llm_cache[model] = LLMFactory.create_from_model_name(model)
-    return _llm_cache[model]
+        return _llm_cache[model]
 
 
 _db: Optional[Database] = None
+_db_lock = asyncio.Lock()
 
 
-def get_db() -> Database:
-    """获取数据库实例（懒加载）"""
+async def get_db() -> Database:
+    """获取数据库实例（懒加载，线程安全）"""
     global _db
-    if _db is None:
+    if _db is not None:
+        return _db
+
+    async with _db_lock:
+        if _db is not None:
+            return _db
         _db = Database()
-    return _db
+        return _db
 
 
 # ============ 辅助函数 ============
@@ -295,7 +312,7 @@ async def run_attack(
 ) -> Dict[str, Any]:
     """执行攻击测试"""
     try:
-        llm = get_llm(request.model)
+        llm = await get_llm(request.model)
 
         # 攻击类型映射
         attack_type_map = {
@@ -431,10 +448,10 @@ async def run_attack(
             "target_behavior": request.target_behavior,
             "original_prompt": outcome.original_prompt,
             "adversarial_prompt": outcome.adversarial_prompt,
-            "model_response": outcome.model_response,
-            "response_preview": outcome.model_response[:500] + "..."
-            if len(outcome.model_response) > 500
-            else outcome.model_response,
+            "model_response": outcome.model_response or "",
+            "response_preview": (outcome.model_response or "")[:500] + "..."
+            if len(outcome.model_response or "") > 500
+            else (outcome.model_response or ""),
             "iterations": outcome.iterations,
             "success_score": round(outcome.success_score, 4),
             "success_rate_percent": f"{outcome.success_score * 100:.1f}%",
@@ -446,7 +463,8 @@ async def run_attack(
         }
 
     except Exception as e:
-        raise HTTPException(status_code=500, detail="Attack execution failed")
+        logging.exception("Attack execution failed: %s", e)
+        raise HTTPException(status_code=500, detail=f"Attack execution failed: {type(e).__name__}")
 
 
 @router.post("/batch")
@@ -465,7 +483,7 @@ async def run_batch_attacks(
     async def run_single_attack(index: int, attack_req: AttackRequest) -> Dict[str, Any]:
         """执行单个攻击"""
         try:
-            llm = get_llm(attack_req.model)
+            llm = await get_llm(attack_req.model)
 
             attack_type_map = {
                 "prompt_injection": PromptInjectionAttack,
@@ -499,11 +517,12 @@ async def run_batch_attacks(
                 "timestamp": outcome.timestamp.isoformat(),
             }
         except Exception as e:
+            logging.exception("Batch attack item %s failed: %s", index, e)
             return {
                 "id": f"{task_id}_{index}",
                 "success": False,
                 "attack_type": attack_req.attack_type,
-                "error": str(e),
+                "error": f"{type(e).__name__}: {str(e)}",
             }
 
     if request.parallel:
@@ -555,7 +574,7 @@ async def stream_attack(
         yield f"data: {json.dumps(start_data)}\n\n"
 
         try:
-            llm = get_llm(request.model)
+            llm = await get_llm(request.model)
 
             attack_type_map = {
                 "prompt_injection": PromptInjectionAttack,
@@ -602,12 +621,12 @@ async def stream_attack(
             yield f"data: {json.dumps(result_data)}\n\n"
 
         except Exception as e:
-            error_json = {
+            error_data = {
                 "event": "error",
-                "error": str(e),
+                "error": f"{type(e).__name__}: {str(e)}",
                 "timestamp": datetime.now().isoformat(),
             }
-            yield f"data: {error_json}\n\n"
+            yield f"data: {json.dumps(error_data)}\n\n"
 
     return StreamingResponse(
         event_generator(),
@@ -629,7 +648,7 @@ async def run_advanced_attack(
     try:
         from mox.attacks.advanced_executor import AdvancedAttackExecutor
 
-        llm = get_llm(request.model)
+        llm = await get_llm(request.model)
         executor = AdvancedAttackExecutor(llm)
 
         if request.category:
@@ -663,7 +682,7 @@ async def test_token_smuggling(
     try:
         from mox.attacks.advanced_executor import TokenSmugglingExecutor
 
-        llm = get_llm(request.model)
+        llm = await get_llm(request.model)
         executor = TokenSmugglingExecutor(llm)
         results = await executor.test_all_encodings(request.target)
 
@@ -683,7 +702,8 @@ async def get_attack_history(
 ) -> Dict[str, Any]:
     """获取攻击历史"""
     try:
-        records = await get_db().get_attack_records(limit=limit)
+        db = await get_db()
+        records = await db.get_attack_records(limit=limit)
         return {
             "records": [
                 {
