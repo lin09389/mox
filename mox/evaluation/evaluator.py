@@ -36,8 +36,12 @@ class AttackTypeMetrics:
     avg_iterations: float = 0.0
 
 
-class AttackEvaluator:
-    """攻击效果评估器"""
+class AttackMetricsCollector:
+    """攻击效果指标收集器
+
+    收集 AttackOutcome 结果并按攻击类型汇总指标。
+    用于 BenchmarkRunner 生成 EvaluationReport。
+    """
 
     def __init__(self):
         self.results: List[AttackOutcome] = []
@@ -145,8 +149,11 @@ class AttackEvaluator:
             json.dump(data, f, ensure_ascii=False, indent=2)
 
 
-class DefenseEvaluator:
-    """防御效果评估器"""
+class DefenseMetricsCollector:
+    """防御效果指标收集器
+
+    收集 DefenseResult 并计算 TP/TN/FP/FN 指标。
+    """
 
     def __init__(self):
         self.results: List[DefenseResult] = []
@@ -277,8 +284,8 @@ class BenchmarkRunner:
     """基准测试运行器"""
 
     def __init__(self):
-        self.attack_evaluator = AttackEvaluator()
-        self.defense_evaluator = DefenseEvaluator()
+        self.attack_evaluator = AttackMetricsCollector()
+        self.defense_evaluator = DefenseMetricsCollector()
         self.robustness_evaluator = RobustnessEvaluator()
 
     async def run_attack_benchmark(
@@ -316,3 +323,8 @@ class BenchmarkRunner:
             "robustness_score": self.robustness_evaluator.get_robustness_score(),
             "timestamp": datetime.now().isoformat(),
         }
+
+
+# Backward-compatible aliases (deprecated — use the new names)
+AttackEvaluator = AttackMetricsCollector
+DefenseEvaluator = DefenseMetricsCollector

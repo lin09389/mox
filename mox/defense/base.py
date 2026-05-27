@@ -2,23 +2,14 @@
 
 import asyncio
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, Tuple
 from dataclasses import dataclass
 
 from mox.core import DefenseType, DefenseResult
-from .registry import DEFENSE_REGISTRY
+from mox.core.events import event_bus
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("defense.base")
-
-
-def _get_db():
-    """延迟导入以避免循环依赖"""
-    try:
-        from mox.infrastructure.database import get_database
-        return get_database()
-    except Exception:
-        return None
 
 
 @dataclass
@@ -27,7 +18,7 @@ class DefenseConfig:
     confidence_threshold: float = 0.7
     sanitize_enabled: bool = True
     verbose: bool = False
-    save_to_db: bool = False  # 默认不自动持久化，由调用方（orchestrator/API）控制
+    save_to_db: bool = False  # hint for event handlers; BaseDefense itself never touches the DB
 
 
 class BaseDefense(ABC):
@@ -68,23 +59,15 @@ class BaseDefense(ABC):
         async with self._history_lock:
             self.detection_history.append(result)
 
-        # 自动持久化到数据库
-        if self.config.save_to_db:
-            db = _get_db()
-            if db is not None:
-                try:
-                    await db.save_defense_record(
-                        defense_type=self.defense_type.value if hasattr(self.defense_type, "value") else str(self.defense_type),
-                        input_text=input_text,
-                        output_text=sanitized_input,
-                        is_malicious=is_malicious,
-                        confidence=confidence,
-                        detected_patterns=detected_patterns,
-                        model_name=model_name,
-                        metadata=metadata or {},
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to save defense record to DB: {e}")
+        # Emit event — persistence is handled by subscribers, not this class.
+        await event_bus.emit(
+            "defense_detected",
+            result=result,
+            defense=self,
+            input_text=input_text,
+            model_name=model_name,
+            save_to_db=self.config.save_to_db,
+        )
 
         return result
 
@@ -102,3 +85,29 @@ class BaseDefense(ABC):
             "detection_rate": malicious / total if total > 0 else 0,
             "avg_confidence": sum(r.confidence for r in self.detection_history) / total,
         }
+
+    async def run_scenario_test(
+        self,
+        test_input: str,
+    ) -> Tuple[bool, bool, float, str, Dict[str, Any], Optional[str]]:
+        """Unified scenario test interface used by DefenseOrchestrator.
+
+        Returns:
+            (detected, blocked, confidence, sanitized_output, details, error)
+
+        Subclasses with non-standard detection APIs (e.g. HallucinationDetector)
+        should override this method.
+        """
+        try:
+            result = await self.detect(test_input)
+            return (
+                result.is_malicious,
+                result.is_malicious,
+                result.confidence,
+                result.sanitized_input or test_input,
+                {"patterns": result.detected_patterns},
+                None,
+            )
+        except Exception as e:
+            logger.error("%s error for input: %s", type(self).__name__, e, exc_info=True)
+            return False, False, 0.0, test_input, {}, f"{type(self).__name__} error: {e}"

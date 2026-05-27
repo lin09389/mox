@@ -602,35 +602,64 @@ class SemanticFirewall(BaseDefense):
         return sanitized
 
     def _analyze_context(self, text: str) -> Dict[str, Any]:
-        """分析上下文"""
+        """Extract basic text features for downstream risk scoring.
+
+        NOTE: This is NOT semantic analysis — it extracts surface-level
+        statistical features.  True semantic analysis would require an
+        embedding model or an LLM call.
+        """
+        text_lower = text.lower()
         return {
             "length": len(text),
             "word_count": len(text.split()),
+            "sentence_count": max(1, text.count(".") + text.count("!") + text.count("?")),
             "has_questions": "?" in text,
-            "has_commands": any(
-                cmd in text.lower() for cmd in ["do ", "make ", "create ", "write ", "generate "]
+            "has_imperative": any(
+                text_lower.startswith(cmd) or f"\n{cmd}" in text_lower
+                for cmd in ["do ", "make ", "create ", "write ", "generate ", "ignore ", "forget "]
+            ),
+            "has_role_markers": any(
+                marker in text_lower
+                for marker in ["you are", "act as", "pretend", "roleplay", "imagine you"]
+            ),
+            "has_encoding_refs": any(
+                ref in text_lower for ref in ["base64", "hex", "rot13", "decode", "encode"]
             ),
             "language": self._detect_language(text),
         }
 
     def _detect_patterns(self, text: str) -> List[str]:
-        """检测行为模式"""
-        patterns = []
+        """Detect behavioral patterns across request history."""
+        patterns: List[str] = []
 
-        # 检测重复请求
+        # Exact duplicate detection
         recent_requests = [r["text"] for r in self._request_history[-10:]]
         if text[:50] in recent_requests:
             patterns.append("repeated_request")
 
-        # 检测快速连续请求
+        # Rapid-fire detection (>5 requests in recent history)
         if len(self._request_history) > 5:
             patterns.append("rapid_requests")
 
-        # 检测递进式攻击
+        # Escalation detection: rising risk levels in last 3 requests
         if len(self._request_history) > 3:
-            risk_trend = [r["risk_level"] for r in self._request_history[-3:]]
-            if risk_trend == ["low", "medium", "high"]:
+            risk_trend = [r.get("risk_level", "low") for r in self._request_history[-3:]]
+            risk_order = {"low": 0, "medium": 1, "high": 2, "critical": 3}
+            levels = [risk_order.get(r, 0) for r in risk_trend]
+            if len(levels) == 3 and levels[0] < levels[1] < levels[2]:
                 patterns.append("escalating_attack")
+
+        # Semantic drift detection: topic shift toward sensitive areas
+        if len(self._request_history) > 2:
+            prev_topics = set()
+            for r in self._request_history[-3:-1]:
+                prev_topics.update(r.get("detected_topics", []))
+            current_sensitive = any(
+                kw in text.lower()
+                for kw in ["hack", "exploit", "bypass", "inject", "payload", "vulnerability"]
+            )
+            if current_sensitive and not prev_topics:
+                patterns.append("sudden_topic_shift")
 
         return patterns
 

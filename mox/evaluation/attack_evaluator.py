@@ -99,9 +99,9 @@ class EvaluationConfig:
     )
 
 
-class AttackEvaluator:
+class EnhancedAttackEvaluator:
     """
-    攻击效果评估器
+    多维度攻击效果评估器
 
     多维度评估攻击是否成功：
     1. 语义相似度：响应与目标行为的语义接近程度
@@ -331,7 +331,7 @@ class AttackEvaluator:
         return "；".join(parts)
 
 
-class LLMAttackEvaluator(AttackEvaluator):
+class LLMAttackEvaluator(EnhancedAttackEvaluator):
     """
     基于 LLM 的攻击评估器
 
@@ -401,7 +401,7 @@ AI 响应: {response[:1000]}
             return 0.5
 
 
-class AdaptiveEvaluator(AttackEvaluator):
+class AdaptiveEvaluator(EnhancedAttackEvaluator):
     """
     自适应评估器
 
@@ -493,11 +493,16 @@ def create_evaluator(
     if use_llm and llm:
         return LLMAttackEvaluator(config=config, llm=llm)
 
-    return AttackEvaluator(config=config)
+    return EnhancedAttackEvaluator(config=config)
+
+
+# Backward-compatible alias (deprecated — use EnhancedAttackEvaluator)
+AttackEvaluator = EnhancedAttackEvaluator
 
 
 __all__ = [
-    "AttackEvaluator",
+    "EnhancedAttackEvaluator",
+    "AttackEvaluator",  # deprecated alias
     "LLMAttackEvaluator",
     "AdaptiveEvaluator",
     "EvaluationResult",

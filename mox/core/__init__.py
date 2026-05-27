@@ -73,6 +73,7 @@ from .patterns import (
 )
 from .evaluation import (
     EvaluationResult,
+    BaseAttackEvaluator,
     AttackEvaluator,
     RefusalPatternEvaluator,
     KeywordOverlapEvaluator,
@@ -88,6 +89,8 @@ from .similarity import (
     semantic_similarity,
     SimilarityCalculator,
 )
+from .registry import Registry
+from .events import event_bus
 
 __all__ = [
     "settings",
@@ -155,6 +158,7 @@ __all__ = [
     "PatternMatch",
     # Evaluation
     "EvaluationResult",
+    "BaseAttackEvaluator",
     "AttackEvaluator",
     "RefusalPatternEvaluator",
     "KeywordOverlapEvaluator",
@@ -168,4 +172,8 @@ __all__ = [
     "cosine_similarity",
     "semantic_similarity",
     "SimilarityCalculator",
+    # Registry
+    "Registry",
+    # Events
+    "event_bus",
 ]

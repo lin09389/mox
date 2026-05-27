@@ -62,9 +62,10 @@ class LLMJudge(BaseDefense):
         config: Optional[DefenseConfig] = None,
         judge_llm: Optional[BaseLLM] = None,
         judgment_type: JudgmentType = JudgmentType.SAFETY,
+        target_llm: Optional[BaseLLM] = None,
     ):
         super().__init__(config)
-        self.judge_llm = judge_llm
+        self.judge_llm = judge_llm or target_llm
         self.judgment_type = judgment_type
 
     def _build_judge_prompt(self, prompt: str, response: str, context: Optional[str] = None) -> str:
@@ -165,11 +166,10 @@ AI响应: {response}
         return results
 
 
-class DefenseEvaluator:
-    """
-    防御效果评估器
-
-    评估防御系统的效果
+class DefenseEffectivenessEvaluator:
+    """Defense effectiveness evaluator — runs test cases through a defense
+    and computes precision/recall/F1 using an optional LLM judge for
+    ground-truth labeling.
     """
 
     def __init__(self, judge_llm: Optional[BaseLLM] = None):
@@ -237,6 +237,10 @@ class DefenseEvaluator:
         }
 
 
+# Backward-compatible alias (deprecated — use DefenseEffectivenessEvaluator)
+DefenseEvaluator = DefenseEffectivenessEvaluator
+
+
 @DEFENSE_REGISTRY.register("safety_cot")
 class SafetyCoTDefense(BaseDefense):
     """
@@ -247,9 +251,9 @@ class SafetyCoTDefense(BaseDefense):
 
     defense_type = DefenseType.LLM_JUDGE
 
-    def __init__(self, config: Optional[DefenseConfig] = None, llm: Optional[BaseLLM] = None):
+    def __init__(self, config: Optional[DefenseConfig] = None, llm: Optional[BaseLLM] = None, target_llm: Optional[BaseLLM] = None):
         super().__init__(config)
-        self.llm = llm
+        self.llm = llm or target_llm
 
     async def detect(self, input_text: str) -> DefenseResult:
         res = await self.check_and_respond(input_text)

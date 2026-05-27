@@ -390,7 +390,6 @@ async def run_attack(
                 ZeroShotAdversarialAttack,
                 HallucinationInductionAttack,
                 CollaborativeAttack,
-                KnowledgeDistillationAttack,
                 EvasionAttack,
                 AdvancedAttackConfig,
             )
@@ -401,7 +400,6 @@ async def run_attack(
                 "zero_shot_adversarial": ZeroShotAdversarialAttack,
                 "hallucination_induction": HallucinationInductionAttack,
                 "collaborative_attack": CollaborativeAttack,
-                "knowledge_distillation": KnowledgeDistillationAttack,
                 "evasion_attack": EvasionAttack,
             }
 
@@ -418,7 +416,7 @@ async def run_attack(
                 attack = MetaAdversarialAttack(target_llm=llm, meta_config=meta_config)
             else:
                 attack_class = attack_map.get(request.attack_type, CollaborativeAttack)
-                attack = attack_class(target_llm=llm, advanced_config=advanced_config)
+                attack = attack_class(target_llm=llm, config=advanced_config)
         else:
             attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
             config = AttackConfig(max_iterations=request.max_iterations)

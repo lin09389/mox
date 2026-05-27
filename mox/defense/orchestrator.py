@@ -295,49 +295,28 @@ class DefenseOrchestrator:
         self,
         scenario: DefenseScenario,
     ) -> ScenarioTestResult:
-        """运行防御场景测试"""
+        """运行防御场景测试 — uses unified run_scenario_test() from BaseDefense."""
         start_time = time.time()
 
-        # 通知进度
         if self._progress_callback:
             self._progress_callback(scenario, None)
 
-        detected = False
-        blocked = False
-        confidence = 0.0
-        sanitized = scenario.test_input
-        details = {}
-        test_error = None
+        # Resolve defense instance from the pre-loaded dict or the registry.
+        defense = self.defenses.get(scenario.defense_type)
+        if defense is None:
+            reg_name = self.defense_mapping.get(scenario.defense_type)
+            if reg_name:
+                try:
+                    defense = create_defense_instance(reg_name, target_llm=self.target_llm)
+                except Exception as e:
+                    logger.warning("Could not create defense '%s': %s", reg_name, e)
+            if defense is None:
+                # Last resort fallback
+                defense = create_defense_instance("input_filter")
 
-        # 根据防御类型运行对应防御
-        if scenario.defense_type == DefenseType.INPUT_FILTER:
-            result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.OUTPUT_FILTER:
-            result = await self._test_output_filter(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.INJECTION_DETECTION:
-            result = await self._test_injection_detection(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.HALLUCINATION_DETECTION:
-            result = await self._test_hallucination_detection(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.LLM_JUDGE:
-            result = await self._test_llm_judge(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.ENCODING_DETECTION:
-            result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        elif scenario.defense_type == DefenseType.PROMPT_HARDENING:
-            result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
-        else:
-            logger.warning(
-                "Unknown defense type '%s' for scenario '%s', falling back to input_filter",
-                scenario.defense_type, scenario.name
-            )
-            result = await self._test_input_filter(scenario)
-            detected, blocked, confidence, sanitized, details, test_error = result
+        # Unified test call — every BaseDefense subclass implements this.
+        detected, blocked, confidence, sanitized, details, test_error = \
+            await defense.run_scenario_test(scenario.test_input)
 
         detection_time = (time.time() - start_time) * 1000
 
@@ -357,117 +336,13 @@ class DefenseOrchestrator:
             logger.error(
                 "Defense scenario '%s' failed with error: %s. "
                 "The detected/blocked fields are UNRELIABLE for this result.",
-                scenario.name, test_error
+                scenario.name, test_error,
             )
 
-        # 通知进度
         if self._progress_callback:
             self._progress_callback(scenario, scenario_result)
 
         return scenario_result
-
-    async def _test_input_filter(self, scenario: DefenseScenario) -> tuple:
-        """测试输入过滤"""
-        try:
-            detector = self.defenses.get(DefenseType.INPUT_FILTER) or create_defense_instance("input_filter")
-            result = await detector.detect(scenario.test_input)
-
-            return (
-                result.is_malicious,
-                result.is_malicious,
-                result.confidence,
-                result.sanitized_input or scenario.test_input,
-                {"patterns": result.detected_patterns},
-                None,
-            )
-        except Exception as e:
-            logger.error("InputFilter failure for scenario '%s': %s", scenario.name, e, exc_info=True)
-            return False, False, 0.0, scenario.test_input, {}, f"InputFilter error: {e}"
-
-    async def _test_output_filter(self, scenario: DefenseScenario) -> tuple:
-        """测试输出过滤"""
-        try:
-            filter_obj = self.defenses.get(DefenseType.OUTPUT_FILTER) or create_defense_instance("output_filter")
-            result = await filter_obj.detect(scenario.test_input)
-
-            return (
-                result.is_malicious,
-                result.is_malicious,
-                result.confidence,
-                result.sanitized_input or scenario.test_input,
-                {"patterns": result.detected_patterns},
-                None,
-            )
-        except Exception as e:
-            logger.error("OutputFilter failure for scenario '%s': %s", scenario.name, e, exc_info=True)
-            return False, False, 0.0, scenario.test_input, {}, f"OutputFilter error: {e}"
-
-    async def _test_injection_detection(self, scenario: DefenseScenario) -> tuple:
-        """测试注入检测"""
-        try:
-            from mox.defense.injection_detector import PromptInjectionDetector
-
-            detector = PromptInjectionDetector()
-            result = await detector.detect(scenario.test_input)
-
-            return (
-                result.is_malicious,
-                result.is_malicious,
-                result.confidence,
-                result.sanitized_input or scenario.test_input,
-                {"patterns": result.detected_patterns},
-                None,
-            )
-        except Exception as e:
-            logger.error("InjectionDetector failure for scenario '%s': %s", scenario.name, e, exc_info=True)
-            return False, False, 0.0, scenario.test_input, {}, f"InjectionDetector error: {e}"
-
-    async def _test_hallucination_detection(self, scenario: DefenseScenario) -> tuple:
-        """测试幻觉检测"""
-        try:
-            from mox.defense.hallucination import HallucinationDetector
-
-            detector = HallucinationDetector()
-            result = detector.check(scenario.test_input, "test context")
-
-            return (
-                result.is_hallucination,
-                False,  # 幻觉不直接阻止
-                result.confidence,
-                scenario.test_input,
-                {
-                    "hallucination_type": result.hallucination_type.value
-                    if result.hallucination_type
-                    else None
-                },
-                None,
-            )
-        except Exception as e:
-            logger.error("HallucinationDetector failure for scenario '%s': %s", scenario.name, e, exc_info=True)
-            return False, False, 0.0, scenario.test_input, {}, f"HallucinationDetector error: {e}"
-
-    async def _test_llm_judge(self, scenario: DefenseScenario) -> tuple:
-        """测试 LLM 评判"""
-        if not self.target_llm:
-            return False, False, 0.0, scenario.test_input, {}, "No LLM available for judge"
-
-        try:
-            from mox.defense.llm_judge import LLMJudge
-
-            judge = LLMJudge(self.target_llm)
-            result = await judge.judge(scenario.test_input)
-
-            return (
-                result.is_malicious,
-                result.is_malicious,
-                result.confidence,
-                scenario.test_input,
-                {"reason": result.reason},
-                None,
-            )
-        except Exception as e:
-            logger.error("LLMJudge failure for scenario '%s': %s", scenario.name, e, exc_info=True)
-            return False, False, 0.0, scenario.test_input, {}, f"LLMJudge error: {e}"
 
     async def run_all_scenarios(
         self,

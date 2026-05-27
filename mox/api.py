@@ -36,8 +36,10 @@ COMPAT_PREFIX = "/api"
 async def lifespan(app: FastAPI):
     """Manage startup and shutdown resources."""
     from mox.infrastructure.database import get_database, init_database
+    from mox.infrastructure.event_handlers import register_persistence_handlers
 
     await init_database()
+    register_persistence_handlers()
     yield
 
     db = get_database()

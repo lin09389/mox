@@ -113,7 +113,8 @@ from mox.defense.llm_judge import (
     SafetyJudgment,
     JudgmentType,
     HarmCategory,
-    DefenseEvaluator,
+    DefenseEffectivenessEvaluator,
+    DefenseEvaluator,  # backward-compatible alias
     SafetyCoTDefense,
 )
 
@@ -190,6 +191,7 @@ __all__ = [
     "JudgmentType",
     "HarmCategory",
     "DefenseEvaluator",
+    "DefenseEffectivenessEvaluator",
     "SafetyCoTDefense",
     "AttackEvaluator",
     "RobustnessEvaluator",

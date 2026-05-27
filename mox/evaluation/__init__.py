@@ -4,20 +4,12 @@
 提供攻击效果评估、困惑度计算、LLM Judge、基准测试等功能
 """
 
-# Unified core evaluation (single source of truth)
-from mox.core.evaluation import (
-    EvaluationResult as CoreEvaluationResult,
-    AttackEvaluator as CoreAttackEvaluator,
-    RefusalPatternEvaluator as CoreRefusalPatternEvaluator,
-    KeywordOverlapEvaluator as CoreKeywordOverlapEvaluator,
-    CompositeEvaluator as CoreCompositeEvaluator,
-)
-
 # 从原有评估器导入
 from mox.evaluation.evaluator import (
     EvaluationMetrics,
     AttackTypeMetrics,
-    DefenseEvaluator,
+    AttackMetricsCollector,
+    DefenseMetricsCollector,
     RobustnessEvaluator,
     BenchmarkRunner,
 )
@@ -40,7 +32,7 @@ from mox.evaluation.visualization import (
 
 # 新增：改进的攻击评估器
 from mox.evaluation.attack_evaluator import (
-    AttackEvaluator as EnhancedAttackEvaluator,
+    EnhancedAttackEvaluator,
     LLMAttackEvaluator,
     AdaptiveEvaluator,
     EvaluationResult,
@@ -125,14 +117,15 @@ from mox.evaluation.training_data_exporter import (
     TrainingDataExporter,
 )
 
-# 为了向后兼容，使用原有的名称
+# 向后兼容：AttackEvaluator 指向 EnhancedAttackEvaluator
 AttackEvaluator = EnhancedAttackEvaluator
 
 __all__ = [
     # 原有评估器
     "EvaluationMetrics",
     "AttackTypeMetrics",
-    "DefenseEvaluator",
+    "AttackMetricsCollector",
+    "DefenseMetricsCollector",
     "RobustnessEvaluator",
     "BenchmarkRunner",
     # 基准测试
@@ -146,6 +139,7 @@ __all__ = [
     "ReportGenerator",
     "create_quick_report",
     # 改进的攻击评估
+    "EnhancedAttackEvaluator",
     "AttackEvaluator",
     "LLMAttackEvaluator",
     "AdaptiveEvaluator",

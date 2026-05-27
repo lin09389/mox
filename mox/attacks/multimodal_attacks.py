@@ -1,32 +1,17 @@
-﻿"""多模态攻击模块 (增强版 2025)
+﻿"""多模态攻击模块 — TEXT-BASED SIMULATIONS ONLY
 
-支持针对视觉语言模型（VLM）和多模态模型的攻击：
-- 图像注入攻击
-- 视觉提示注入
-- 隐藏文本攻击
-- 图像-文本对抗攻击
-- 音频注入攻击
-- 跨模态攻击
-- 多模态越狱
+All attack classes in this module are TEXT-BASED SIMULATIONS. They craft
+plain-text prompts that describe or reference visual/audio content. They
+never generate, encode, or attach actual image or audio data.
 
-WARNING: TEXT-BASED SIMULATIONS
-================================
+These classes are NOT registered in ATTACK_REGISTRY. To use them,
+import and instantiate directly:
 
-All attack classes in this module are TEXT-BASED SIMULATIONS of multimodal attack
-vectors. They craft plain text prompts that *describe* or *reference* visual/audio
-content to test whether a model would follow instructions embedded in described
-multimedia. They never generate, encode, or attach actual image or audio data to
-LLM API calls.
+    from mox.attacks.multimodal_attacks import ImageInjectionAttack
+    attack = ImageInjectionAttack(target_llm=llm)
 
-The ``ImageContent``, ``MultimodalMessage``, and ``AudioContent`` dataclasses are
-defined below for structural reference and future use, but are NOT consumed by any
-of the current attack implementations. Every attack sends only ``Message(role="user",
-content=<str>)`` — i.e. plain-text user messages — to the target LLM.
-
-To upgrade these simulations into true multimodal attacks, an image/audio generation
-capability would need to be integrated, and the attacks would need to construct
-``MultimodalMessage`` objects with actual binary content and send them through an
-API that supports multimodal inputs (e.g. OpenAI Vision, Gemini multimodal).
+For true multimodal attacks, image/audio generation capabilities
+would need to be integrated separately.
 """
 
 from typing import Optional, List, Union, Dict, Any
@@ -59,48 +44,8 @@ class MultimodalAttackType(str, Enum):
 
 
 # ---------------------------------------------------------------------------
-# Structural dataclasses — defined for API completeness and future true-
-# multimodal support, but NOT currently used by any attack implementation.
-# All attacks below send plain-text messages only.
+# Attack implementations — all send plain-text messages only.
 # ---------------------------------------------------------------------------
-
-
-@dataclass
-class ImageContent:
-    """图像内容 (NOT currently used — kept for future multimodal support)."""
-
-    data: bytes
-    format: str = "png"  # png, jpeg, webp
-    description: Optional[str] = None
-
-    def to_base64(self) -> str:
-        """转换为 base64 编码"""
-        return base64.b64encode(self.data).decode("utf-8")
-
-    def to_data_url(self) -> str:
-        """转换为 data URL"""
-        return f"data:image/{self.format};base64,{self.to_base64()}"
-
-
-@dataclass
-class MultimodalMessage:
-    """多模态消息 (NOT currently used — kept for future multimodal support)."""
-
-    role: str
-    text: Optional[str] = None
-    images: List[ImageContent] = field(default_factory=list)
-
-    def to_openai_format(self) -> dict:
-        """转换为 OpenAI 格式"""
-        content = []
-
-        if self.text:
-            content.append({"type": "text", "text": self.text})
-
-        for img in self.images:
-            content.append({"type": "image_url", "image_url": {"url": img.to_data_url()}})
-
-        return {"role": self.role, "content": content}
 
 
 class VisualPromptInjection(BaseAttack):
@@ -491,22 +436,6 @@ class MultimodalAttackEnsemble(BaseAttack):
 # ============ 音频攻击模块 ============
 
 
-@dataclass
-class AudioContent:
-    """音频内容 (NOT currently used — kept for future multimodal support)."""
-
-    data: bytes
-    format: str = "wav"  # wav, mp3, ogg
-    duration_seconds: Optional[float] = None
-    transcript: Optional[str] = None
-
-    def to_base64(self) -> str:
-        """转换为 base64 编码"""
-        return base64.b64encode(self.data).decode("utf-8")
-
-    def to_data_url(self) -> str:
-        """转换为 data URL"""
-        return f"data:audio/{self.format};base64,{self.to_base64()}"
 
 
 class AudioInjectionAttack(BaseAttack):

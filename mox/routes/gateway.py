@@ -66,16 +66,15 @@ class AddEndpointRequest(BaseModel):
         if _is_blocked_ip(hostname):
             raise ValueError("Internal addresses are not allowed")
 
+        # DNS resolution check — verify resolved IPs aren't internal
         try:
-            if _is_blocked_ip(hostname):
-                pass
-            elif "." not in hostname:
+            if "." not in hostname:
                 for item in socket.getaddrinfo(hostname, None):
                     resolved_ip = item[4][0]
                     if _is_blocked_ip(resolved_ip):
                         raise ValueError("Resolved internal addresses are not allowed")
         except socket.gaierror:
-            pass
+            pass  # hostname doesn't resolve — let the request fail naturally
         return v
 
 

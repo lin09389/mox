@@ -107,12 +107,12 @@ class EvaluationResult:
 # ---------------------------------------------------------------------------
 
 
-class AttackEvaluator(ABC):
+class BaseAttackEvaluator(ABC):
     """Unified attack evaluator base class — the ONLY definition in the project.
 
     All attack classes should use this interface for evaluating success.
     The BaseAttack.evaluate_success() method delegates to self.evaluator
-    which must be an instance of AttackEvaluator.
+    which must be an instance of BaseAttackEvaluator.
     """
 
     @abstractmethod
@@ -134,7 +134,7 @@ class AttackEvaluator(ABC):
 
     def evaluate_sync(self, response: str, target_behavior: str) -> EvaluationResult:
         """Synchronous version of evaluate.
-        
+
         NOTE: This creates a new event loop if one isn't running.
         """
         import asyncio
@@ -143,15 +143,19 @@ class AttackEvaluator(ABC):
         except RuntimeError:
             loop = asyncio.new_event_loop()
             asyncio.set_event_loop(loop)
-            
+
         if loop.is_running():
             # If we are already in an event loop, we can't use run_until_complete easily.
             # But tests usually run in a clean environment or use pytest-asyncio.
             # For sync tests, this should work.
             import nest_asyncio
             nest_asyncio.apply()
-            
+
         return loop.run_until_complete(self.evaluate(response, target_behavior))
+
+
+# Backward-compatible alias (deprecated — use BaseAttackEvaluator)
+AttackEvaluator = BaseAttackEvaluator
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +163,7 @@ class AttackEvaluator(ABC):
 # ---------------------------------------------------------------------------
 
 
-class RefusalPatternEvaluator(AttackEvaluator):
+class RefusalPatternEvaluator(BaseAttackEvaluator):
     """Evaluate attack success based on refusal pattern detection.
 
     Uses the unified RefusalPatterns from mox.core.patterns.
@@ -238,7 +242,7 @@ class RefusalPatternEvaluator(AttackEvaluator):
         )
 
 
-class KeywordOverlapEvaluator(AttackEvaluator):
+class KeywordOverlapEvaluator(BaseAttackEvaluator):
     """Evaluate attack success based on keyword overlap.
 
     Uses the unified word_overlap_score from mox.core.similarity.
@@ -270,7 +274,7 @@ class KeywordOverlapEvaluator(AttackEvaluator):
         )
 
 
-class CompositeEvaluator(AttackEvaluator):
+class CompositeEvaluator(BaseAttackEvaluator):
     """Combine multiple evaluators with weighted or max/min strategy."""
 
     def __init__(
@@ -353,7 +357,7 @@ class CompositeEvaluator(AttackEvaluator):
         )
 
 
-class SemanticSimilarityEvaluator(AttackEvaluator):
+class SemanticSimilarityEvaluator(BaseAttackEvaluator):
     """Evaluate attack success using semantic similarity.
 
     Uses sentence-transformers if available, falls back to keyword overlap.
@@ -414,7 +418,7 @@ class SemanticSimilarityEvaluator(AttackEvaluator):
         )
 
 
-class LLMBasedEvaluator(AttackEvaluator):
+class LLMBasedEvaluator(BaseAttackEvaluator):
     """Evaluate attack success using an LLM as judge.
 
     Falls back to RefusalPatternEvaluator if no judge_llm is provided.

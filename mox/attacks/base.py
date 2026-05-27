@@ -16,18 +16,10 @@ from mox.core.evaluation import (
     EvaluationResult,
     get_default_evaluator,
 )
+from mox.core.events import event_bus
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("attacks.base")
-
-
-def _get_db():
-    """延迟导入以避免循环依赖"""
-    try:
-        from mox.infrastructure.database import get_database
-        return get_database()
-    except Exception:
-        return None
 
 
 @dataclass
@@ -39,7 +31,7 @@ class AttackConfig:
     temperature: float = 0.7
     verbose: bool = False
     timeout: int = 300
-    save_to_db: bool = False  # 默认不自动持久化，由调用方控制
+    save_to_db: bool = False  # hint for event handlers; BaseAttack itself never touches the DB
 
 
 class BaseAttack(ABC):
@@ -99,36 +91,25 @@ class BaseAttack(ABC):
         success_score: float,
         metadata: Optional[Dict[str, Any]] = None,
     ) -> AttackOutcome:
-        """创建攻击结果并持久化到数据库"""
+        """创建攻击结果并发出事件以供外部持久化"""
         outcome = AttackOutcome(
             result=result,
             original_prompt=original_prompt,
             adversarial_prompt=adversarial_prompt,
-            response=model_response,  # AttackOutcome 使用 response 属性
+            response=model_response,
             iterations=iterations,
             success_score=success_score,
             metadata=metadata or {},
         )
         self.history.append(outcome)
 
-        # 自动持久化到数据库
-        if self.config.save_to_db:
-            db = _get_db()
-            if db is not None:
-                try:
-                    await db.save_attack_record(
-                        attack_type=self.attack_type.value if hasattr(self.attack_type, "value") else str(self.attack_type),
-                        original_prompt=original_prompt,
-                        adversarial_prompt=adversarial_prompt,
-                        model_response=model_response,
-                        result=result.value if hasattr(result, "value") else str(result),
-                        success_score=success_score,
-                        iterations=iterations,
-                        model_name=getattr(self.target_llm, "model", None),
-                        metadata=metadata or {},
-                    )
-                except Exception as e:
-                    logger.warning(f"Failed to save attack record to DB: {e}")
+        # Emit event — persistence is handled by subscribers, not this class.
+        await event_bus.emit(
+            "attack_completed",
+            outcome=outcome,
+            attack=self,
+            save_to_db=self.config.save_to_db,
+        )
 
         return outcome
 
