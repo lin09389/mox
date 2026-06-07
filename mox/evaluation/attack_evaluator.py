@@ -498,13 +498,17 @@ def create_evaluator(
     return EnhancedAttackEvaluator(config=config)
 
 
-# Backward-compatible alias (deprecated — use EnhancedAttackEvaluator)
-AttackEvaluator = EnhancedAttackEvaluator
+# NOTE: the previous "AttackEvaluator = EnhancedAttackEvaluator" alias was
+# removed in Phase 2.  Callers that imported
+#   from mox.evaluation.attack_evaluator import AttackEvaluator
+# should now write
+#   from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator
+# The class has always been named EnhancedAttackEvaluator — the alias
+# was just a vestige of the pre-unification era.
 
 
 __all__ = [
     "EnhancedAttackEvaluator",
-    "AttackEvaluator",  # deprecated alias
     "LLMAttackEvaluator",
     "AdaptiveEvaluator",
     "EvaluationResult",

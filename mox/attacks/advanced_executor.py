@@ -9,7 +9,7 @@ from typing import List, Optional, Dict, Any
 from dataclasses import dataclass
 
 from mox.core import BaseLLM, Message
-from mox.evaluation import AttackEvaluator
+from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator as AttackEvaluator
 
 from .advanced_templates import (
     ADVANCED_ATTACK_TEMPLATES,

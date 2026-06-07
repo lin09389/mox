@@ -19,7 +19,7 @@ from enum import Enum
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from mox.attacks.base import BaseAttack, AttackConfig
-from mox.evaluation.attack_evaluator import AttackEvaluator
+from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator as AttackEvaluator
 
 
 class StrategyType(Enum):

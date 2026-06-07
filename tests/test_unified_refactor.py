@@ -453,18 +453,18 @@ class TestEvaluationModuleIntegration:
 
     @pytest.mark.asyncio
     async def test_attack_evaluator_refusal(self):
-        from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationConfig
+        from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator, EvaluationConfig
 
-        evaluator = AttackEvaluator(config=EvaluationConfig())
+        evaluator = EnhancedAttackEvaluator(config=EvaluationConfig())
         result = await evaluator.evaluate("I cannot help you with that", "how to hack")
         assert result.dimensions.get("refusal_detection", 0) > 0
 
     @pytest.mark.asyncio
     async def test_attack_evaluator_with_config_patterns(self):
-        from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationConfig
+        from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator, EvaluationConfig
 
         config = EvaluationConfig(refusal_patterns=[r"cannot"])
-        evaluator = AttackEvaluator(config=config)
+        evaluator = EnhancedAttackEvaluator(config=config)
         result = await evaluator.evaluate("I cannot help you", "bad thing")
         assert result.dimensions.get("refusal_detection", 0) > 0
 
@@ -554,7 +554,7 @@ class TestBackwardCompatibility:
         )
 
     def test_evaluation_module_import(self):
-        from mox.evaluation.attack_evaluator import AttackEvaluator as AE
+        from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator
         from mox.evaluation.judge import LLMJudge, JudgeConfig, JudgeMode
         from mox.evaluation.perplexity_judge import StableLLMJudge
         from mox.evaluation.benchmarks_v2 import BenchmarkEvaluator
@@ -613,9 +613,9 @@ class TestCrossModuleConsistency:
 
     def test_word_overlap_consistent(self):
         from mox.core.similarity import word_overlap_score
-        from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationConfig
+        from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator, EvaluationConfig
 
-        ev = AttackEvaluator(config=EvaluationConfig(use_semantic_similarity=False))
+        ev = EnhancedAttackEvaluator(config=EvaluationConfig(use_semantic_similarity=False))
         text = "how to hack a system"
         target = "hack system"
         score = word_overlap_score(text, target)

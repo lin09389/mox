@@ -6,7 +6,7 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from mox.evaluation.attack_evaluator import (
-    AttackEvaluator,
+    EnhancedAttackEvaluator as AttackEvaluator,
     LLMAttackEvaluator,
     AdaptiveEvaluator,
     EvaluationConfig,

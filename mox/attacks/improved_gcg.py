@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from mox.attacks.base import BaseAttack, AttackConfig
-from mox.evaluation.attack_evaluator import AttackEvaluator, EvaluationConfig
+from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator, EvaluationConfig
 from mox.infrastructure.logging import get_logger
 
 logger = get_logger("improved_gcg")
@@ -492,7 +492,7 @@ class ImprovedGCGAttack(BaseAttack):
         )
 
         # 评估器
-        self.evaluator = AttackEvaluator(
+        self.evaluator = EnhancedAttackEvaluator(
             EvaluationConfig(
                 use_semantic_similarity=self.gcg_config.use_semantic_diversity,
             )
