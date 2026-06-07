@@ -240,6 +240,20 @@ async def sanitize_input(
         raise HTTPException(status_code=500, detail="Sanitization failed")
 
 
+@router.post("/sanitize")
+async def sanitize_input_endpoint(
+    request: ScanRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """Expose the sanitize_input helper as a real HTTP endpoint.
+
+    The original ``sanitize_input`` was defined as a coroutine but was never
+    decorated with ``@router.post`` — so FastAPI never exposed it.  This thin
+    wrapper preserves the original helper and adds a public route.
+    """
+    return await sanitize_input(request, current_user)
+
+
 @router.get("/history")
 async def get_defense_history(
     limit: int = 50,
