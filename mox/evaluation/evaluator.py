@@ -325,6 +325,16 @@ class BenchmarkRunner:
         }
 
 
-# Backward-compatible aliases (deprecated — use the new names)
-AttackEvaluator = AttackMetricsCollector
-DefenseEvaluator = DefenseMetricsCollector
+# NOTE: the previous "AttackEvaluator = AttackMetricsCollector" and
+# "DefenseEvaluator = DefenseMetricsCollector" backward-compat aliases
+# were removed in Phase 2.  They mapped the wrong names to the wrong
+# classes — anyone doing
+#   from mox.evaluation.evaluator import AttackEvaluator
+# was silently getting an AttackMetricsCollector (no `.evaluate()`,
+# no `is_malicious`/etc. fields), not an actual attack-evaluator.
+#
+# If you were depending on those aliases, switch to one of:
+#   from mox.core.evaluation import BaseAttackEvaluator
+#   from mox.attacks.evaluation import AttackEvaluator
+#   from mox.evaluation.attack_evaluator import EnhancedAttackEvaluator
+# depending on which concrete class you actually need.
