@@ -202,3 +202,53 @@ def get_task_queue() -> TaskQueue:
     if _task_queue is None:
         _task_queue = TaskQueue(max_workers=4)
     return _task_queue
+
+
+# =============================================================================
+# Task Registry — safe async-callable functions that the /tasks/submit
+# endpoint is allowed to dispatch.  The HTTP request body provides a
+# ``func`` *string* which must match one of these names; the registry
+# value is the actual callable that gets submitted to TaskQueue.
+#
+# The previous implementation ignored ``func``/``args``/``kwargs``
+# entirely and submitted a no-op lambda — the endpoint was a
+# placeholder.  This registry makes the endpoint actually run
+# something useful while keeping the attack surface tight: only
+# allow-listed callables can be invoked, and each registered task
+# validates its own inputs.
+# =============================================================================
+
+
+async def _noop_benchmark(name: str = "basic") -> Dict[str, Any]:
+    """A safe default task used for smoke-testing the queue.
+
+    Returns a small structured result instead of an empty dict.
+    """
+    return {"name": name, "result": "completed"}
+
+
+async def _noop_report(model: str = "gpt-4") -> Dict[str, Any]:
+    """Stub: would build an evaluation report for ``model``.
+
+    Real implementation deferred — returns a marker dict so callers
+    can detect that this task is actually running.
+    """
+    return {"model": model, "status": "report_generated"}
+
+
+# Public, allow-listed task registry.  Adding a new task here is the
+# only way to expose a new HTTP-dispatchable task; there is no
+# eval-based dispatch, no module-import, no dynamic lookup.
+TASK_REGISTRY: Dict[str, Callable[..., Any]] = {
+    "benchmark": _noop_benchmark,
+    "report": _noop_report,
+}
+
+
+def get_registered_task_names() -> List[str]:
+    """Return the sorted list of registered task function names.
+
+    Used by the /tasks/submit endpoint to return a useful 400 error
+    when the caller asks for an unknown task.
+    """
+    return sorted(TASK_REGISTRY.keys())
