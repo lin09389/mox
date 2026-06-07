@@ -181,6 +181,26 @@ class AttackOutcome(BaseModel):
     def is_successful(self) -> bool:
         return self.result == AttackResult.SUCCESS
 
+    # ------------------------------------------------------------------
+    # Backward-compatible aliases
+    # ------------------------------------------------------------------
+    #
+    # Older routes/serializers read `outcome.model_response`, but the
+    # canonical field is `response` (matches the persistence handler in
+    # infrastructure.event_handlers._persist_attack which writes
+    # model_response=outcome.response).  Keep both directions working so
+    # that the v1 endpoints (routes/attack.py) keep working without
+    # touching all 12 call sites.
+    #
+    @property
+    def model_response(self) -> Optional[str]:
+        """Alias for ``self.response`` — read-only backward-compat."""
+        return self.response
+
+    @model_response.setter
+    def model_response(self, value: Optional[str]) -> None:
+        self.response = value
+
 
 class DefenseResult(BaseModel):
     """防御结果模型"""
