@@ -1,7 +1,10 @@
 """认证和安全模块"""
-
+import json
+import os
+import threading
 import warnings
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 from typing import Optional, List
 from dataclasses import dataclass, field
 from enum import Enum
@@ -12,6 +15,9 @@ from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
 from .config import settings
+from .logging import get_logger
+
+logger = get_logger("auth")
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -155,12 +161,101 @@ class TokenManager:
 
 
 class AuthManager:
-    """认证管理器"""
+    """认证管理器
+
+    The in-memory ``users_db`` is mirrored to a JSON file so that
+    user accounts created at runtime (via ``create_user``) survive
+    process restarts.  The file location is controlled by the
+    ``MOX_USERS_FILE`` environment variable; default is
+    ``<project>/mox_users.json``.
+    """
 
     def __init__(self):
-        self.users_db = {}
-        self._password_hashes = {}  # Store password hashes separately
+        self._users_path = Path(
+            os.environ.get("MOX_USERS_FILE", str(Path("mox_users.json").resolve()))
+        )
+        self._users_lock = threading.Lock()
+        self.users_db: dict[str, User] = {}
+        self._password_hashes: dict[str, str] = {}
+
+        # Load existing users (if any) BEFORE creating default users
+        # so defaults don't clobber stored accounts with the same name.
+        self._load_users()
+
+        # Existing on-disk accounts that aren't in DEFAULT_USERS are
+        # preserved; new DEFAULT_USERS are added.
         self._init_default_users()
+
+    # ----------------------------------------------------------------
+    # Persistence
+    # ----------------------------------------------------------------
+
+    def _load_users(self) -> None:
+        if not self._users_path.exists():
+            return
+        try:
+            data = json.loads(self._users_path.read_text(encoding="utf-8"))
+        except Exception as e:
+            logger.warning("Failed to load users file %s: %s", self._users_path, e)
+            return
+
+        if not isinstance(data, dict):
+            logger.warning(
+                "Users file %s is not a JSON object -- ignoring",
+                self._users_path,
+            )
+            return
+
+        for username, record in data.items():
+            if not isinstance(record, dict):
+                continue
+            try:
+                self.users_db[username] = User(
+                    username=username,
+                    email=record.get("email"),
+                    full_name=record.get("full_name"),
+                    disabled=bool(record.get("disabled", False)),
+                    scopes=record.get("scopes") or ["read"],
+                )
+                password_hash = record.get("password_hash")
+                if password_hash:
+                    self._password_hashes[username] = password_hash
+            except Exception as e:
+                logger.warning("Skipping malformed user record %r: %s", username, e)
+
+    def _save_users(self) -> None:
+        """Write the current ``users_db`` to disk as JSON.
+
+        Uses a temp-file + os.replace atomic write so a crash
+        mid-write doesn't leave a half-written file that would
+        fail to parse on next startup.
+        """
+        with self._users_lock:
+            payload = {
+                username: {
+                    "email": user.email,
+                    "full_name": user.full_name,
+                    "disabled": user.disabled,
+                    "scopes": user.scopes or [],
+                    # Stored as bcrypt hash, not plaintext.
+                    "password_hash": self._password_hashes.get(username, ""),
+                }
+                for username, user in self.users_db.items()
+            }
+            try:
+                self._users_path.parent.mkdir(parents=True, exist_ok=True)
+                tmp = self._users_path.with_suffix(self._users_path.suffix + ".tmp")
+                tmp.write_text(
+                    json.dumps(payload, indent=2, ensure_ascii=False),
+                    encoding="utf-8",
+                )
+                os.replace(tmp, self._users_path)
+            except Exception as e:
+                logger.error("Failed to write users file %s: %s", self._users_path, e)
+
+    # ----------------------------------------------------------------
+    # User CRUD
+    # ----------------------------------------------------------------
 
     def _init_default_users(self):
         """初始化默认用户 - 仅当配置了默认用户密码时才创建"""
@@ -174,6 +269,7 @@ class AuthManager:
             # 没有配置默认用户，这是生产环境的推荐配置
             return
 
+        new_users_added = False
         for user_config in default_users_env:
             try:
                 parts = user_config.split(":")
@@ -184,6 +280,11 @@ class AuthManager:
                     continue
 
                 username = parts[0]
+                if username in self.users_db:
+                    # Don't overwrite an on-disk account with the
+                    # default -- the on-disk version is presumably
+                    # updated (e.g. password rotated).
+                    continue
                 password = parts[1]
                 email = parts[2] if len(parts) > 2 else f"{username}@mox.ai"
                 scopes = parts[3].split(",") if len(parts) > 3 else ["read"]
@@ -195,33 +296,45 @@ class AuthManager:
                 )
                 self.users_db[username] = user
                 self._password_hashes[username] = PasswordManager.get_password_hash(password)
+                new_users_added = True
             except Exception as e:
                 warnings.warn(
                     f"Failed to initialize default user from config: {user_config}, error: {e}"
                 )
 
+        if new_users_added:
+            self._save_users()
+
     def authenticate_user(self, username: str, password: str) -> Optional[User]:
-        user = self.users_db.get(username)
-        if not user:
-            return None
-        if user.disabled:
-            return None
-        # Verify password against stored hash
-        stored_hash = self._password_hashes.get(username)
-        if not stored_hash:
-            return None
-        if not PasswordManager.verify_password(password, stored_hash):
-            return None
-        return user
+        with self._users_lock:
+            user = self.users_db.get(username)
+            if not user:
+                return None
+            if user.disabled:
+                return None
+            # Verify password against stored hash
+            stored_hash = self._password_hashes.get(username)
+            if not stored_hash:
+                return None
+            if not PasswordManager.verify_password(password, stored_hash):
+                return None
+            return user
 
     def get_user(self, username: str) -> Optional[User]:
-        return self.users_db.get(username)
+        with self._users_lock:
+            return self.users_db.get(username)
 
     def create_user(self, user: User, password: str) -> User:
         password_hash = PasswordManager.get_password_hash(password)
         user.scopes = user.scopes or ["read"]
-        self.users_db[user.username] = user
-        self._password_hashes[user.username] = password_hash
+        with self._users_lock:
+            self.users_db[user.username] = user
+            self._password_hashes[user.username] = password_hash
+        # Persist outside the lock so we don't hold it across
+        # disk I/O.  Worst case two concurrent create_user calls
+        # each write the file -- last writer wins, but both
+        # writes are consistent.
+        self._save_users()
         return user
 
 
