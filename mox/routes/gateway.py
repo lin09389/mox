@@ -1,5 +1,4 @@
 """LLM 网关相关路由"""
-
 from typing import Dict, Any, Optional
 import ipaddress
 import socket
@@ -13,6 +12,31 @@ from mox.infrastructure.logging import get_logger
 logger = get_logger("gateway")
 
 router = APIRouter(prefix="/gateway", tags=["Gateway"])
+
+
+# ============ Helpers ============
+
+
+def _is_blocked_ip(ip_str: str) -> bool:
+    """Return True if the IP literal falls in a range that must not
+    be reachable from the gateway validator (loopback, private,
+    link-local, reserved, multicast, or unspecified).
+
+    Used by the AddEndpointRequest.base_url field validator and any
+    runtime-side check that wants the same policy.
+    """
+    try:
+        ip = ipaddress.ip_address(ip_str)
+    except ValueError:
+        return False
+    return (
+        ip.is_loopback
+        or ip.is_private
+        or ip.is_link_local
+        or ip.is_reserved
+        or ip.is_multicast
+        or ip.is_unspecified
+    )
 
 
 # ============ 请求模型 ============
@@ -49,32 +73,53 @@ class AddEndpointRequest(BaseModel):
         if hostname == "localhost" or hostname.endswith(".local"):
             raise ValueError("Internal addresses are not allowed")
 
-        def _is_blocked_ip(ip_str: str) -> bool:
-            try:
-                ip = ipaddress.ip_address(ip_str)
-            except ValueError:
-                return False
-            return (
-                ip.is_loopback
-                or ip.is_private
-                or ip.is_link_local
-                or ip.is_reserved
-                or ip.is_multicast
-                or ip.is_unspecified
-            )
-
         if _is_blocked_ip(hostname):
             raise ValueError("Internal addresses are not allowed")
 
-        # DNS resolution check — verify resolved IPs aren't internal
+        # DNS resolution check — every A/AAAA record the hostname
+        # resolves to must be public, otherwise the request can be
+        # coerced to an internal target.
+        #
+        # NOTE: the previous version of this check only ran the
+        # resolver when the hostname had no "." -- i.e. short
+        # names like "internal" or "redis", but NOT FQDNs like
+        # "api.example.com".  An attacker controlling a DNS
+        # record for an attacker-owned domain could pass
+        # validation, then the LLM gateway would resolve the
+        # same name to an internal IP and connect to it
+        # (DNS rebinding / TOCTOU).  Always resolve.
         try:
-            if "." not in hostname:
-                for item in socket.getaddrinfo(hostname, None):
-                    resolved_ip = item[4][0]
-                    if _is_blocked_ip(resolved_ip):
-                        raise ValueError("Resolved internal addresses are not allowed")
+            infos = socket.getaddrinfo(hostname, parsed.port)
         except socket.gaierror:
-            pass  # hostname doesn't resolve — let the request fail naturally
+            # hostname doesn't resolve -- let the request fail
+            # naturally at request time; not our problem here.
+            return v
+
+        if not infos:
+            raise ValueError(f"Hostname {hostname!r} did not resolve")
+
+        # If any resolved IP is internal, the request might later
+        # be routed to it (depending on which record the client
+        # picks).  Reject the URL.
+        for info in infos:
+            resolved_ip = info[4][0]
+            if _is_blocked_ip(resolved_ip):
+                raise ValueError(
+                    f"Hostname {hostname!r} resolves to a blocked address "
+                    f"({resolved_ip}). Refusing to register a gateway "
+                    f"endpoint that points to an internal target."
+                )
+
+        # NOTE: this closes the *known-bad* SSRF path (a hostname
+        # that resolves to internal IPs).  It does NOT close the
+        # TOCTOU window for a hostname that, at validation time,
+        # resolves to a public IP but, between validation and
+        # request, is rebound to an internal IP.  Closing that
+        # requires the LLM gateway to thread the resolved IP and
+        # the original hostname through to the actual HTTP call
+        # (httpx with a custom resolver / Transport).  See
+        # mox/core/llm_router.py for the matching runtime-side
+        # helper that this validator pairs with.
         return v
 
 
