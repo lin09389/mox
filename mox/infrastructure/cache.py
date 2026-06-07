@@ -275,6 +275,63 @@ class LLMCache:
         self.backend.clear()
 
 
+class LRUClientCache(Generic[T]):
+    """A bounded, thread-safe LRU cache for LLM client objects.
+
+    The route layer used to keep each per-model ``BaseLLM`` in a
+    plain ``dict[str, BaseLLM]`` that never evicted anything.
+    Long-running services that see 1000+ distinct ``model=`` strings
+    would silently leak BaseLLM instances (each holding an HTTP
+    client, token quotas, etc.).
+
+    This cache caps the number of live clients and evicts the
+    least-recently-used one when full.  Hits promote the entry
+    to "most recently used" via ``OrderedDict.move_to_end()``.
+
+    Not async — the lock is a short-lived ``threading.Lock`` that
+    only guards dict mutations, not awaitables.  The async route
+    functions can call this synchronously.
+    """
+
+    def __init__(self, max_size: int = 64):
+        if max_size < 1:
+            raise ValueError("max_size must be >= 1")
+        self._max_size = max_size
+        self._data: "OrderedDict[str, T]" = OrderedDict()
+        self._lock = threading.Lock()
+
+    def get(self, key: str) -> Optional[T]:
+        with self._lock:
+            if key not in self._data:
+                return None
+            # Promote to most-recently-used.
+            self._data.move_to_end(key)
+            return self._data[key]
+
+    def set(self, key: str, value: T) -> None:
+        with self._lock:
+            if key in self._data:
+                # Update existing entry; promote it.
+                self._data.move_to_end(key)
+                self._data[key] = value
+                return
+            self._data[key] = value
+            if len(self._data) > self._max_size:
+                evicted_key, _ = self._data.popitem(last=False)
+                logger.debug(
+                    "LRUClientCache evicted %r (max_size=%d reached)",
+                    evicted_key, self._max_size,
+                )
+
+    def __len__(self) -> int:
+        with self._lock:
+            return len(self._data)
+
+    def clear(self) -> None:
+        with self._lock:
+            self._data.clear()
+
+
 class CacheManager:
     """缓存管理器"""
 

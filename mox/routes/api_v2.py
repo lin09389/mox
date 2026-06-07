@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from mox.core import BaseLLM, LLMFactory, AttackType, settings
 from mox.infrastructure.auth import get_optional_active_user, User
+from mox.infrastructure.cache import LRUClientCache
 
 router = APIRouter(prefix="/api/v2", tags=["API v2"])
 
@@ -67,24 +68,31 @@ class OllamaStatusRequest(BaseModel):
 
 # ============ LLM     ============
 
-_llm_cache: Dict[str, BaseLLM] = {}
+_llm_cache: LRUClientCache[BaseLLM] = LRUClientCache(max_size=64)
 
 
 def get_llm(model: str, use_ollama: bool = False, ollama_base_url: str = "http://localhost:11434/v1") -> BaseLLM:
+    """Return a cached ``BaseLLM`` for the given (model, ollama?) pair.
+
+    Uses an LRUClientCache capped at 64 entries so the server
+    doesn't leak BaseLLM instances for every model name and
+    ollama_base_url combination it ever sees.
+    """
     cache_key = f"{model}:{use_ollama}:{ollama_base_url}"
+    cached = _llm_cache.get(cache_key)
+    if cached is not None:
+        return cached
 
-    if cache_key not in _llm_cache:
-        if use_ollama:
-            #     Ollama      
-            _llm_cache[cache_key] = LLMFactory.create_from_model_name(
-                model,
-                base_url=ollama_base_url,
-                api_key="ollama",
-            )
-        else:
-            _llm_cache[cache_key] = LLMFactory.create_from_model_name(model)
-
-    return _llm_cache[cache_key]
+    if use_ollama:
+        instance = LLMFactory.create_from_model_name(
+            model,
+            base_url=ollama_base_url,
+            api_key="ollama",
+        )
+    else:
+        instance = LLMFactory.create_from_model_name(model)
+    _llm_cache.set(cache_key, instance)
+    return instance
 
 
 # ============ Ollama       ?============

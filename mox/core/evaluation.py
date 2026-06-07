@@ -554,8 +554,8 @@ def get_default_evaluator() -> AttackEvaluator:
                         KeywordOverlapEvaluator(threshold=0.3),
                     ],
                     strategy="weighted",
-            weights=[0.6, 0.4],
-        )
+                    weights=[0.6, 0.4],
+                )
     return _default_evaluator
 
 

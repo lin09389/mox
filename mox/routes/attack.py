@@ -15,6 +15,7 @@ from mox.core import (
 )
 from mox.infrastructure.database import Database
 from mox.infrastructure.auth import get_current_active_user, User
+from mox.infrastructure.cache import LRUClientCache
 from mox.attacks import (
     AttackConfig,
     create_attack_from_request,
@@ -65,31 +66,39 @@ class StreamingAttackRequest(BaseModel):
 
 import asyncio
 
-_llm_cache: Dict[str, BaseLLM] = {}
+_llm_cache: LRUClientCache[BaseLLM] = LRUClientCache(max_size=64)
 _llm_cache_lock = asyncio.Lock()
 
 
 async def get_llm(model: str) -> BaseLLM:
-    """获取 LLM 实例（带缓存，线程安全）"""
-    if model in _llm_cache:
-        return _llm_cache[model]
+    """获取 LLM 实例（带缓存，线程安全）
+
+    Uses an LRUClientCache capped at 64 distinct model names so
+    long-running services don't leak BaseLLM instances (each
+    holding an HTTP client) for every model string they ever see.
+    """
+    cached = _llm_cache.get(model)
+    if cached is not None:
+        return cached
 
     async with _llm_cache_lock:
         # 双重检查，避免多个协程同时创建
-        if model in _llm_cache:
-            return _llm_cache[model]
+        cached = _llm_cache.get(model)
+        if cached is not None:
+            return cached
 
         if model.startswith("abab") or model.startswith("minimax"):
             from mox.core import MiniMaxLLM
 
-            _llm_cache[model] = MiniMaxLLM(
+            instance = MiniMaxLLM(
                 model=model,
                 api_key=settings.MINIMAX_API_KEY,
                 group_id=settings.MINIMAX_GROUP_ID,
             )
         else:
-            _llm_cache[model] = LLMFactory.create_from_model_name(model)
-        return _llm_cache[model]
+            instance = LLMFactory.create_from_model_name(model)
+        _llm_cache.set(model, instance)
+        return instance
 
 
 _db: Optional[Database] = None
