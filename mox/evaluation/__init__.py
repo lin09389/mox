@@ -117,8 +117,21 @@ from mox.evaluation.training_data_exporter import (
     TrainingDataExporter,
 )
 
-# 向后兼容：AttackEvaluator 指向 EnhancedAttackEvaluator
-AttackEvaluator = EnhancedAttackEvaluator
+# 向后兼容:AttackEvaluator 指向 canonical 的 BaseAttackEvaluator
+#
+# Phase 2 cleanup: this used to be
+#     AttackEvaluator = EnhancedAttackEvaluator
+# which bound the name to a concrete multi-dim evaluator — so
+# `from mox.evaluation import AttackEvaluator` returned one specific
+# class while `from mox.core.evaluation import AttackEvaluator`
+# returned the abstract base.  That asymmetry bit anyone who wrote
+# `isinstance(x, AttackEvaluator)` across modules.
+#
+# The canonical AttackEvaluator is the ABC defined in
+# mox.core.evaluation — re-export it here under the same name so
+# `from mox.evaluation import AttackEvaluator` matches
+# `from mox.core.evaluation import AttackEvaluator`.
+from mox.core.evaluation import BaseAttackEvaluator as AttackEvaluator
 
 __all__ = [
     # 原有评估器
