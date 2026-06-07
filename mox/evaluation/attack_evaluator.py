@@ -8,6 +8,8 @@
 4. 自适应阈值调整
 """
 
+from __future__ import annotations
+
 import re
 from typing import Optional, List, Dict, Any
 from dataclasses import dataclass, field
