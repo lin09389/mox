@@ -1,4 +1,4 @@
-﻿"""Multi-turn 攻击 (GOAT) - Generative Offensive Agent Tester
+"""Multi-turn 攻击 (GOAT) - Generative Offensive Agent Tester
 多轮对话链式攻击，通过多轮对话逐步绕过 LLM 安全措施
 """
 

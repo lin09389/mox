@@ -1,4 +1,4 @@
-﻿"""Jailbreak 攻击实现"""
+"""Jailbreak 攻击实现"""
 
 import re
 import base64

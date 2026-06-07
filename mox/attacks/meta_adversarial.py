@@ -1,4 +1,4 @@
-﻿"""元攻击模块 (Meta-Adversarial Prompting)
+"""元攻击模块 (Meta-Adversarial Prompting)
 
 基于论文: "The Meta-Prompting Protocol: Orchestrating LLMs via Adversarial Feedback Loops"
 

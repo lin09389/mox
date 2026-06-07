@@ -1,4 +1,4 @@
-﻿"""多模态攻击模块 — TEXT-BASED SIMULATIONS ONLY
+"""多模态攻击模块 — TEXT-BASED SIMULATIONS ONLY
 
 All attack classes in this module are TEXT-BASED SIMULATIONS. They craft
 plain-text prompts that describe or reference visual/audio content. They

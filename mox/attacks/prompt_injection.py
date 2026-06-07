@@ -1,4 +1,4 @@
-﻿"""Prompt Injection 攻击"""
+"""Prompt Injection 攻击"""
 
 import re
 from typing import Optional, List
