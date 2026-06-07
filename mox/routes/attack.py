@@ -16,11 +16,8 @@ from mox.core import (
 from mox.infrastructure.database import Database
 from mox.infrastructure.auth import get_current_active_user, User
 from mox.attacks import (
-    PromptInjectionAttack,
-    JailbreakAttack,
-    GCGAttack,
-    AutoDANAttack,
     AttackConfig,
+    create_attack_from_request,
 )
 
 router = APIRouter(prefix="/attack", tags=["Attack"])
@@ -314,113 +311,15 @@ async def run_attack(
     try:
         llm = await get_llm(request.model)
 
-        # 攻击类型映射
-        attack_type_map = {
-            "prompt_injection": PromptInjectionAttack,
-            "jailbreak": JailbreakAttack,
-            "gcg": GCGAttack,
-            "autodan": AutoDANAttack,
-        }
-
-        novel_attack_types = [
-            "token_level",
-            "encoding",
-            "policy_puppetry",
-            "control_char",
-            "distract_attack",
-            "cascading",
-            "rag_poisoning",
-        ]
-
-        gradient_attack_types = ["fgsm", "pgd", "gradient_optimization", "adversarial_suffix"]
-
-        advanced_attack_types = [
-            "multimodal_adversarial",
-            "zero_shot_adversarial",
-            "hallucination_induction",
-            "collaborative_attack",
-            "knowledge_distillation",
-            "evasion_attack",
-        ]
-
-        # 创建攻击实例
-        if request.attack_type in novel_attack_types:
-            from mox.attacks.novel_attacks import (
-                TokenLevelAttack,
-                EncodingAttack,
-                PolicyPuppetryAttack,
-                DistractAndAttack,
-                ControlCharInjectionAttack,
-                CascadingAttack,
-            )
-
-            novel_attack_map = {
-                "token_level": TokenLevelAttack,
-                "encoding": EncodingAttack,
-                "policy_puppetry": PolicyPuppetryAttack,
-                "control_char": ControlCharInjectionAttack,
-                "distract_attack": DistractAndAttack,
-                "cascading": CascadingAttack,
-            }
-            attack_class = novel_attack_map.get(request.attack_type, TokenLevelAttack)
-            attack = attack_class(llm)
-
-        elif request.attack_type in gradient_attack_types:
-            from mox.attacks.gradient_attack import (
-                FGSMAttack,
-                PGDAttack,
-                AdversarialSuffixAttack,
-                GradientAttackConfig,
-            )
-
-            gradient_config = GradientAttackConfig(
-                max_iterations=request.max_iterations,
-                verbose=True,
-            )
-            if request.attack_type == "fgsm":
-                attack = FGSMAttack(target_llm=llm, gradient_config=gradient_config)
-            elif request.attack_type == "pgd":
-                attack = PGDAttack(target_llm=llm, gradient_config=gradient_config)
-            else:
-                attack = AdversarialSuffixAttack(target_llm=llm, gradient_config=gradient_config)
-
-        elif request.attack_type in advanced_attack_types:
-            from mox.attacks.advanced_attacks import (
-                MultimodalAdversarialAttack,
-                ZeroShotAdversarialAttack,
-                HallucinationInductionAttack,
-                CollaborativeAttack,
-                EvasionAttack,
-                AdvancedAttackConfig,
-            )
-
-            advanced_config = AdvancedAttackConfig(max_iterations=request.max_iterations)
-            attack_map = {
-                "multimodal_adversarial": MultimodalAdversarialAttack,
-                "zero_shot_adversarial": ZeroShotAdversarialAttack,
-                "hallucination_induction": HallucinationInductionAttack,
-                "collaborative_attack": CollaborativeAttack,
-                "evasion_attack": EvasionAttack,
-            }
-
-            if request.attack_type == "meta_adversarial":
-                from mox.attacks.meta_adversarial import (
-                    MetaAdversarialAttack,
-                    MetaAdversarialConfig,
-                )
-
-                meta_config = MetaAdversarialConfig(
-                    max_iterations=request.max_iterations,
-                    use_adversarial_trinity=True,
-                )
-                attack = MetaAdversarialAttack(target_llm=llm, meta_config=meta_config)
-            else:
-                attack_class = attack_map.get(request.attack_type, CollaborativeAttack)
-                attack = attack_class(target_llm=llm, config=advanced_config)
-        else:
-            attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=request.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
+        # 创建攻击实例 — dispatch lives in mox.attacks.create_attack_from_request
+        # so the 4 attack families (default / novel / gradient / advanced +
+        # meta-adversarial) all go through one call site.  Adding a new
+        # attack type no longer requires editing this handler.
+        attack = create_attack_from_request(
+            attack_type=request.attack_type,
+            llm=llm,
+            max_iterations=request.max_iterations,
+        )
 
         # 执行攻击
         payload = AttackPayload(
@@ -483,16 +382,11 @@ async def run_batch_attacks(
         try:
             llm = await get_llm(attack_req.model)
 
-            attack_type_map = {
-                "prompt_injection": PromptInjectionAttack,
-                "jailbreak": JailbreakAttack,
-                "gcg": GCGAttack,
-                "autodan": AutoDANAttack,
-            }
-
-            attack_class = attack_type_map.get(attack_req.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=attack_req.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
+            attack = create_attack_from_request(
+                attack_type=attack_req.attack_type,
+                llm=llm,
+                max_iterations=attack_req.max_iterations,
+            )
 
             payload = AttackPayload(
                 attack_type=AttackType(attack_req.attack_type),
@@ -574,16 +468,11 @@ async def stream_attack(
         try:
             llm = await get_llm(request.model)
 
-            attack_type_map = {
-                "prompt_injection": PromptInjectionAttack,
-                "jailbreak": JailbreakAttack,
-                "gcg": GCGAttack,
-                "autodan": AutoDANAttack,
-            }
-
-            attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=request.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
+            attack = create_attack_from_request(
+                attack_type=request.attack_type,
+                llm=llm,
+                max_iterations=request.max_iterations,
+            )
 
             payload = AttackPayload(
                 attack_type=AttackType(request.attack_type),
