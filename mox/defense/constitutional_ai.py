@@ -203,6 +203,7 @@ class ConstitutionalAI(BaseDefense):
             is_malicious=is_malicious,
             confidence=confidence,
             detected_patterns=[v["principle_name"] for v in violations],
+            input_text=input_text,
             metadata={
                 "violations": violations,
                 "total_violations": len(violations),

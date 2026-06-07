@@ -46,7 +46,8 @@ class BaseDefense(ABC):
         detected_patterns: List[str],
         sanitized_input: Optional[str] = None,
         metadata: Optional[Dict[str, Any]] = None,
-        input_text: str = "",
+        *,
+        input_text: str,                    # keyword-only, REQUIRED: audit trail
         model_name: Optional[str] = None,
     ) -> DefenseResult:
         result = DefenseResult(

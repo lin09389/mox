@@ -82,6 +82,7 @@ class SystemPromptHardening(BaseDefense):
             is_malicious=is_malicious,
             confidence=confidence,
             detected_patterns=detected,
+            input_text=input_text,
             metadata={"hardening_enabled": True},
         )
 

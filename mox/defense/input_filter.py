@@ -207,6 +207,7 @@ class InputFilter(BaseDefense):
             confidence=confidence,
             detected_patterns=detected,
             sanitized_input=sanitized,
+            input_text=input_text,
             metadata=metadata
         )
 
@@ -248,6 +249,7 @@ class StatisticalAnomalyFilter(BaseDefense):
             is_malicious=is_malicious,
             confidence=max(0.0, min(1.0, 1.0 - score/200.0)),
             detected_patterns=["statistical_anomaly"] if is_malicious else [],
+            input_text=input_text,
             metadata={"anomaly_score": score}
         )
 
@@ -319,14 +321,22 @@ class PerplexityFilter(BaseDefense):
 
     async def detect(self, input_text: str) -> DefenseResult:
         if not LM_AVAILABLE:
-            return await self._create_result(False, 0.0, [], metadata={"error": "LM not available"})
+            return await self._create_result(
+                is_malicious=False, confidence=0.0, detected_patterns=[],
+                input_text=input_text,
+                metadata={"error": "LM not available"},
+            )
 
         self._init_model()
         model = self._get_model()
         tokenizer = self._get_tokenizer()
 
         if model is None or tokenizer is None:
-            return await self._create_result(False, 0.0, [], metadata={"error": "Model not loaded"})
+            return await self._create_result(
+                is_malicious=False, confidence=0.0, detected_patterns=[],
+                input_text=input_text,
+                metadata={"error": "Model not loaded"},
+            )
 
         try:
             import torch
@@ -350,6 +360,7 @@ class PerplexityFilter(BaseDefense):
                 is_anomalous,
                 confidence,
                 ["high_perplexity"] if is_anomalous else [],
+                input_text=input_text,
                 metadata={
                     "perplexity": perplexity,
                     "threshold": threshold,
@@ -359,7 +370,11 @@ class PerplexityFilter(BaseDefense):
             )
         except Exception as e:
             logger.warning(f"Perplexity calculation failed: {e}")
-            return await self._create_result(False, 0.0, [], metadata={"error": str(e)})
+            return await self._create_result(
+                is_malicious=False, confidence=0.0, detected_patterns=[],
+                input_text=input_text,
+                metadata={"error": str(e)},
+            )
 
     async def sanitize(self, input_text: str) -> str:
         return input_text

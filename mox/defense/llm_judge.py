@@ -116,6 +116,7 @@ AI响应: {response}
             is_malicious=not judgment.is_safe,
             confidence=judgment.confidence,
             detected_patterns=[judgment.category.value] if not judgment.is_safe else [],
+            input_text=input_text,
             metadata={"reasoning": judgment.reasoning, "details": judgment.details}
         )
 
@@ -261,6 +262,7 @@ class SafetyCoTDefense(BaseDefense):
             is_malicious=not res["is_safe"],
             confidence=0.8 if not res["is_safe"] else 0.0,
             detected_patterns=["cot_refusal"] if not res["is_safe"] else [],
+            input_text=input_text,
             metadata=res
         )
 

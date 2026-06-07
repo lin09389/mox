@@ -84,6 +84,7 @@ class HallucinationDetector(BaseDefense):
             is_malicious=result.is_hallucination,
             confidence=result.confidence,
             detected_patterns=[result.hallucination_type.value] if result.is_hallucination else [],
+            input_text=input_text,
             metadata={
                 "evidence": result.evidence,
                 "explanation": result.explanation,

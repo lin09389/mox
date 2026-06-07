@@ -182,6 +182,7 @@ class PromptInjectionDetector(BaseDefense):
             is_malicious=is_malicious,
             confidence=confidence,
             detected_patterns=[t.value for t in matched_types],
+            input_text=input_text,
             metadata={
                 "matched_indicators": matched_indicators,
                 "injection_types": [t.value for t in matched_types],

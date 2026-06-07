@@ -74,6 +74,7 @@ class OutputFilter(BaseDefense):
             confidence=confidence,
             detected_patterns=detected,
             sanitized_input=sanitized,
+            input_text=output_text,
             metadata=metadata
         )
 

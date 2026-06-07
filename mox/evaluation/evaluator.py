@@ -273,11 +273,25 @@ class RobustnessEvaluator:
         if not self.perturbation_results:
             return 0.0
 
-        if not self.perturbation_results[0].get("consistency_score", None):
+        # evaluate_perturbation_robustness stores a *list* of per-perturbation
+        # scores under the key "consistency_scores" (plural).  The previous
+        # reader looked for a singular "consistency_score" key that was
+        # never written, so this method silently returned 0.0 even when
+        # evaluations had been performed.
+        per_perturbation_means: list[float] = []
+        for record in self.perturbation_results:
+            scores = record.get("consistency_scores")
+            if isinstance(scores, list) and scores:
+                per_perturbation_means.append(sum(scores) / len(scores))
+            # Fall back to the singular key in case any caller has been
+            # writing both shapes during a transition.
+            elif record.get("consistency_score") is not None:
+                per_perturbation_means.append(float(record["consistency_score"]))
+
+        if not per_perturbation_means:
             return 0.0
 
-        total_score = sum(r.get("consistency_score", 0.0) for r in self.perturbation_results)
-        return total_score / len(self.perturbation_results) if self.perturbation_results else 0.0
+        return sum(per_perturbation_means) / len(per_perturbation_means)
 
 
 class BenchmarkRunner:

@@ -560,6 +560,7 @@ class SemanticFirewall(BaseDefense):
             confidence=risk.score,
             detected_patterns=[p for p in patterns if p],
             sanitized_input=None,
+            input_text=input_text,
             metadata={
                 "intent": {
                     "primary": intent.primary_intent.value,
