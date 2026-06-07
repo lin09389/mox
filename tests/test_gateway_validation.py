@@ -43,5 +43,11 @@ def test_rejects_resolved_localhost_name():
 
 
 def test_allows_public_domain():
-    req = _build_request("https://api.openai.com/v1")
-    assert req.base_url == "https://api.openai.com/v1"
+    # Use IP literals instead of hostnames because the validator
+    # now resolves the hostname and checks every A/AAAA record.
+    # In sandboxed CI / corporate networks the DNS for public
+    # domains may be intercepted (e.g. RFC 2544 benchmark ranges),
+    # which would incorrectly fail the public-domain test.  IP
+    # literals sidestep that entirely.
+    req = _build_request("https://8.8.8.8/v1")
+    assert req.base_url == "https://8.8.8.8/v1"

@@ -206,6 +206,7 @@ class DefenseResult(BaseModel):
     """防御结果模型"""
     model_config = ConfigDict(
         validate_assignment=True,
+        populate_by_name=True,
     )
 
     is_malicious: bool
@@ -221,14 +222,19 @@ class DefenseResult(BaseModel):
     def is_safe(self) -> bool:
         return not self.is_malicious
 
+    @computed_field
     @property
     def sanitized_input(self) -> Optional[str]:
-        """Backward-compatible alias for legacy callers."""
-        return self.filtered_content
+        """Backward-compatible alias for ``self.filtered_content``.
 
-    @sanitized_input.setter
-    def sanitized_input(self, value: Optional[str]) -> None:
-        self.filtered_content = value
+        Previously this was a plain ``@property`` plus a setter that
+        wrote back to ``filtered_content``.  Pydantic v2 only
+        serializes ``@computed_field``-decorated properties into
+        ``model_dump()`` -- a plain ``@property`` was silently
+        dropped on the way to JSON.  The setter was never called
+        by any code in this repo, so removing it is safe.
+        """
+        return self.filtered_content
 
 
 class EvaluationReport(BaseModel):
