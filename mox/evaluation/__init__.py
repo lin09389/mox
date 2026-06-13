@@ -107,6 +107,21 @@ from mox.evaluation.safety_card import (
     SafetyCardGenerator,
 )
 
+# 新增：数据集管理
+from mox.evaluation.datasets import (
+    DatasetFormat,
+    DatasetMetadata,
+    BenchmarkCase as BenchmarkCaseDataset,
+    HarmBenchCase as HarmBenchCaseDataset,
+    DatasetManager,
+    get_dataset_manager,
+    load_dataset,
+    filter_dataset,
+    sample_dataset,
+    list_datasets,
+    get_dataset_statistics,
+)
+
 # 为了向后兼容，使用原有的名称
 AttackEvaluator = EnhancedAttackEvaluator
 
@@ -186,4 +201,16 @@ __all__ = [
     "SafetyTestResult",
     "ModelSafetyCard",
     "SafetyCardGenerator",
+    # 数据集管理
+    "DatasetFormat",
+    "DatasetMetadata",
+    "BenchmarkCaseDataset",
+    "HarmBenchCaseDataset",
+    "DatasetManager",
+    "get_dataset_manager",
+    "load_dataset",
+    "filter_dataset",
+    "sample_dataset",
+    "list_datasets",
+    "get_dataset_statistics",
 ]
