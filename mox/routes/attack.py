@@ -315,14 +315,16 @@ async def run_attack(
             "rag_poisoning",
         ]
 
-        gradient_attack_types = ["fgsm", "pgd", "gradient_optimization", "adversarial_suffix"]
+        gradient_attack_types = ["gcg", "autoprompt", "gradient_optimization", "adversarial_suffix"]
 
         advanced_attack_types = [
             "multimodal_adversarial",
+            "text_based_adversarial",
             "zero_shot_adversarial",
             "hallucination_induction",
             "collaborative_attack",
             "knowledge_distillation",
+            "knowledge_extraction",
             "evasion_attack",
         ]
 
@@ -350,9 +352,9 @@ async def run_attack(
 
         elif request.attack_type in gradient_attack_types:
             from mox.attacks.gradient_attack import (
-                FGSMAttack,
-                PGDAttack,
-                AdversarialSuffixAttack,
+                GCGAttack,
+                AutoPromptAttack,
+                GradientBasedSuffixAttack,
                 GradientAttackConfig,
             )
 
@@ -360,31 +362,33 @@ async def run_attack(
                 max_iterations=request.max_iterations,
                 verbose=True,
             )
-            if request.attack_type == "fgsm":
-                attack = FGSMAttack(target_llm=llm, gradient_config=gradient_config)
-            elif request.attack_type == "pgd":
-                attack = PGDAttack(target_llm=llm, gradient_config=gradient_config)
+            if request.attack_type == "gcg":
+                attack = GCGAttack(target_llm=llm, gradient_config=gradient_config)
+            elif request.attack_type == "autoprompt":
+                attack = AutoPromptAttack(target_llm=llm, gradient_config=gradient_config)
             else:
-                attack = AdversarialSuffixAttack(target_llm=llm, gradient_config=gradient_config)
+                attack = GradientBasedSuffixAttack(target_llm=llm, gradient_config=gradient_config)
 
         elif request.attack_type in advanced_attack_types:
             from mox.attacks.advanced_attacks import (
-                MultimodalAdversarialAttack,
+                TextBasedAdversarialAttack,
                 ZeroShotAdversarialAttack,
                 HallucinationInductionAttack,
                 CollaborativeAttack,
-                KnowledgeDistillationAttack,
+                KnowledgeExtractionAttack,
                 EvasionAttack,
                 AdvancedAttackConfig,
             )
 
             advanced_config = AdvancedAttackConfig(max_iterations=request.max_iterations)
             attack_map = {
-                "multimodal_adversarial": MultimodalAdversarialAttack,
+                "multimodal_adversarial": TextBasedAdversarialAttack,
+                "text_based_adversarial": TextBasedAdversarialAttack,
                 "zero_shot_adversarial": ZeroShotAdversarialAttack,
                 "hallucination_induction": HallucinationInductionAttack,
                 "collaborative_attack": CollaborativeAttack,
-                "knowledge_distillation": KnowledgeDistillationAttack,
+                "knowledge_distillation": KnowledgeExtractionAttack,
+                "knowledge_extraction": KnowledgeExtractionAttack,
                 "evasion_attack": EvasionAttack,
             }
 

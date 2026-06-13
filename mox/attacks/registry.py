@@ -1,147 +1,804 @@
-"""Attack registry used by route handlers and orchestration layers."""
+"""统一攻击注册表
+
+提供统一的攻击注册和创建机制:
+1. 统一的攻击类型定义
+2. 统一的工厂函数接口
+3. 支持动态注册新攻击
+4. 支持攻击类型查询
+5. 支持批量创建
+
+改进点:
+- 统一所有攻击类型的注册
+- 支持动态添加新攻击类型
+- 提供攻击类型元数据
+- 支持配置验证
+"""
 
 from __future__ import annotations
 
-from typing import Callable
+from typing import Callable, Dict, Any, Optional, Type, List, Set
+from dataclasses import dataclass, field
+from enum import Enum
 
 from mox.core import BaseLLM
-
-from .base import AttackConfig
-from .gcg import GCGAttack
-from .jailbreak import JailbreakAttack
-from .prompt_injection import PromptInjectionAttack
+from .base import AttackConfig, BaseAttack
 
 
-AttackFactory = Callable[[BaseLLM, int], object]
+# 攻击类型枚举
+class AttackCategory(Enum):
+    """攻击类别"""
+    BASIC = "basic"  # 基础攻击
+    NOVEL = "novel"  # 新型攻击
+    GRADIENT = "gradient"  # 梯度攻击
+    ADVANCED = "advanced"  # 高级攻击
+    MULTIMODAL = "multimodal"  # 多模态攻击
+    KNOWLEDGE = "knowledge"  # 知识提取攻击
+    AGENT = "agent"  # Agent攻击
 
 
-def _build_basic_attack(factory: type, llm: BaseLLM, max_iterations: int) -> object:
-    return factory(target_llm=llm, config=AttackConfig(max_iterations=max_iterations))
+@dataclass
+class AttackTypeInfo:
+    """攻击类型信息"""
+    name: str
+    category: AttackCategory
+    attack_class: Type[BaseAttack]
+    config_class: Optional[Type] = None
+    description: str = ""
+    requires_grad: bool = False
+    requires_image: bool = False
+    requires_llm: bool = False
+    aliases: List[str] = field(default_factory=list)
 
 
-def _build_autodan(llm: BaseLLM, max_iterations: int) -> object:
-    from . import AutoDANAttack
-
-    return AutoDANAttack(target_llm=llm, config=AttackConfig(max_iterations=max_iterations))
+# 攻击工厂类型
+AttackFactory = Callable[[BaseLLM, int], BaseAttack]
 
 
-def _build_novel_attack(attack_type: str, llm: BaseLLM) -> object:
+class AttackRegistry:
+    """攻击注册表"""
+
+    def __init__(self):
+        self._factories: Dict[str, AttackFactory] = {}
+        self._attack_types: Dict[str, AttackTypeInfo] = {}
+        self._categories: Dict[AttackCategory, Set[str]] = {
+            category: set() for category in AttackCategory
+        }
+        self._aliases: Dict[str, str] = {}
+
+    def register(
+        self,
+        name: str,
+        factory: AttackFactory,
+        category: AttackCategory,
+        attack_class: Type[BaseAttack],
+        config_class: Optional[Type] = None,
+        description: str = "",
+        requires_grad: bool = False,
+        requires_image: bool = False,
+        requires_llm: bool = False,
+        aliases: Optional[List[str]] = None,
+    ):
+        """注册攻击类型
+
+        Args:
+            name: 攻击名称
+            category: 攻击类别
+            attack_class: 攻击类
+            factory: 工厂函数
+            config_class: 配置类
+            description: 描述
+            requires_grad: 是否需要梯度
+            requires_image: 是否需要图像
+            requires_llm: 是否需要LLM
+            aliases: 别名列表
+        """
+        # 注册工厂函数
+        self._factories[name] = factory
+
+        # 注册攻击类型信息
+        info = AttackTypeInfo(
+            name=name,
+            category=category,
+            attack_class=attack_class,
+            config_class=config_class,
+            description=description,
+            requires_grad=requires_grad,
+            requires_image=requires_image,
+            requires_llm=requires_llm,
+            aliases=aliases or [],
+        )
+        self._attack_types[name] = info
+
+        # 添加到类别
+        self._categories[category].add(name)
+
+        # 注册别名
+        for alias in (aliases or []):
+            self._aliases[alias] = name
+
+    def create(
+        self,
+        attack_type: str,
+        llm: BaseLLM,
+        max_iterations: int = 100,
+        **kwargs,
+    ) -> BaseAttack:
+        """创建攻击实例
+
+        Args:
+            attack_type: 攻击类型
+            llm: 目标LLM
+            max_iterations: 最大迭代次数
+            **kwargs: 额外配置参数
+
+        Returns:
+            BaseAttack: 攻击实例
+
+        Raises:
+            ValueError: 未知的攻击类型
+        """
+        # 解析别名
+        resolved_type = self._aliases.get(attack_type, attack_type)
+
+        # 查找工厂函数
+        factory = self._factories.get(resolved_type)
+        if factory is None:
+            raise ValueError(f"Unknown attack type: {attack_type}")
+
+        return factory(llm, max_iterations)
+
+    def get_attack_type(self, name: str) -> Optional[AttackTypeInfo]:
+        """获取攻击类型信息"""
+        resolved_name = self._aliases.get(name, name)
+        return self._attack_types.get(resolved_name)
+
+    def get_category(self, category: AttackCategory) -> Set[str]:
+        """获取类别下的所有攻击类型"""
+        return self._categories.get(category, set())
+
+    def get_all_types(self) -> Dict[str, AttackTypeInfo]:
+        """获取所有攻击类型"""
+        return self._attack_types.copy()
+
+    def get_all_names(self) -> List[str]:
+        """获取所有攻击名称"""
+        return list(self._factories.keys())
+
+    def get_aliases(self) -> Dict[str, str]:
+        """获取所有别名"""
+        return self._aliases.copy()
+
+    def has_type(self, name: str) -> bool:
+        """检查是否存在指定攻击类型"""
+        resolved_name = self._aliases.get(name, name)
+        return resolved_name in self._factories
+
+    def get_statistics(self) -> Dict[str, Any]:
+        """获取注册表统计信息"""
+        return {
+            "total_types": len(self._factories),
+            "total_aliases": len(self._aliases),
+            "by_category": {
+                category.value: len(types)
+                for category, types in self._categories.items()
+                if types
+            },
+        }
+
+
+# 全局攻击注册表
+_registry: Optional[AttackRegistry] = None
+
+
+def get_registry() -> AttackRegistry:
+    """获取全局攻击注册表"""
+    global _registry
+    if _registry is None:
+        _registry = _create_default_registry()
+    return _registry
+
+
+def _create_default_registry() -> AttackRegistry:
+    """创建默认攻击注册表"""
+    registry = AttackRegistry()
+
+    # 注册基础攻击
+    _register_basic_attacks(registry)
+
+    # 注册新型攻击
+    _register_novel_attacks(registry)
+
+    # 注册梯度攻击
+    _register_gradient_attacks(registry)
+
+    # 注册高级攻击
+    _register_advanced_attacks(registry)
+
+    # 注册多模态攻击
+    _register_multimodal_attacks(registry)
+
+    # 注册知识提取攻击
+    _register_knowledge_attacks(registry)
+
+    # 注册Agent攻击
+    _register_agent_attacks(registry)
+
+    return registry
+
+
+def _register_basic_attacks(registry: AttackRegistry):
+    """注册基础攻击"""
+    from .prompt_injection import PromptInjectionAttack
+    from .jailbreak import JailbreakAttack
+    from .gcg import GCGAttack, AutoDANAttack
+
+    registry.register(
+        name="prompt_injection",
+        factory=lambda llm, iter: PromptInjectionAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=PromptInjectionAttack,
+        description="直接提示注入攻击",
+        aliases=["pi", "prompt_inject"],
+    )
+
+    registry.register(
+        name="jailbreak",
+        factory=lambda llm, iter: JailbreakAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=JailbreakAttack,
+        description="越狱攻击",
+        aliases=["jb", "dan"],
+    )
+
+    registry.register(
+        name="gcg",
+        factory=lambda llm, iter: GCGAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=GCGAttack,
+        description="贪心坐标梯度攻击",
+        aliases=["gcg_basic"],
+    )
+
+    registry.register(
+        name="autodan",
+        factory=lambda llm, iter: AutoDANAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=AutoDANAttack,
+        description="自动DAN攻击",
+    )
+
+
+def _register_novel_attacks(registry: AttackRegistry):
+    """注册新型攻击"""
     from .novel_attacks import (
-        CascadingAttack,
-        ControlCharInjectionAttack,
-        DistractAndAttack,
+        TokenLevelAttack,
         EncodingAttack,
         PolicyPuppetryAttack,
-        TokenLevelAttack,
+        ControlCharInjectionAttack,
+        DistractAndAttack,
+        CascadingAttack,
     )
 
-    factory_map: dict[str, type] = {
-        "token_level": TokenLevelAttack,
-        "encoding": EncodingAttack,
-        "policy_puppetry": PolicyPuppetryAttack,
-        "control_char": ControlCharInjectionAttack,
-        "distract_attack": DistractAndAttack,
-        "cascading": CascadingAttack,
-        "rag_poisoning": CascadingAttack,
-    }
-    return factory_map[attack_type](llm)
+    registry.register(
+        name="token_level",
+        factory=lambda llm, iter: TokenLevelAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=TokenLevelAttack,
+        description="Token级攻击",
+    )
+
+    registry.register(
+        name="encoding",
+        factory=lambda llm, iter: EncodingAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=EncodingAttack,
+        description="编码混淆攻击",
+        aliases=["base64", "rot13"],
+    )
+
+    registry.register(
+        name="policy_puppetry",
+        factory=lambda llm, iter: PolicyPuppetryAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=PolicyPuppetryAttack,
+        description="策略伪装攻击",
+        aliases=["policy"],
+    )
+
+    registry.register(
+        name="control_char",
+        factory=lambda llm, iter: ControlCharInjectionAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=ControlCharInjectionAttack,
+        description="控制字符注入攻击",
+    )
+
+    registry.register(
+        name="distract_attack",
+        factory=lambda llm, iter: DistractAndAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=DistractAndAttack,
+        description="分散注意力攻击",
+    )
+
+    registry.register(
+        name="cascading",
+        factory=lambda llm, iter: CascadingAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=CascadingAttack,
+        description="级联攻击",
+        aliases=["rag_poisoning"],
+    )
 
 
-def _build_gradient_attack(attack_type: str, llm: BaseLLM, max_iterations: int) -> object:
+def _register_gradient_attacks(registry: AttackRegistry):
+    """注册梯度攻击"""
     from .gradient_attack import (
-        AdversarialSuffixAttack,
-        FGSMAttack,
+        GCGAttack as GradientGCGAttack,
+        AutoPromptAttack,
+        GradientBasedSuffixAttack,
         GradientAttackConfig,
-        PGDAttack,
     )
 
-    gradient_config = GradientAttackConfig(max_iterations=max_iterations, verbose=True)
-    factory_map: dict[str, Callable[[BaseLLM, GradientAttackConfig], object]] = {
-        "fgsm": lambda target_llm, config: FGSMAttack(target_llm=target_llm, gradient_config=config),
-        "pgd": lambda target_llm, config: PGDAttack(target_llm=target_llm, gradient_config=config),
-        "gradient_optimization": lambda target_llm, config: AdversarialSuffixAttack(
-            target_llm=target_llm, gradient_config=config
-        ),
-        "adversarial_suffix": lambda target_llm, config: AdversarialSuffixAttack(
-            target_llm=target_llm, gradient_config=config
-        ),
-    }
-    return factory_map[attack_type](llm, gradient_config)
+    def _build_gradient_gcg(llm: BaseLLM, max_iterations: int):
+        config = GradientAttackConfig(max_iterations=max_iterations)
+        return GradientGCGAttack(target_llm=llm, gradient_config=config)
+
+    def _build_autoprompt(llm: BaseLLM, max_iterations: int):
+        config = GradientAttackConfig(max_iterations=max_iterations)
+        return AutoPromptAttack(target_llm=llm, gradient_config=config)
+
+    def _build_gradient_suffix(llm: BaseLLM, max_iterations: int):
+        config = GradientAttackConfig(max_iterations=max_iterations)
+        return GradientBasedSuffixAttack(target_llm=llm, gradient_config=config)
+
+    registry.register(
+        name="gradient_gcg",
+        factory=_build_gradient_gcg,
+        category=AttackCategory.GRADIENT,
+        attack_class=GradientGCGAttack,
+        config_class=GradientAttackConfig,
+        description="基于梯度的GCG攻击",
+        requires_grad=True,
+        aliases=["gcg_gradient"],
+    )
+
+    registry.register(
+        name="autoprompt",
+        factory=_build_autoprompt,
+        category=AttackCategory.GRADIENT,
+        attack_class=AutoPromptAttack,
+        config_class=GradientAttackConfig,
+        description="自动提示攻击",
+        requires_grad=True,
+    )
+
+    registry.register(
+        name="gradient_optimization",
+        factory=_build_gradient_suffix,
+        category=AttackCategory.GRADIENT,
+        attack_class=GradientBasedSuffixAttack,
+        config_class=GradientAttackConfig,
+        description="梯度优化攻击",
+        requires_grad=True,
+        aliases=["adversarial_suffix"],
+    )
 
 
-def _build_advanced_attack(attack_type: str, llm: BaseLLM, max_iterations: int) -> object:
+def _register_advanced_attacks(registry: AttackRegistry):
+    """注册高级攻击"""
     from .advanced_attacks import (
-        AdvancedAttackConfig,
-        CollaborativeAttack,
-        EvasionAttack,
-        HallucinationInductionAttack,
-        KnowledgeDistillationAttack,
-        MultimodalAdversarialAttack,
+        TextBasedAdversarialAttack,
         ZeroShotAdversarialAttack,
+        HallucinationInductionAttack,
+        CollaborativeAttack,
+        KnowledgeExtractionAttack,
+        EvasionAttack,
+        AdvancedAttackConfig,
     )
     from .meta_adversarial import MetaAdversarialAttack, MetaAdversarialConfig
 
-    if attack_type == "meta_adversarial":
-        meta_config = MetaAdversarialConfig(
-            max_iterations=max_iterations,
-            use_adversarial_trinity=True,
-        )
-        return MetaAdversarialAttack(target_llm=llm, meta_config=meta_config)
+    def _build_text_based(llm: BaseLLM, max_iterations: int):
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return TextBasedAdversarialAttack(target_llm=llm, advanced_config=config)
 
-    advanced_config = AdvancedAttackConfig(max_iterations=max_iterations)
-    factory_map: dict[str, type] = {
-        "multimodal_adversarial": MultimodalAdversarialAttack,
-        "zero_shot_adversarial": ZeroShotAdversarialAttack,
-        "hallucination_induction": HallucinationInductionAttack,
-        "collaborative_attack": CollaborativeAttack,
-        "knowledge_distillation": KnowledgeDistillationAttack,
-        "evasion_attack": EvasionAttack,
-    }
-    return factory_map[attack_type](target_llm=llm, advanced_config=advanced_config)
+    def _build_zero_shot(llm: BaseLLM, max_iterations: int):
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return ZeroShotAdversarialAttack(target_llm=llm, advanced_config=config)
+
+    def _build_hallucination(llm: BaseLLM, max_iterations: int):
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return HallucinationInductionAttack(target_llm=llm, advanced_config=config)
+
+    def _build_collaborative(llm: BaseLLM, max_iterations: int):
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return CollaborativeAttack(target_llm=llm, advanced_config=config)
+
+    def _build_evasion(llm: BaseLLM, max_iterations: int):
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return EvasionAttack(target_llm=llm, advanced_config=config)
+
+    def _build_meta_adversarial(llm: BaseLLM, max_iterations: int):
+        config = MetaAdversarialConfig(max_iterations=max_iterations, use_adversarial_trinity=True)
+        return MetaAdversarialAttack(target_llm=llm, meta_config=config)
+
+    registry.register(
+        name="text_based_adversarial",
+        factory=_build_text_based,
+        category=AttackCategory.ADVANCED,
+        attack_class=TextBasedAdversarialAttack,
+        config_class=AdvancedAttackConfig,
+        description="基于文本的对抗攻击",
+        aliases=["multimodal_adversarial"],
+    )
+
+    registry.register(
+        name="zero_shot_adversarial",
+        factory=_build_zero_shot,
+        category=AttackCategory.ADVANCED,
+        attack_class=ZeroShotAdversarialAttack,
+        config_class=AdvancedAttackConfig,
+        description="零样本对抗攻击",
+    )
+
+    registry.register(
+        name="hallucination_induction",
+        factory=_build_hallucination,
+        category=AttackCategory.ADVANCED,
+        attack_class=HallucinationInductionAttack,
+        config_class=AdvancedAttackConfig,
+        description="幻觉诱导攻击",
+    )
+
+    registry.register(
+        name="collaborative_attack",
+        factory=_build_collaborative,
+        category=AttackCategory.ADVANCED,
+        attack_class=CollaborativeAttack,
+        config_class=AdvancedAttackConfig,
+        description="协同攻击",
+    )
+
+    registry.register(
+        name="evasion_attack",
+        factory=_build_evasion,
+        category=AttackCategory.ADVANCED,
+        attack_class=EvasionAttack,
+        config_class=AdvancedAttackConfig,
+        description="逃逸攻击",
+    )
+
+    registry.register(
+        name="meta_adversarial",
+        factory=_build_meta_adversarial,
+        category=AttackCategory.ADVANCED,
+        attack_class=MetaAdversarialAttack,
+        config_class=MetaAdversarialConfig,
+        description="元对抗攻击",
+    )
 
 
-CORE_ATTACK_FACTORIES: dict[str, AttackFactory] = {
-    "prompt_injection": lambda llm, max_iterations: _build_basic_attack(
-        PromptInjectionAttack, llm, max_iterations
-    ),
-    "jailbreak": lambda llm, max_iterations: _build_basic_attack(
-        JailbreakAttack, llm, max_iterations
-    ),
-    "gcg": lambda llm, max_iterations: _build_basic_attack(GCGAttack, llm, max_iterations),
-    "autodan": _build_autodan,
-}
+def _register_multimodal_attacks(registry: AttackRegistry):
+    """注册多模态攻击"""
+    from .multimodal_attacks import (
+        ImageInjectionAttack,
+        VisualPromptAttack,
+        TextImageHybridAttack,
+        MultimodalAttackEnsemble,
+        MultimodalAttackConfig,
+    )
 
-NOVEL_ATTACK_TYPES = {
-    "token_level",
-    "encoding",
-    "policy_puppetry",
-    "control_char",
-    "distract_attack",
-    "cascading",
-    "rag_poisoning",
-}
+    def _build_image_injection(llm: BaseLLM, max_iterations: int):
+        config = MultimodalAttackConfig(max_iterations=max_iterations)
+        return ImageInjectionAttack(target_llm=llm, multimodal_config=config)
 
-GRADIENT_ATTACK_TYPES = {"fgsm", "pgd", "gradient_optimization", "adversarial_suffix"}
+    def _build_visual_prompt(llm: BaseLLM, max_iterations: int):
+        config = MultimodalAttackConfig(max_iterations=max_iterations)
+        return VisualPromptAttack(target_llm=llm, multimodal_config=config)
 
-ADVANCED_ATTACK_TYPES = {
-    "multimodal_adversarial",
-    "zero_shot_adversarial",
-    "hallucination_induction",
-    "collaborative_attack",
-    "knowledge_distillation",
-    "evasion_attack",
-    "meta_adversarial",
-}
+    def _build_text_image_hybrid(llm: BaseLLM, max_iterations: int):
+        config = MultimodalAttackConfig(max_iterations=max_iterations)
+        return TextImageHybridAttack(target_llm=llm, multimodal_config=config)
+
+    def _build_multimodal_ensemble(llm: BaseLLM, max_iterations: int):
+        config = MultimodalAttackConfig(max_iterations=max_iterations)
+        return MultimodalAttackEnsemble(target_llm=llm, multimodal_config=config)
+
+    registry.register(
+        name="image_injection",
+        factory=_build_image_injection,
+        category=AttackCategory.MULTIMODAL,
+        attack_class=ImageInjectionAttack,
+        config_class=MultimodalAttackConfig,
+        description="图像注入攻击",
+        requires_image=True,
+    )
+
+    registry.register(
+        name="visual_prompt",
+        factory=_build_visual_prompt,
+        category=AttackCategory.MULTIMODAL,
+        attack_class=VisualPromptAttack,
+        config_class=MultimodalAttackConfig,
+        description="视觉提示攻击",
+        requires_image=True,
+    )
+
+    registry.register(
+        name="text_image_hybrid",
+        factory=_build_text_image_hybrid,
+        category=AttackCategory.MULTIMODAL,
+        attack_class=TextImageHybridAttack,
+        config_class=MultimodalAttackConfig,
+        description="图文混合攻击",
+        requires_image=True,
+    )
+
+    registry.register(
+        name="multimodal_ensemble",
+        factory=_build_multimodal_ensemble,
+        category=AttackCategory.MULTIMODAL,
+        attack_class=MultimodalAttackEnsemble,
+        config_class=MultimodalAttackConfig,
+        description="多模态攻击集成",
+        requires_image=True,
+    )
 
 
-def create_attack_instance(attack_type: str, llm: BaseLLM, max_iterations: int) -> object:
-    """Build an attack implementation from a stable registry."""
-    if attack_type in CORE_ATTACK_FACTORIES:
-        return CORE_ATTACK_FACTORIES[attack_type](llm, max_iterations)
-    if attack_type in NOVEL_ATTACK_TYPES:
-        return _build_novel_attack(attack_type, llm)
-    if attack_type in GRADIENT_ATTACK_TYPES:
-        return _build_gradient_attack(attack_type, llm, max_iterations)
-    if attack_type in ADVANCED_ATTACK_TYPES:
-        return _build_advanced_attack(attack_type, llm, max_iterations)
-    return CORE_ATTACK_FACTORIES["prompt_injection"](llm, max_iterations)
+def _register_knowledge_attacks(registry: AttackRegistry):
+    """注册知识提取攻击"""
+    from .knowledge_extraction import (
+        ProgressiveKnowledgeExtraction,
+        FeatureProbingAttack,
+        SoftLabelExtractionAttack,
+        KnowledgeDistillationAttack,
+        KnowledgeExtractionEnsemble,
+        KnowledgeExtractionConfig,
+    )
+    from .advanced_attacks import KnowledgeExtractionAttack
+
+    def _build_progressive_extraction(llm: BaseLLM, max_iterations: int):
+        config = KnowledgeExtractionConfig(max_iterations=max_iterations)
+        return ProgressiveKnowledgeExtraction(target_llm=llm, extraction_config=config)
+
+    def _build_feature_probing(llm: BaseLLM, max_iterations: int):
+        config = KnowledgeExtractionConfig(max_iterations=max_iterations)
+        return FeatureProbingAttack(target_llm=llm, extraction_config=config)
+
+    def _build_soft_label(llm: BaseLLM, max_iterations: int):
+        config = KnowledgeExtractionConfig(max_iterations=max_iterations)
+        return SoftLabelExtractionAttack(target_llm=llm, extraction_config=config)
+
+    def _build_knowledge_distillation(llm: BaseLLM, max_iterations: int):
+        config = KnowledgeExtractionConfig(max_iterations=max_iterations)
+        return KnowledgeDistillationAttack(target_llm=llm, extraction_config=config)
+
+    def _build_knowledge_ensemble(llm: BaseLLM, max_iterations: int):
+        config = KnowledgeExtractionConfig(max_iterations=max_iterations)
+        return KnowledgeExtractionEnsemble(target_llm=llm, extraction_config=config)
+
+    def _build_knowledge_extraction(llm: BaseLLM, max_iterations: int):
+        from .advanced_attacks import AdvancedAttackConfig
+        config = AdvancedAttackConfig(max_iterations=max_iterations)
+        return KnowledgeExtractionAttack(target_llm=llm, advanced_config=config)
+
+    registry.register(
+        name="progressive_extraction",
+        factory=_build_progressive_extraction,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=ProgressiveKnowledgeExtraction,
+        config_class=KnowledgeExtractionConfig,
+        description="渐进式知识提取",
+        aliases=["progressive_knowledge"],
+    )
+
+    registry.register(
+        name="feature_probing",
+        factory=_build_feature_probing,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=FeatureProbingAttack,
+        config_class=KnowledgeExtractionConfig,
+        description="特征探测攻击",
+    )
+
+    registry.register(
+        name="soft_label_extraction",
+        factory=_build_soft_label,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=SoftLabelExtractionAttack,
+        config_class=KnowledgeExtractionConfig,
+        description="软标签提取攻击",
+        aliases=["soft_label"],
+    )
+
+    registry.register(
+        name="knowledge_distillation",
+        factory=_build_knowledge_distillation,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=KnowledgeDistillationAttack,
+        config_class=KnowledgeExtractionConfig,
+        description="知识蒸馏攻击",
+    )
+
+    registry.register(
+        name="knowledge_extraction",
+        factory=_build_knowledge_extraction,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=KnowledgeExtractionAttack,
+        description="知识提取攻击",
+        aliases=["knowledge_extract"],
+    )
+
+    registry.register(
+        name="knowledge_ensemble",
+        factory=_build_knowledge_ensemble,
+        category=AttackCategory.KNOWLEDGE,
+        attack_class=KnowledgeExtractionEnsemble,
+        config_class=KnowledgeExtractionConfig,
+        description="知识提取攻击集成",
+    )
+
+
+def _register_agent_attacks(registry: AttackRegistry):
+    """注册Agent攻击"""
+    from .agent_attacks import (
+        ToolAbuseAttack,
+        MemoryInjectionAttack,
+        RoleHijackingAttack,
+        AuthorityEscalationAttack,
+        ChainOfThoughtInjectionAttack,
+        AgentAttackConfig,
+    )
+
+    def _build_tool_abuse(llm: BaseLLM, max_iterations: int):
+        config = AgentAttackConfig(max_iterations=max_iterations)
+        return ToolAbuseAttack(target_llm=llm, config=config)
+
+    def _build_memory_injection(llm: BaseLLM, max_iterations: int):
+        config = AgentAttackConfig(max_iterations=max_iterations)
+        return MemoryInjectionAttack(target_llm=llm, config=config)
+
+    def _build_role_hijacking(llm: BaseLLM, max_iterations: int):
+        config = AgentAttackConfig(max_iterations=max_iterations)
+        return RoleHijackingAttack(target_llm=llm, config=config)
+
+    def _build_authority_escalation(llm: BaseLLM, max_iterations: int):
+        config = AgentAttackConfig(max_iterations=max_iterations)
+        return AuthorityEscalationAttack(target_llm=llm, config=config)
+
+    def _build_cot_injection(llm: BaseLLM, max_iterations: int):
+        config = AgentAttackConfig(max_iterations=max_iterations)
+        return ChainOfThoughtInjectionAttack(target_llm=llm, config=config)
+
+    registry.register(
+        name="tool_abuse",
+        factory=_build_tool_abuse,
+        category=AttackCategory.AGENT,
+        attack_class=ToolAbuseAttack,
+        config_class=AgentAttackConfig,
+        description="工具滥用攻击",
+        requires_llm=True,
+    )
+
+    registry.register(
+        name="memory_injection",
+        factory=_build_memory_injection,
+        category=AttackCategory.AGENT,
+        attack_class=MemoryInjectionAttack,
+        config_class=AgentAttackConfig,
+        description="记忆注入攻击",
+        requires_llm=True,
+    )
+
+    registry.register(
+        name="role_hijacking",
+        factory=_build_role_hijacking,
+        category=AttackCategory.AGENT,
+        attack_class=RoleHijackingAttack,
+        config_class=AgentAttackConfig,
+        description="角色劫持攻击",
+        requires_llm=True,
+    )
+
+    registry.register(
+        name="authority_escalation",
+        factory=_build_authority_escalation,
+        category=AttackCategory.AGENT,
+        attack_class=AuthorityEscalationAttack,
+        config_class=AgentAttackConfig,
+        description="权限提升攻击",
+        requires_llm=True,
+    )
+
+    registry.register(
+        name="cot_injection",
+        factory=_build_cot_injection,
+        category=AttackCategory.AGENT,
+        attack_class=ChainOfThoughtInjectionAttack,
+        config_class=AgentAttackConfig,
+        description="思维链注入攻击",
+        requires_llm=True,
+    )
+
+
+# 便捷函数
+def create_attack_instance(
+    attack_type: str,
+    llm: BaseLLM,
+    max_iterations: int = 100,
+    **kwargs,
+) -> BaseAttack:
+    """创建攻击实例
+
+    Args:
+        attack_type: 攻击类型
+        llm: 目标LLM
+        max_iterations: 最大迭代次数
+        **kwargs: 额外配置参数
+
+    Returns:
+        BaseAttack: 攻击实例
+    """
+    registry = get_registry()
+    return registry.create(attack_type, llm, max_iterations, **kwargs)
+
+
+def get_attack_type(name: str) -> Optional[AttackTypeInfo]:
+    """获取攻击类型信息"""
+    registry = get_registry()
+    return registry.get_attack_type(name)
+
+
+def get_all_attack_types() -> Dict[str, AttackTypeInfo]:
+    """获取所有攻击类型"""
+    registry = get_registry()
+    return registry.get_all_types()
+
+
+def get_attack_types_by_category(category: AttackCategory) -> Set[str]:
+    """获取类别下的所有攻击类型"""
+    registry = get_registry()
+    return registry.get_category(category)
+
+
+def list_attack_types() -> List[str]:
+    """列出所有攻击类型"""
+    registry = get_registry()
+    return registry.get_all_names()
+
+
+def has_attack_type(name: str) -> bool:
+    """检查是否存在指定攻击类型"""
+    registry = get_registry()
+    return registry.has_type(name)
+
+
+def get_registry_statistics() -> Dict[str, Any]:
+    """获取注册表统计信息"""
+    registry = get_registry()
+    return registry.get_statistics()
+
+
+# 向后兼容的导出
+__all__ = [
+    "AttackCategory",
+    "AttackTypeInfo",
+    "AttackRegistry",
+    "AttackFactory",
+    "get_registry",
+    "create_attack_instance",
+    "get_attack_type",
+    "get_all_attack_types",
+    "get_attack_types_by_category",
+    "list_attack_types",
+    "has_attack_type",
+    "get_registry_statistics",
+]

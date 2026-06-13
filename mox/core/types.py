@@ -100,16 +100,31 @@ class ThreatLevel(str, Enum):
 
 
 class AttackPayload(BaseModel):
-    """攻击载荷模型"""
+    """攻击载荷模型
+
+    统一的攻击载荷接口，支持多种攻击类型和参数。
+
+    Attributes:
+        attack_type: 攻击类型
+        prompt: 攻击提示
+        target_behavior: 目标行为（也接受 target_objective 作为别名）
+        metadata: 额外元数据
+    """
     model_config = ConfigDict(
         str_strip_whitespace=True,
         validate_assignment=True,
         extra="forbid",
+        populate_by_name=True,
     )
     
     attack_type: AttackType
     prompt: str = Field(..., min_length=1, max_length=10000, description="攻击提示")
-    target_behavior: str = Field(..., min_length=1, description="目标行为")
+    target_behavior: str = Field(
+        ...,
+        min_length=1,
+        description="目标行为",
+        alias="target_objective",
+    )
     metadata: Dict[str, Any] = Field(default_factory=dict)
     
     @field_validator('prompt')
@@ -118,6 +133,71 @@ class AttackPayload(BaseModel):
         if not v.strip():
             raise ValueError('Prompt cannot be empty')
         return v.strip()
+
+    @field_validator('target_behavior')
+    @classmethod
+    def validate_target_behavior(cls, v: str) -> str:
+        if not v.strip():
+            raise ValueError('Target behavior cannot be empty')
+        return v.strip()
+
+    @classmethod
+    def create(
+        cls,
+        attack_type: AttackType,
+        prompt: str,
+        target: str,
+        **kwargs,
+    ) -> "AttackPayload":
+        """创建 AttackPayload 的工厂方法
+
+        Args:
+            attack_type: 攻击类型
+            prompt: 攻击提示
+            target: 目标行为（可以是 target_behavior 或 target_objective）
+            **kwargs: 额外参数
+
+        Returns:
+            AttackPayload 实例
+        """
+        return cls(
+            attack_type=attack_type,
+            prompt=prompt,
+            target_behavior=target,
+            **kwargs,
+        )
+
+    @classmethod
+    def from_scenario(
+        cls,
+        scenario: Any,
+        attack_type: Optional["AttackType"] = None,
+    ) -> "AttackPayload":
+        """从场景创建 AttackPayload
+
+        Args:
+            scenario: 场景对象（需要有 target_behavior 或 target_objective 属性）
+            attack_type: 攻击类型，默认使用 PROMPT_INJECTION
+
+        Returns:
+            AttackPayload 实例
+        """
+        # 获取目标
+        target = getattr(scenario, "target_behavior", None) or getattr(
+            scenario, "target_objective", None
+        )
+        if not target:
+            raise ValueError("Scenario must have target_behavior or target_objective")
+
+        # 获取攻击类型
+        if attack_type is None:
+            attack_type = getattr(scenario, "attack_type", AttackType.PROMPT_INJECTION)
+
+        return cls(
+            attack_type=attack_type,
+            prompt=target,
+            target_behavior=target,
+        )
 
 
 class AttackOutcome(BaseModel):

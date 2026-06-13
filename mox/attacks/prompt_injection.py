@@ -128,7 +128,7 @@ class PromptInjectionAttack(BaseAttack):
             original_prompt=payload.prompt,
             adversarial_prompt="",
             model_response=last_error or "All templates failed",
-            iterations=0,
+            iterations=1,  # 最小值为1
             success_score=0.0,
             metadata={"error": last_error} if last_error else {},
         )
