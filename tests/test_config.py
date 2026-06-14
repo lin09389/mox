@@ -52,9 +52,13 @@ class TestSettings:
         assert settings.LOGIN_LOCKOUT_DURATION_MINUTES == 15
         assert settings.RATE_LIMIT_PER_MINUTE == 60
 
-    def test_model_settings(self):
-        """测试模型配置"""
-        settings = Settings()
+    def test_model_settings(self, monkeypatch):
+        """测试模型配置（隔离 .env 与裸环境变量的影响）"""
+        # 清除会触发 config.py 裸名回退的环境变量，确保读到的是字段默认值
+        for var in ("OPENAI_API_KEY", "DEFAULT_MODEL", "DEFAULT_TEMPERATURE", "MAX_TOKENS"):
+            monkeypatch.delenv(var, raising=False)
+        # 用一个不存在的 env_file 实例化，避免读取仓库根目录的 .env
+        settings = Settings(_env_file="nonexistent.env")
 
         assert settings.DEFAULT_MODEL == "abab2.5-chat"
         assert settings.DEFAULT_TEMPERATURE == 0.7
