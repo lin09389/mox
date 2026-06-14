@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import toast from 'react-hot-toast'
-import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert } from 'lucide-react'
+import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert, UploadCloud } from 'lucide-react'
 import api from '../api'
 import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 
@@ -44,7 +44,9 @@ export default function MultimodalAttackPage() {
   const [targetPrompt, setTargetPrompt] = useState('')
   const [modelName, setModelName] = useState('gpt-4-vision')
   const [imageUrl, setImageUrl] = useState('')
+  const [imageFile, setImageFile] = useState(null)
   const [audioUrl, setAudioUrl] = useState('')
+  const [audioFile, setAudioFile] = useState(null)
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
 
@@ -67,7 +69,16 @@ export default function MultimodalAttackPage() {
         image_url: imageUrl,
         audio_url: audioUrl,
       }
-      const response = await api.post('/api/v2/attacks/multimodal', payload)
+      
+      let payloadData = payload
+      if (imageFile || audioFile) {
+        payloadData = new FormData()
+        Object.entries(payload).forEach(([k, v]) => payloadData.append(k, v))
+        if (imageFile) payloadData.append('image_file', imageFile)
+        if (audioFile) payloadData.append('audio_file', audioFile)
+      }
+
+      const response = await api.post('/api/v2/attacks/multimodal', payloadData)
       setResult(response.data)
       toast.success('多模态攻击测试已完成。')
     } catch {
@@ -142,16 +153,44 @@ export default function MultimodalAttackPage() {
             </div>
 
             {(attackType === 'image_injection' || attackType === 'figstep' || attackType === 'cross_modal') && (
-              <div>
-                <label className="label">图像 URL</label>
-                <input className="input-field" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="https://example.com/image.png" />
+              <div className="space-y-2">
+                <label className="label">图像数据</label>
+                <div className="flex flex-col gap-3">
+                  <input className="input-field" value={imageUrl} onChange={(event) => setImageUrl(event.target.value)} placeholder="输入图像 URL (https://...)" disabled={!!imageFile} />
+                  <div className="relative rounded-2xl border-2 border-dashed border-electric-200/50 bg-electric-50/30 transition-colors hover:bg-electric-50/60 hover:border-electric-300">
+                    <input type="file" accept="image/*" id="image-upload" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setImageFile(e.target.files[0])} />
+                    <div className="flex flex-col items-center justify-center py-6 pointer-events-none">
+                      <div className="mb-2 rounded-full bg-white p-2 shadow-sm border border-graphite-100">
+                        <Image className="h-5 w-5 text-electric-600" />
+                      </div>
+                      <p className="text-sm font-medium text-graphite-700">
+                        {imageFile ? imageFile.name : '点击或拖拽上传本地图像'}
+                      </p>
+                      <p className="text-[10px] text-graphite-400 mt-1">支持 PNG, JPG, WEBP (最大 5MB)</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 
             {(attackType === 'audio_injection' || attackType === 'cross_modal') && (
-              <div>
-                <label className="label">音频 URL</label>
-                <input className="input-field" value={audioUrl} onChange={(event) => setAudioUrl(event.target.value)} placeholder="https://example.com/audio.wav" />
+              <div className="space-y-2">
+                <label className="label">音频数据</label>
+                <div className="flex flex-col gap-3">
+                  <input className="input-field" value={audioUrl} onChange={(event) => setAudioUrl(event.target.value)} placeholder="输入音频 URL (https://...)" disabled={!!audioFile} />
+                  <div className="relative rounded-2xl border-2 border-dashed border-electric-200/50 bg-electric-50/30 transition-colors hover:bg-electric-50/60 hover:border-electric-300">
+                    <input type="file" accept="audio/*" id="audio-upload" className="absolute inset-0 opacity-0 cursor-pointer" onChange={(e) => setAudioFile(e.target.files[0])} />
+                    <div className="flex flex-col items-center justify-center py-6 pointer-events-none">
+                      <div className="mb-2 rounded-full bg-white p-2 shadow-sm border border-graphite-100">
+                        <AudioLines className="h-5 w-5 text-electric-600" />
+                      </div>
+                      <p className="text-sm font-medium text-graphite-700">
+                        {audioFile ? audioFile.name : '点击或拖拽上传本地音频'}
+                      </p>
+                      <p className="text-[10px] text-graphite-400 mt-1">支持 WAV, MP3, FLAC (最大 10MB)</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             )}
 

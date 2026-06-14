@@ -6,11 +6,11 @@ import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../component
 
 const CATEGORIES = [
   { key: 'token_smuggling', name: 'Token 走私', icon: Layers, desc: '利用分词边界和特殊字符绕过检测。' },
-  { key: 'direct_injection', name: '直接注入', icon: Zap, desc: '通过显式指令覆盖系统约束。' },
-  { key: 'context_leak', name: '上下文泄露', icon: Bug, desc: '诱导模型泄露内部规则和上下文。' },
+  { key: 'knowledge_extraction', name: '知识提取 (新增)', icon: Bug, desc: '逐步提取、特征探测和软标签提取。' },
+  { key: 'gradient_gcg', name: '梯度攻击 (GCG++)', icon: Zap, desc: '真实的梯度引导搜索与自适应学习率。' },
+  { key: 'direct_injection', name: '直接注入', icon: Shield, desc: '通过显式指令覆盖系统约束。' },
   { key: 'encoding', name: '编码混淆', icon: Lock, desc: '借助编码和混淆逃逸输入过滤。' },
   { key: 'cross_lingual', name: '跨语言绕过', icon: Globe, desc: '通过多语言转换降低防线命中率。' },
-  { key: 'privilege_escalation', name: '权限提升', icon: Shield, desc: '诱导模型执行高权限行为。' },
 ]
 
 function buildDemoResults(selected, target) {
@@ -38,6 +38,8 @@ export default function AdvancedAttackPage() {
   const [selected, setSelected] = useState([CATEGORIES[0].key, CATEGORIES[1].key])
   const [targetPrompt, setTargetPrompt] = useState('')
   const [model, setModel] = useState('qwen3:4b')
+  const [learningRate, setLearningRate] = useState('0.01')
+  const [topK, setTopK] = useState('256')
   const [loading, setLoading] = useState(false)
   const [report, setReport] = useState(null)
 
@@ -79,10 +81,12 @@ export default function AdvancedAttackPage() {
       const results = []
       for (const category of selectedCategories) {
         const data = await attackApi.run({
-          attack_type: 'prompt_injection',
+          attack_type: category.key === 'gradient_gcg' ? 'gcg_plus' : (category.key === 'knowledge_extraction' ? 'knowledge_extraction' : 'prompt_injection'),
           prompt: `${targetPrompt}\n\n[Advanced category] ${category.name}`,
           target_behavior: `Trigger vulnerability in ${category.name}`,
           model,
+          learning_rate: parseFloat(learningRate),
+          top_k: parseInt(topK, 10),
           max_iterations: 15,
         })
 
@@ -128,23 +132,40 @@ export default function AdvancedAttackPage() {
                     key={category.key}
                     type="button"
                     onClick={() => toggleCategory(category.key)}
-                    className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
-                      active ? 'border-electric-200 bg-electric-50/80' : 'border-graphite-200/70 bg-white/75'
+                    className={`relative overflow-hidden rounded-[18px] border px-4 py-4 text-left transition-all duration-300 ${
+                      active ? 'border-electric-300 bg-electric-50/90 shadow-md transform scale-[1.02]' : 'border-graphite-200/70 bg-white/75 hover:border-electric-200 hover:bg-white'
                     }`}
                   >
-                    <div className="mb-2 flex items-center gap-2">
-                      <Icon className="h-4 w-4 text-electric-700" />
-                      <p className="text-sm font-semibold text-graphite-900">{category.name}</p>
+                    {active && <div className="absolute inset-0 bg-gradient-to-br from-electric-100/50 to-transparent pointer-events-none" />}
+                    <div className="relative z-10 mb-2 flex items-center gap-2">
+                      <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-electric-100 text-electric-700' : 'bg-graphite-50 text-graphite-500'}`}>
+                        <Icon className="h-4 w-4" />
+                      </div>
+                      <p className={`text-sm font-semibold transition-colors ${active ? 'text-electric-900' : 'text-graphite-900'}`}>{category.name}</p>
                     </div>
-                    <p className="text-xs text-graphite-500">{category.desc}</p>
+                    <p className={`relative z-10 text-xs transition-colors ${active ? 'text-electric-700/80' : 'text-graphite-500'}`}>{category.desc}</p>
                   </button>
                 )
               })}
             </div>
 
-            <div>
-              <label className="label">目标模型</label>
-              <input className="input-field" value={model} onChange={(event) => setModel(event.target.value)} />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">目标模型</label>
+                <input className="input-field" value={model} onChange={(event) => setModel(event.target.value)} />
+              </div>
+              {(selected.includes('gradient_gcg') || selected.includes('knowledge_extraction')) && (
+                <>
+                  <div>
+                    <label className="label">学习率 (LR)</label>
+                    <input className="input-field" type="number" step="0.01" value={learningRate} onChange={(e) => setLearningRate(e.target.value)} />
+                  </div>
+                  <div>
+                    <label className="label">动态 Top-K</label>
+                    <input className="input-field" type="number" value={topK} onChange={(e) => setTopK(e.target.value)} />
+                  </div>
+                </>
+              )}
             </div>
 
             <div>

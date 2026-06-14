@@ -15,6 +15,7 @@ import {
   LayoutDashboard,
   LogIn,
   Menu,
+  Database,
   Scale,
   Shield,
   ShieldAlert,
@@ -25,10 +26,13 @@ import {
   Wand2,
   X,
   Zap,
+  Sun,
+  Moon,
 } from 'lucide-react'
 import { getApiStatus } from '../api'
 import { StatusPill } from './ui/AppFrame'
 import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import { useTheme } from '../hooks/useTheme'
 
 const PRIMARY_GROUPS = [
   {
@@ -65,6 +69,7 @@ const SECONDARY_GROUPS = [
       { path: '/code-security', label: '代码安全', icon: Code2 },
       { path: '/bias', label: '偏见检测', icon: Scale },
       { path: '/templates', label: '模板中心', icon: BookOpen },
+      { path: '/datasets', label: '数据集管理', icon: Database },
       { path: '/reports', label: '评估报告', icon: FileText },
       { path: '/tasks', label: '任务中心', icon: Clock3 },
       { path: '/audit', label: '审计日志', icon: Activity },
@@ -78,6 +83,7 @@ export default function Layout({ children }) {
   const location = useLocation()
   const [apiStatus, setApiStatus] = useState('unknown')
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const { resolvedTheme, toggleTheme } = useTheme()
 
   const isAuthPage = AUTH_ROUTES.includes(location.pathname)
   const isPricingPage = location.pathname === '/pricing'
@@ -173,6 +179,14 @@ export default function Layout({ children }) {
                 </div>
               </div>
               <StatusPill online={apiStatus === 'connected'} />
+              <button
+                type="button"
+                onClick={toggleTheme}
+                className="btn-secondary px-3"
+                aria-label="Toggle theme"
+              >
+                {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+              </button>
               <NavLink to="/pricing" className="btn-secondary px-4">
                 <CreditCard className="h-4 w-4" />
                 专业版
@@ -253,7 +267,17 @@ export default function Layout({ children }) {
 
               <div className="mt-5 space-y-4">
                 <div className="card p-4">
-                  <StatusPill online={apiStatus === 'connected'} />
+                  <div className="flex items-center justify-between mb-4">
+                    <StatusPill online={apiStatus === 'connected'} />
+                    <button
+                      type="button"
+                      onClick={toggleTheme}
+                      className="btn-secondary px-2.5 py-1.5"
+                      aria-label="Toggle theme"
+                    >
+                      {resolvedTheme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                    </button>
+                  </div>
                   <div className="glass-divider my-4" />
                   <div className="space-y-3">
                     <NavLink to="/pricing" className="btn-secondary w-full justify-between">

@@ -15,11 +15,20 @@ const TECHNIQUES = [
   { id: 'data_exfiltration', name: '数据泄露', description: '尝试获取敏感训练信息。' },
 ]
 
+const DIMENSIONS = [
+  { id: 'safety', label: '安全性' },
+  { id: 'bias', label: '偏见性' },
+  { id: 'relevance', label: '相关性' },
+  { id: 'coherence', label: '连贯性' },
+]
+
 export default function RedTeamPage() {
   const [results, setResults] = useState([])
   const [running, setRunning] = useState(false)
   const [targetModel, setTargetModel] = useState('qwen3:4b')
   const [selected, setSelected] = useState(TECHNIQUES.map((item) => item.id))
+  const [hybridMode, setHybridMode] = useState(true)
+  const [selectedDimensions, setSelectedDimensions] = useState(['safety', 'bias'])
 
   const successCount = useMemo(() => results.filter((item) => item.success).length, [results])
   const successRate = useMemo(
@@ -36,11 +45,20 @@ export default function RedTeamPage() {
   const handleRun = async () => {
     setRunning(true)
     try {
-      const data = await runRedTeam(targetModel, selected)
+      const data = await runRedTeam(targetModel, selected, {
+        hybrid_mode: hybridMode,
+        dimensions: selectedDimensions
+      })
       setResults(data)
     } finally {
       setRunning(false)
     }
+  }
+
+  const toggleDimension = (id) => {
+    setSelectedDimensions((current) =>
+      current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+    )
   }
 
   return (
@@ -69,19 +87,56 @@ export default function RedTeamPage() {
                       key={technique.id}
                       type="button"
                       onClick={() => toggle(technique.id)}
-                      className={`rounded-[18px] border px-4 py-3 text-left transition-all ${
+                      className={`relative overflow-hidden rounded-[18px] border px-4 py-3 text-left transition-all duration-300 ${
                         active
-                          ? 'border-electric-200 bg-electric-50/75'
-                          : 'border-graphite-200/70 bg-white/75'
+                          ? 'border-electric-300 bg-electric-50/90 shadow-sm transform scale-[1.02]'
+                          : 'border-graphite-200/70 bg-white/75 hover:border-electric-200'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-graphite-900">{technique.name}</p>
-                      <p className="mt-1 text-xs text-graphite-500">{technique.description}</p>
+                      {active && <div className="absolute inset-0 bg-gradient-to-br from-electric-100/40 to-transparent pointer-events-none" />}
+                      <p className={`relative z-10 text-sm font-semibold transition-colors ${active ? 'text-electric-900' : 'text-graphite-900'}`}>{technique.name}</p>
+                      <p className={`relative z-10 mt-1 text-xs transition-colors ${active ? 'text-electric-700/80' : 'text-graphite-500'}`}>{technique.description}</p>
                     </button>
                   )
                 })}
               </div>
             </div>
+            
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label className="label">评估维度 (LLM Judge)</label>
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {DIMENSIONS.map((dim) => (
+                    <button
+                      key={dim.id}
+                      type="button"
+                      onClick={() => toggleDimension(dim.id)}
+                      className={`relative overflow-hidden rounded-full border px-4 py-1.5 text-xs font-semibold transition-all duration-300 ${
+                        selectedDimensions.includes(dim.id)
+                          ? 'border-electric-400 bg-gradient-to-r from-electric-500 to-electric-600 text-white shadow-md transform scale-105'
+                          : 'border-graphite-200/70 bg-white text-graphite-600 hover:bg-graphite-50 hover:border-graphite-300'
+                      }`}
+                    >
+                      {dim.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="label">混合裁判模式</label>
+                <div className="mt-2 flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="hybrid-mode"
+                    checked={hybridMode}
+                    onChange={(e) => setHybridMode(e.target.checked)}
+                    className="h-4 w-4 rounded border-graphite-300 text-electric-600 focus:ring-electric-600"
+                  />
+                  <label htmlFor="hybrid-mode" className="text-sm text-graphite-700">启用多模型混合评判 (更高准确率)</label>
+                </div>
+              </div>
+            </div>
+
             <button type="button" onClick={handleRun} disabled={running || selected.length === 0} className="btn-primary w-full justify-center py-3">
               <Play className="h-4 w-4" />
               {running ? '正在执行红队演练' : '启动演练'}
