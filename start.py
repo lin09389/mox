@@ -17,7 +17,7 @@ def is_port_open(host, port, timeout=2):
         result = sock.connect_ex((host, port))
         sock.close()
         return result == 0
-    except:
+    except Exception:
         return False
 
 
@@ -30,7 +30,7 @@ def wait_for_url(url, timeout=30):
         try:
             urllib.request.urlopen(url, timeout=2)
             return True
-        except:
+        except Exception:
             time.sleep(1)
     return False
 
@@ -132,7 +132,7 @@ def main():
     try:
         webbrowser.open("http://localhost:3000")
         print("Browser opened!")
-    except:
+    except Exception:
         pass
 
     # Keep running
