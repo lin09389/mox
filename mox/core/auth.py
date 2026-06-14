@@ -6,7 +6,8 @@ from dataclasses import dataclass
 from enum import Enum
 
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 from fastapi import HTTPException, status, Depends
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 
@@ -45,7 +46,7 @@ class User:
 class PasswordManager:
     """密码管理"""
 
-    pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+    pwd_context = PasswordHash((BcryptHasher(),))
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -247,6 +248,7 @@ async def get_optional_active_user(
     if current_user is None:
         # 开发模式下返回默认用户
         from .config import settings
+
         if not settings.REQUIRE_AUTH:
             return User(
                 username="dev_user",
