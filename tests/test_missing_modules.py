@@ -18,9 +18,6 @@ from mox.core import (
     Message,
     LLMResponse,
     AttackType,
-    AttackPayload,
-    AttackOutcome,
-    AttackResult,
 )
 
 
@@ -38,7 +35,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -52,7 +49,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 
@@ -289,6 +286,7 @@ class TestModuleImports:
         ]
 
         import importlib
+
         for module_name in modules:
             try:
                 module = importlib.import_module(module_name)
@@ -314,8 +312,8 @@ class TestModuleImports:
             attack = attack_class(target_llm=llm)
 
             # 检查必需的方法
-            assert hasattr(attack, 'generate_attack')
-            assert hasattr(attack, 'evaluate_success')
+            assert hasattr(attack, "generate_attack")
+            assert hasattr(attack, "evaluate_success")
             assert callable(attack.generate_attack)
             assert callable(attack.evaluate_success)
 
@@ -325,18 +323,16 @@ class TestAttackTypeConsistency:
 
     def test_attack_types_defined(self):
         """测试攻击类型已定义"""
-        from mox.core import AttackType
 
         # 检查关键攻击类型存在
-        assert hasattr(AttackType, 'PROMPT_INJECTION')
-        assert hasattr(AttackType, 'JAILBREAK')
-        assert hasattr(AttackType, 'GCG')
-        assert hasattr(AttackType, 'MULTIMODAL_ADVERSARIAL')
-        assert hasattr(AttackType, 'KNOWLEDGE_DISTILLATION')
+        assert hasattr(AttackType, "PROMPT_INJECTION")
+        assert hasattr(AttackType, "JAILBREAK")
+        assert hasattr(AttackType, "GCG")
+        assert hasattr(AttackType, "MULTIMODAL_ADVERSARIAL")
+        assert hasattr(AttackType, "KNOWLEDGE_DISTILLATION")
 
     def test_attack_type_values(self):
         """测试攻击类型值"""
-        from mox.core import AttackType
 
         # 检查值格式
         assert AttackType.PROMPT_INJECTION.value == "prompt_injection"

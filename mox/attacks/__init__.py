@@ -19,7 +19,6 @@ from .evaluation import (
 )
 from .config import (
     EvaluationStrategy,
-    JudgeStrategy,
     GCGConfig,
     TAPConfig,
     CrescendoConfig,
@@ -46,6 +45,7 @@ from .jailbreak import (
     JailbreakTemplate,
     JAILBREAK_TEMPLATES,
 )
+
 # GCG 攻击 - 使用明确的别名避免冲突
 from .gcg import (
     GCGAttack as GCGAttackBasic,
@@ -83,6 +83,7 @@ from .multi_turn import (
     GOATAttack,
     CrescendoAttack as MultiTurnCrescendoAttack,
 )
+
 # 梯度攻击 - GCGAttack 的梯度版本
 from .gradient_attack import (
     GradientBasedAttack,
@@ -101,6 +102,7 @@ from .advanced_attacks import (
     KnowledgeDistillationAttack,  # 向后兼容别名
     EvasionAttack,
 )
+
 # 知识提取攻击 - 使用明确的别名避免冲突
 from .knowledge_extraction import (
     KnowledgeExtractionConfig,
@@ -261,6 +263,7 @@ __all__ = [
     # GCG 攻击 - 明确区分版本
     "GCGAttackBasic",  # 基础版本（模拟实现）
     "GCGAttackGradient",  # 梯度版本（真实梯度）
+    "GCGAttack",  # 向后兼容别名
     "AutoDANAttack",
     "GCGPlusPlusAttack",
     # LLM 驱动攻击

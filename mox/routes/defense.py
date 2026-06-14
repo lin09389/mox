@@ -13,6 +13,7 @@ router = APIRouter(prefix="/defense", tags=["Defense"])
 
 # ============ 请求模型 ============
 
+
 class ScanRequest(BaseModel):
     text: str
     scan_type: str = "input"
@@ -37,6 +38,7 @@ def get_db() -> Database:
 
 
 # ============ 辅助函数 ============
+
 
 def _analyze_detection_patterns(detected_patterns: List[str]) -> Dict[str, Any]:
     """分析检测到的模式"""
@@ -92,42 +94,53 @@ def _generate_defense_recommendations(
     recommendations = []
 
     if is_malicious and confidence > 0.8:
-        recommendations.append({
-            "priority": "紧急",
-            "category": "立即行动",
-            "content": "高置信度检测到恶意内容，建议立即阻止该请求",
-        })
+        recommendations.append(
+            {
+                "priority": "紧急",
+                "category": "立即行动",
+                "content": "高置信度检测到恶意内容，建议立即阻止该请求",
+            }
+        )
     elif is_malicious:
-        recommendations.append({
-            "priority": "高",
-            "category": "审查建议",
-            "content": "检测到可疑内容，建议进行人工审查",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "审查建议",
+                "content": "检测到可疑内容，建议进行人工审查",
+            }
+        )
     else:
-        recommendations.append({
-            "priority": "低",
-            "category": "安全状态",
-            "content": "未检测到明显威胁，内容可以放行",
-        })
+        recommendations.append(
+            {
+                "priority": "低",
+                "category": "安全状态",
+                "content": "未检测到明显威胁，内容可以放行",
+            }
+        )
 
     if any("injection" in p.lower() for p in detected_patterns):
-        recommendations.append({
-            "priority": "高",
-            "category": "专项加固",
-            "content": "检测到注入攻击，建议部署专门的注入检测器",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "专项加固",
+                "content": "检测到注入攻击，建议部署专门的注入检测器",
+            }
+        )
 
     if any("jailbreak" in p.lower() or "role_play" in p.lower() for p in detected_patterns):
-        recommendations.append({
-            "priority": "高",
-            "category": "专项加固",
-            "content": "检测到越狱尝试，建议增强系统提示词加固",
-        })
+        recommendations.append(
+            {
+                "priority": "高",
+                "category": "专项加固",
+                "content": "检测到越狱尝试，建议增强系统提示词加固",
+            }
+        )
 
     return recommendations
 
 
 # ============ 路由端点 ============
+
 
 @router.post("/scan")
 async def scan_input(

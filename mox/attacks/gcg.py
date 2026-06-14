@@ -18,10 +18,9 @@ GCG算法核心步骤:
 
 import re
 import string
-from typing import Optional, List, Tuple
+from typing import Optional
 from dataclasses import dataclass
 import random
-import asyncio
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
@@ -39,6 +38,7 @@ except ImportError:
 @dataclass
 class GCGConfig:
     """GCG攻击配置"""
+
     max_iterations: int = 500
     batch_size: int = 512  # GCG论文中使用512
     top_k: int = 256  # 每个位置保留的候选token数
@@ -175,7 +175,9 @@ class GCGAttack(BaseAttack):
         top_k_indices = torch.topk(token_scores, k=top_k, dim=-1).indices  # (suffix_len, top_k)
 
         # 生成batch_size个候选
-        candidates = current_suffix_ids.unsqueeze(0).repeat(batch_size, 1)  # (batch_size, suffix_len)
+        candidates = current_suffix_ids.unsqueeze(0).repeat(
+            batch_size, 1
+        )  # (batch_size, suffix_len)
 
         for i in range(batch_size):
             # 随机选择要修改的位置数（1到3个位置）
@@ -274,7 +276,7 @@ class GCGAttack(BaseAttack):
             best_suffix_ids = suffix_ids.clone()
             best_score = 0.0
             best_response = ""
-            best_loss = float('inf')
+            best_loss = float("inf")
 
             for iteration in range(self.gcg_config.max_iterations):
                 # 构建完整输入
@@ -323,7 +325,9 @@ class GCGAttack(BaseAttack):
                         best_loss = best_candidate_loss
 
                     if self.gcg_config.verbose and iteration % 50 == 0:
-                        print(f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}")
+                        print(
+                            f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}"
+                        )
 
                     if score >= self.gcg_config.early_stop_threshold:
                         return self._create_outcome(
@@ -594,7 +598,7 @@ class GCGPlusPlusAttack(GCGAttack):
             best_suffix_ids = suffix_ids.clone()
             best_score = 0.0
             best_response = ""
-            best_loss = float('inf')
+            best_loss = float("inf")
 
             # 动态调整参数
             current_top_k = self.gcg_config.top_k
@@ -664,7 +668,9 @@ class GCGPlusPlusAttack(GCGAttack):
                         best_response = response.content
 
                     if self.gcg_config.verbose and iteration % 50 == 0:
-                        print(f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}, TopK = {current_top_k}")
+                        print(
+                            f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}, TopK = {current_top_k}"
+                        )
 
                     if score >= self.gcg_config.early_stop_threshold:
                         return self._create_outcome(

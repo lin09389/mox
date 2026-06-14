@@ -8,7 +8,6 @@ from mox import (
     LLMFactory,
     TAPAttack,
     MultiTurnJailbreakAttack,
-    CrescendoAttack,
     TAPConfig,
     LLMJudge,
     SafetyCoTDefense,
@@ -20,7 +19,7 @@ from mox import (
     AttackType,
     BenchmarkDataset,
 )
-from mox.defense.llm_judge import JudgmentType, HarmCategory
+from mox.defense.llm_judge import JudgmentType
 
 
 async def example_tap_attack():

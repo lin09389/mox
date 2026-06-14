@@ -5,7 +5,7 @@
 
 import asyncio
 import re
-from typing import List, Optional
+from typing import List, Optional, Any
 
 from mox.core import (
     BaseLLM,
@@ -63,6 +63,7 @@ class CustomInjectionAttack(BaseAttack):
                             adversarial_prompt = template.format(action=payload.prompt)
 
                         from mox.core import Message
+
                         messages = [Message(role="user", content=adversarial_prompt)]
 
                         response = await self.target_llm.generate(messages)
@@ -106,7 +107,7 @@ class CustomInjectionAttack(BaseAttack):
             success_score=0.0,
         )
 
-    async def evaluate_success(self, response: str, target_behavior: str) -> float:
+    async def evaluate_success(self, response: str, target_behavior: str, **kwargs: Any) -> float:
         if target_behavior.lower() in response.lower():
             return 1.0
 
@@ -155,7 +156,7 @@ class CustomDefenseFilter(BaseDefense):
         confidence = min(confidence, 1.0)
         is_malicious = confidence >= self.config.confidence_threshold
 
-        return self._create_result(
+        return await self._create_result(
             is_malicious=is_malicious,
             confidence=confidence,
             detected_patterns=detected,

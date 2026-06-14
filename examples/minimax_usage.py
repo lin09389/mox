@@ -16,7 +16,6 @@ from mox import (
     PromptInjectionAttack,
     JailbreakAttack,
     InputFilter,
-    OutputFilter,
     AttackConfig,
 )
 

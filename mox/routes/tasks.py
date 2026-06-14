@@ -11,6 +11,7 @@ router = APIRouter(prefix="/tasks", tags=["Tasks"])
 
 # ============ 请求模型 ============
 
+
 class TaskSubmitRequest(BaseModel):
     name: str
     func: str
@@ -20,6 +21,7 @@ class TaskSubmitRequest(BaseModel):
 
 
 # ============ 路由端点 ============
+
 
 @router.post("/submit")
 async def submit_task(
@@ -31,7 +33,9 @@ async def submit_task(
         from mox.core.tasks import get_task_queue, TaskPriority
 
         task_queue = get_task_queue()
-        priority = TaskPriority(request.priority) if 0 <= request.priority <= 3 else TaskPriority.NORMAL
+        priority = (
+            TaskPriority(request.priority) if 0 <= request.priority <= 3 else TaskPriority.NORMAL
+        )
         task_id = task_queue.submit(
             name=request.name,
             func=lambda: {"status": "completed"},

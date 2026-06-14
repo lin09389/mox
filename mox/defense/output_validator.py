@@ -8,11 +8,11 @@
 """
 
 import re
-from typing import Optional, List, Dict, Any, Tuple
-from dataclasses import dataclass, field
+from typing import Optional, List, Dict, Tuple
+from dataclasses import dataclass
 from enum import Enum
 
-from mox.core import BaseLLM, Message, DefenseType, DefenseResult
+from mox.core import BaseLLM, DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
 from mox.core.logging import get_logger
 
@@ -21,6 +21,7 @@ logger = get_logger("defense.output_validator")
 
 class PIICategory(str, Enum):
     """PII 类别"""
+
     PHONE_NUMBER = "phone_number"
     EMAIL = "email"
     SSN = "social_security_number"
@@ -37,6 +38,7 @@ class PIICategory(str, Enum):
 
 class SensitiveCategory(str, Enum):
     """敏感信息类别"""
+
     FINANCIAL = "financial"
     MEDICAL = "medical"
     LEGAL = "legal"
@@ -48,6 +50,7 @@ class SensitiveCategory(str, Enum):
 @dataclass
 class PIIDetection:
     """PII 检测结果"""
+
     category: PIICategory
     value: str
     start_pos: int
@@ -59,6 +62,7 @@ class PIIDetection:
 @dataclass
 class SensitiveDetection:
     """敏感信息检测结果"""
+
     category: SensitiveCategory
     content: str
     risk_level: str
@@ -68,6 +72,7 @@ class SensitiveDetection:
 @dataclass
 class OutputValidationResult:
     """输出验证结果"""
+
     is_safe: bool
     pii_detections: List[PIIDetection]
     sensitive_detections: List[SensitiveDetection]
@@ -116,7 +121,10 @@ class PIIDetector:
         ],
         PIICategory.API_KEY: [
             # 通用API Key模式
-            (r"(api[_-]?key|apikey|secret|token)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_-]{20,}", "API_KEY_REDACTED"),
+            (
+                r"(api[_-]?key|apikey|secret|token)[\"']?\s*[:=]\s*[\"']?[a-zA-Z0-9_-]{20,}",
+                "API_KEY_REDACTED",
+            ),
             # AWS Key
             (r"AKIA[0-9A-Z]{16}", "AKIA****************"),
             # GitHub Token
@@ -164,9 +172,7 @@ class PIIDetector:
         result = text
         for detection in reversed(detections):
             result = (
-                result[:detection.start_pos]
-                + detection.masked_value
-                + result[detection.end_pos:]
+                result[: detection.start_pos] + detection.masked_value + result[detection.end_pos :]
             )
 
         return result
@@ -307,18 +313,13 @@ class OutputValidator(BaseDefense):
         is_safe = risk_score < 0.5
 
         # 生成建议
-        recommendations = self._generate_recommendations(
-            pii_detections, sensitive_detections
-        )
+        recommendations = self._generate_recommendations(pii_detections, sensitive_detections)
 
         return await self._create_result(
             is_malicious=not is_safe,
             confidence=risk_score,
-            detected_patterns=[
-                f"PII:{d.category.value}" for d in pii_detections
-            ] + [
-                f"Sensitive:{d.category.value}" for d in sensitive_detections
-            ],
+            detected_patterns=[f"PII:{d.category.value}" for d in pii_detections]
+            + [f"Sensitive:{d.category.value}" for d in sensitive_detections],
             metadata={
                 "pii_count": len(pii_detections),
                 "sensitive_count": len(sensitive_detections),
@@ -339,7 +340,7 @@ class OutputValidator(BaseDefense):
                     }
                     for d in sensitive_detections
                 ],
-            }
+            },
         )
 
     async def sanitize(self, input_text: str) -> str:
@@ -377,9 +378,7 @@ class OutputValidator(BaseDefense):
         is_safe = risk_score < 0.5
 
         # 生成建议
-        recommendations = self._generate_recommendations(
-            pii_detections, sensitive_detections
-        )
+        recommendations = self._generate_recommendations(pii_detections, sensitive_detections)
 
         return OutputValidationResult(
             is_safe=is_safe,
@@ -433,19 +432,12 @@ class OutputValidator(BaseDefense):
 
         if pii_detections:
             categories = set(d.category.value for d in pii_detections)
-            recommendations.append(
-                f"检测到 PII 信息: {', '.join(categories)}，建议遮蔽处理"
-            )
+            recommendations.append(f"检测到 PII 信息: {', '.join(categories)}，建议遮蔽处理")
 
         if sensitive_detections:
-            high_risk = [
-                d for d in sensitive_detections
-                if d.risk_level in ["critical", "high"]
-            ]
+            high_risk = [d for d in sensitive_detections if d.risk_level in ["critical", "high"]]
             if high_risk:
-                recommendations.append(
-                    f"检测到高风险敏感内容，建议人工审核"
-                )
+                recommendations.append("检测到高风险敏感内容，建议人工审核")
 
         return recommendations
 
@@ -489,19 +481,18 @@ class OutputSanitizer:
         """删除策略"""
         result = text
         for detection in reversed(detections):
-            result = result[:detection.start_pos] + result[detection.end_pos:]
+            result = result[: detection.start_pos] + result[detection.end_pos :]
         return result
 
     def _hash_strategy(self, text: str, detections: List[PIIDetection]) -> str:
         """哈希策略"""
         import hashlib
+
         result = text
         for detection in reversed(detections):
             hashed = hashlib.sha256(detection.value.encode()).hexdigest()[:8]
             result = (
-                result[:detection.start_pos]
-                + f"[HASHED:{hashed}]"
-                + result[detection.end_pos:]
+                result[: detection.start_pos] + f"[HASHED:{hashed}]" + result[detection.end_pos :]
             )
         return result
 

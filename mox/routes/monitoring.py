@@ -10,6 +10,7 @@ router = APIRouter(prefix="/monitoring", tags=["Monitoring"])
 
 # ============ 路由端点 ============
 
+
 @router.get("/dashboard")
 async def get_monitoring_dashboard(
     current_user: User = Depends(get_current_active_user),
@@ -17,6 +18,7 @@ async def get_monitoring_dashboard(
     """获取监控面板数据"""
     try:
         from mox.core.monitoring import MonitoringDashboard
+
         dashboard = MonitoringDashboard()
         return dashboard.get_dashboard_data()
     except Exception:
@@ -33,6 +35,7 @@ async def get_anomalies() -> List[Dict[str, Any]]:
     """获取异常列表"""
     try:
         from mox.core.monitoring import AnomalyDetector
+
         detector = AnomalyDetector()
         return detector.get_anomalies(limit=20)
     except Exception:

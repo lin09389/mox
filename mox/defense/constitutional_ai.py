@@ -11,7 +11,6 @@ import re
 from typing import Optional, List, Dict, Any, Tuple
 from dataclasses import dataclass, field
 from enum import Enum
-from abc import ABC, abstractmethod
 
 from mox.core import BaseLLM, Message, DefenseType, DefenseResult
 from mox.defense.base import BaseDefense, DefenseConfig
@@ -22,6 +21,7 @@ logger = get_logger("defense.constitutional_ai")
 
 class PrincipleCategory(str, Enum):
     """原则类别"""
+
     SAFETY = "safety"
     HELPFULNESS = "helpfulness"
     HONESTY = "honesty"
@@ -34,6 +34,7 @@ class PrincipleCategory(str, Enum):
 @dataclass
 class ConstitutionalPrinciple:
     """宪法原则"""
+
     id: str
     name: str
     category: PrincipleCategory
@@ -185,13 +186,15 @@ class ConstitutionalAI(BaseDefense):
         for principle in self.principles:
             violation = await self._check_principle_violation(input_text, principle)
             if violation:
-                violations.append({
-                    "principle_id": principle.id,
-                    "principle_name": principle.name,
-                    "category": principle.category.value,
-                    "severity": principle.severity,
-                    "description": violation,
-                })
+                violations.append(
+                    {
+                        "principle_id": principle.id,
+                        "principle_name": principle.name,
+                        "category": principle.category.value,
+                        "severity": principle.severity,
+                        "description": violation,
+                    }
+                )
                 total_severity += principle.severity
 
         is_malicious = len(violations) > 0
@@ -204,7 +207,7 @@ class ConstitutionalAI(BaseDefense):
             metadata={
                 "violations": violations,
                 "total_violations": len(violations),
-            }
+            },
         )
 
     async def sanitize(self, input_text: str) -> str:
@@ -231,15 +234,12 @@ class ConstitutionalAI(BaseDefense):
 
             # 获取对应原则
             principle = next(
-                (p for p in self.principles if p.id == top_violation["principle_id"]),
-                None
+                (p for p in self.principles if p.id == top_violation["principle_id"]), None
             )
 
             if principle:
                 # 生成修正
-                current_text = await self._revise_with_principle(
-                    current_text, principle
-                )
+                current_text = await self._revise_with_principle(current_text, principle)
 
         return current_text
 
@@ -254,12 +254,14 @@ class ConstitutionalAI(BaseDefense):
         for principle in self.principles:
             critique = await self._generate_critique(response, principle, context)
             if critique:
-                critiques.append({
-                    "principle": principle.name,
-                    "category": principle.category.value,
-                    "critique": critique,
-                    "severity": principle.severity,
-                })
+                critiques.append(
+                    {
+                        "principle": principle.name,
+                        "category": principle.category.value,
+                        "critique": critique,
+                        "severity": principle.severity,
+                    }
+                )
 
         return {
             "response": response,
@@ -284,19 +286,12 @@ class ConstitutionalAI(BaseDefense):
             return response
 
         # 按严重程度排序批评
-        critiques = sorted(
-            critique_result["critiques"],
-            key=lambda x: x["severity"],
-            reverse=True
-        )
+        critiques = sorted(critique_result["critiques"], key=lambda x: x["severity"], reverse=True)
 
         current_response = response
 
         for critique in critiques[:3]:  # 最多处理3个最严重的问题
-            principle = next(
-                (p for p in self.principles if p.name == critique["principle"]),
-                None
-            )
+            principle = next((p for p in self.principles if p.name == critique["principle"]), None)
 
             if principle:
                 current_response = await self._revise_with_principle(
@@ -434,11 +429,13 @@ class PrincipleEnforcer:
         for principle in self.principles:
             violation = await self._check_violation(text, principle)
             if violation:
-                violations.append({
-                    "principle": principle.name,
-                    "severity": principle.severity,
-                    "description": violation,
-                })
+                violations.append(
+                    {
+                        "principle": principle.name,
+                        "severity": principle.severity,
+                        "description": violation,
+                    }
+                )
 
                 if strict and principle.severity >= 0.9:
                     # 严重违规，直接拒绝
@@ -475,10 +472,7 @@ class PrincipleEnforcer:
         if not self.llm:
             return text
 
-        violation_desc = "\n".join(
-            f"- {v['principle']}: {v['description']}"
-            for v in violations
-        )
+        violation_desc = "\n".join(f"- {v['principle']}: {v['description']}" for v in violations)
 
         prompt = f"""请修改以下文本以解决这些问题：
 
@@ -530,11 +524,13 @@ class SelfCorrectionPipeline:
                 current_response, context
             )
 
-            history.append({
-                "iteration": iteration + 1,
-                "response": current_response,
-                "critiques": critique_result["critiques"],
-            })
+            history.append(
+                {
+                    "iteration": iteration + 1,
+                    "response": current_response,
+                    "critiques": critique_result["critiques"],
+                }
+            )
 
             # 检查是否需要修正
             if not critique_result["needs_revision"]:

@@ -5,7 +5,6 @@
 import asyncio
 from mox import (
     LLMFactory,
-    OllamaLLM,
     ToolAbuseAttack,
     MemoryInjectionAttack,
     RoleHijackingAttack,
@@ -15,7 +14,6 @@ from mox import (
     AttackType,
     ReportGenerator,
     create_quick_report,
-    BenchmarkDataset,
 )
 
 
@@ -104,7 +102,7 @@ def generate_report(outcomes, attack_types):
         report.add_result(outcome, attack_type)
 
     json_report = report.generate_json_report()
-    print(f"\nJSON报告摘要:")
+    print("\nJSON报告摘要:")
     print(f"  总测试: {json_report['summary']['total']}")
     print(f"  成功: {json_report['summary']['success']}")
     print(f"  成功率: {json_report['summary']['success_rate'] * 100:.1f}%")

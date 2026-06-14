@@ -144,6 +144,7 @@ class PromptInjectionDetector(BaseDefense):
                 except re.error as e:
                     # Log warning but don't silently skip - fail visible
                     import logging
+
                     logging.warning(f"Failed to compile regex pattern '{p}': {e}")
             if compiled:
                 self._compiled_patterns[inj_type] = compiled

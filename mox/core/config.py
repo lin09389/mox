@@ -103,42 +103,41 @@ class Settings(BaseSettings):
     TRACING_ENABLED: bool = False
     METRICS_PORT: int = 9090
 
-    @field_validator('CORS_ORIGINS', mode='before')
+    @field_validator("CORS_ORIGINS", mode="before")
     @classmethod
     def parse_cors_origins(cls, v):
         if isinstance(v, str):
-            return [origin.strip() for origin in v.split(',') if origin.strip()]
+            return [origin.strip() for origin in v.split(",") if origin.strip()]
         return v
 
-    @field_validator('ALLOWED_IPS', mode='before')
+    @field_validator("ALLOWED_IPS", mode="before")
     @classmethod
     def parse_allowed_ips(cls, v):
         if isinstance(v, str):
-            return [ip.strip() for ip in v.split(',') if ip.strip()]
+            return [ip.strip() for ip in v.split(",") if ip.strip()]
         return v
 
-    @field_validator('CORS_ALLOW_METHODS', mode='before')
+    @field_validator("CORS_ALLOW_METHODS", mode="before")
     @classmethod
     def parse_cors_methods(cls, v):
         if isinstance(v, str):
-            return [method.strip() for method in v.split(',') if method.strip()]
+            return [method.strip() for method in v.split(",") if method.strip()]
         return v
 
-    @field_validator('CORS_ALLOW_HEADERS', mode='before')
+    @field_validator("CORS_ALLOW_HEADERS", mode="before")
     @classmethod
     def parse_cors_headers(cls, v):
         if isinstance(v, str):
-            return [header.strip() for header in v.split(',') if header.strip()]
+            return [header.strip() for header in v.split(",") if header.strip()]
         return v
 
-    @field_validator('DEFAULT_USERS', mode='before')
+    @field_validator("DEFAULT_USERS", mode="before")
     @classmethod
     def parse_default_users(cls, v):
         if isinstance(v, str):
             # 使用 | 分隔多个用户配置
-            return [user.strip() for user in v.split('|') if user.strip()]
+            return [user.strip() for user in v.split("|") if user.strip()]
         return v
-
 
     def get_database_config(self) -> dict:
         """获取数据库配置"""

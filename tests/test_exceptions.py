@@ -2,7 +2,6 @@
 异常模块测试
 """
 
-import pytest
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
 
@@ -53,10 +52,7 @@ class TestExceptions:
 
     def test_authorization_error(self):
         """测试授权错误"""
-        exc = AuthorizationError(
-            message="Access denied",
-            required_scope="admin"
-        )
+        exc = AuthorizationError(message="Access denied", required_scope="admin")
         assert exc.code == ErrorCode.INSUFFICIENT_SCOPE
         assert exc.status_code == 403
         assert exc.details["required_scope"] == "admin"
@@ -71,40 +67,27 @@ class TestExceptions:
 
     def test_validation_error(self):
         """测试验证错误"""
-        exc = ValidationError(
-            message="Invalid email",
-            field="email",
-            value="invalid"
-        )
+        exc = ValidationError(message="Invalid email", field="email", value="invalid")
         assert exc.code == ErrorCode.INVALID_REQUEST
         assert exc.status_code == 422
         assert exc.details["field"] == "email"
 
     def test_attack_error(self):
         """测试攻击错误"""
-        exc = AttackError(
-            message="Attack failed",
-            attack_type="prompt_injection"
-        )
+        exc = AttackError(message="Attack failed", attack_type="prompt_injection")
         assert exc.code == ErrorCode.ATTACK_FAILED
         assert exc.status_code == 500
         assert exc.details["attack_type"] == "prompt_injection"
 
     def test_defense_error(self):
         """测试防御错误"""
-        exc = DefenseError(
-            message="Defense failed",
-            defense_type="input_filter"
-        )
+        exc = DefenseError(message="Defense failed", defense_type="input_filter")
         assert exc.code == ErrorCode.DEFENSE_FAILED
         assert exc.status_code == 500
 
     def test_gateway_error(self):
         """测试网关错误"""
-        exc = GatewayError(
-            message="Connection refused",
-            endpoint="openai-gpt4"
-        )
+        exc = GatewayError(message="Connection refused", endpoint="openai-gpt4")
         assert exc.code == ErrorCode.GATEWAY_ERROR
         assert exc.status_code == 502
 
@@ -127,6 +110,7 @@ class TestExceptionHandling:
         @app.exception_handler(MoxException)
         async def mox_exception_handler(request, exc):
             from fastapi.responses import JSONResponse
+
             return JSONResponse(
                 status_code=exc.status_code,
                 content=exc.to_dict(),
@@ -138,7 +122,7 @@ class TestExceptionHandling:
 
         client = TestClient(app)
         response = client.get("/test-error")
-        
+
         assert response.status_code == 401
         data = response.json()
         assert data["error"] == "UNAUTHORIZED"

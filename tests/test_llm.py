@@ -3,7 +3,6 @@
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
 from mox.core.llm import (
-    BaseLLM,
     Message,
     LLMResponse,
     ModelProvider,

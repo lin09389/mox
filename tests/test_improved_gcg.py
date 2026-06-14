@@ -3,7 +3,7 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from mox.attacks.improved_gcg import (
     ImprovedGCGAttack,
@@ -14,7 +14,7 @@ from mox.attacks.improved_gcg import (
     SemanticDiversitySelector,
     AdaptiveSearchController,
 )
-from mox.core import AttackType, AttackPayload, AttackResult
+from mox.core import AttackType
 from mox.attacks.base import AttackConfig
 
 
@@ -96,7 +96,7 @@ class TestSemanticDiversitySelector:
     def test_select_diverse(self):
         """测试多样性选择"""
         selector = SemanticDiversitySelector()
-        
+
         candidates = [
             Candidate(suffix="suffix1", score=0.8),
             Candidate(suffix="suffix2", score=0.7),
@@ -115,14 +115,14 @@ class TestAdaptiveSearchController:
     def test_controller_creation(self):
         """测试控制器创建"""
         controller = AdaptiveSearchController(window_size=20)
-        
+
         assert controller.window_size == 20
         assert controller.mutation_rate == 0.1
 
     def test_update(self):
         """测试更新"""
         controller = AdaptiveSearchController()
-        
+
         params = controller.update(0.5)
 
         assert "mutation_rate" in params

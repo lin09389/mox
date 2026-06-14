@@ -16,19 +16,13 @@ from mox.core import (
 )
 from mox.core.logging import get_logger
 from mox.core.error_handling import (
-    ErrorSeverity,
-    ErrorCategory,
     handle_attack_error,
     handle_evaluation_error,
-    create_error_response,
 )
 from mox.attacks.evaluation import (
     AttackEvaluator,
     EvaluationResult,
-    get_default_evaluator,
     create_evaluator,
-    evaluate_attack_success,
-    is_attack_successful,
 )
 
 logger = get_logger("attacks.base")
@@ -37,6 +31,7 @@ logger = get_logger("attacks.base")
 @dataclass
 class AttackConfig:
     """攻击配置基类"""
+
     max_iterations: int = 100
     success_threshold: float = 0.8
     temperature: float = 0.7
@@ -249,15 +244,9 @@ class BaseAttack(ABC):
         if not self.history:
             return {"total": 0}
 
-        successful = sum(
-            1 for o in self.history if o.result == AttackResult.SUCCESS
-        )
-        failed = sum(
-            1 for o in self.history if o.result == AttackResult.FAILURE
-        )
-        errors = sum(
-            1 for o in self.history if o.result == AttackResult.ERROR
-        )
+        successful = sum(1 for o in self.history if o.result == AttackResult.SUCCESS)
+        failed = sum(1 for o in self.history if o.result == AttackResult.FAILURE)
+        errors = sum(1 for o in self.history if o.result == AttackResult.ERROR)
         total = len(self.history)
 
         return {
@@ -267,9 +256,7 @@ class BaseAttack(ABC):
             "errors": errors,
             "success_rate": successful / total if total > 0 else 0,
             "error_rate": errors / total if total > 0 else 0,
-            "avg_iterations": (
-                sum(o.iterations for o in self.history) / total if total > 0 else 0
-            ),
+            "avg_iterations": (sum(o.iterations for o in self.history) / total if total > 0 else 0),
         }
 
     def clear_history(self) -> None:

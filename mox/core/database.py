@@ -12,10 +12,8 @@ from datetime import datetime
 from typing import Optional, List, AsyncIterator
 from pathlib import Path
 from contextlib import asynccontextmanager
-from dataclasses import dataclass, field
 
 from sqlalchemy import (
-    Column,
     Integer,
     String,
     Float,
@@ -25,8 +23,6 @@ from sqlalchemy import (
     JSON,
     select,
     func,
-    update,
-    delete,
 )
 from sqlalchemy.ext.asyncio import (
     create_async_engine,
@@ -45,15 +41,19 @@ logger = get_logger("database")
 
 # ============ 基础模型类 ============
 
+
 class Base(DeclarativeBase):
     """SQLAlchemy 2.0 声明式基类"""
+
     pass
 
 
 # ============ 数据模型 ============
 
+
 class AttackRecord(Base):
     """攻击记录表 - SQLAlchemy 2.0 风格"""
+
     __tablename__ = "attack_records"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -74,6 +74,7 @@ class AttackRecord(Base):
 
 class DefenseRecord(Base):
     """防御记录表 - SQLAlchemy 2.0 风格"""
+
     __tablename__ = "defense_records"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -93,6 +94,7 @@ class DefenseRecord(Base):
 
 class EvaluationRecord(Base):
     """评估记录表 - SQLAlchemy 2.0 风格"""
+
     __tablename__ = "evaluation_records"
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -113,9 +115,10 @@ class EvaluationRecord(Base):
 
 # ============ 数据库管理器 ============
 
+
 class Database:
     """数据库管理器 - SQLAlchemy 2.0 最佳实践
-    
+
     特性：
     - 异步连接池
     - 类型安全查询
@@ -169,13 +172,15 @@ class Database:
             }
         elif self.db_url.startswith("postgresql"):
             kwargs["poolclass"] = QueuePool
-            kwargs.update({
-                "pool_size": settings.DB_POOL_SIZE,
-                "max_overflow": settings.DB_MAX_OVERFLOW,
-                "pool_timeout": settings.DB_POOL_TIMEOUT,
-                "pool_recycle": settings.DB_POOL_RECYCLE,
-                "pool_pre_ping": True,
-            })
+            kwargs.update(
+                {
+                    "pool_size": settings.DB_POOL_SIZE,
+                    "max_overflow": settings.DB_MAX_OVERFLOW,
+                    "pool_timeout": settings.DB_POOL_TIMEOUT,
+                    "pool_recycle": settings.DB_POOL_RECYCLE,
+                    "pool_pre_ping": True,
+                }
+            )
         else:
             kwargs["pool_pre_ping"] = True
 
@@ -338,14 +343,11 @@ class Database:
     async def get_attack_stats_by_type(self) -> dict:
         """按类型统计攻击记录"""
         async with self.get_session() as session:
-            stmt = (
-                select(
-                    AttackRecord.attack_type,
-                    func.count(AttackRecord.id).label("count"),
-                    func.avg(AttackRecord.success_score).label("avg_score"),
-                )
-                .group_by(AttackRecord.attack_type)
-            )
+            stmt = select(
+                AttackRecord.attack_type,
+                func.count(AttackRecord.id).label("count"),
+                func.avg(AttackRecord.success_score).label("avg_score"),
+            ).group_by(AttackRecord.attack_type)
             result = await session.execute(stmt)
             return {
                 row.attack_type: {

@@ -397,7 +397,7 @@ class InputGateway:
 
         # Sanitize user input to prevent prompt injection
         # Escape any attempt to manipulate the judge
-        sanitized_text = text.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", " ")
+        sanitized_text = text.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " ")
         if len(sanitized_text) > 500:
             sanitized_text = sanitized_text[:500] + "..."
 

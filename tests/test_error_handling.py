@@ -8,7 +8,6 @@
 """
 
 import pytest
-import asyncio
 
 from mox.core.error_handling import (
     ErrorSeverity,
@@ -184,6 +183,7 @@ class TestAsyncErrorHandler:
     @pytest.mark.asyncio
     async def test_no_error(self):
         """测试无错误情况"""
+
         @async_error_handler()
         async def success_func():
             return "success"
@@ -194,6 +194,7 @@ class TestAsyncErrorHandler:
     @pytest.mark.asyncio
     async def test_with_error(self):
         """测试有错误情况"""
+
         @async_error_handler(default_return="default")
         async def error_func():
             raise ValueError("Test error")
@@ -204,6 +205,7 @@ class TestAsyncErrorHandler:
     @pytest.mark.asyncio
     async def test_reraise(self):
         """测试重新抛出异常"""
+
         @async_error_handler(reraise=True)
         async def error_func():
             raise ValueError("Test error")
@@ -217,6 +219,7 @@ class TestSyncErrorHandler:
 
     def test_no_error(self):
         """测试无错误情况"""
+
         @sync_error_handler()
         def success_func():
             return "success"
@@ -226,6 +229,7 @@ class TestSyncErrorHandler:
 
     def test_with_error(self):
         """测试有错误情况"""
+
         @sync_error_handler(default_return="default")
         def error_func():
             raise ValueError("Test error")
@@ -272,6 +276,7 @@ class TestRetryOnError:
     @pytest.mark.asyncio
     async def test_all_retries_fail(self):
         """测试所有重试失败"""
+
         @retry_on_error(max_retries=2, delay=0.01)
         async def always_fail():
             raise ValueError("Always fail")
@@ -339,14 +344,12 @@ class TestModuleExports:
         from mox.core.error_handling import (
             ErrorSeverity,
             ErrorCategory,
-            ErrorInfo,
             MoxError,
             AttackError,
             EvaluationError,
             LLMError,
             TimeoutError,
             ErrorHandler,
-            get_error_handler,
             async_error_handler,
             sync_error_handler,
             retry_on_error,

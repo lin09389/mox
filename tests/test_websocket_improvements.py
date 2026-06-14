@@ -1,7 +1,7 @@
 """测试 WebSocket 改进 - 异常处理"""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 from mox.routes.websocket import ConnectionManager
 
 

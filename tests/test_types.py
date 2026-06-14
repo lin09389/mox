@@ -1,6 +1,5 @@
 """测试 types 模块"""
 
-import pytest
 from mox.core.types import (
     AttackType,
     DefenseType,

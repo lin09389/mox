@@ -250,7 +250,6 @@ class TestModuleExports:
         """测试导入"""
         from mox.evaluation.datasets import (
             DatasetFormat,
-            DatasetMetadata,
             BenchmarkCase,
             HarmBenchCase,
             DatasetManager,

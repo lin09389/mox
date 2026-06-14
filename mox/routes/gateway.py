@@ -14,6 +14,7 @@ router = APIRouter(prefix="/gateway", tags=["Gateway"])
 
 # ============ 请求模型 ============
 
+
 class GatewayRequest(BaseModel):
     input: str
 
@@ -74,6 +75,7 @@ class AddEndpointRequest(BaseModel):
 
 # ============ 路由端点 ============
 
+
 @router.post("/validate")
 async def validate_gateway(request: GatewayRequest) -> Dict[str, Any]:
     """验证输入网关"""
@@ -99,6 +101,7 @@ async def get_gateway_stats():
     """获取LLM网关统计"""
     try:
         from mox.core.llm_gateway import get_llm_gateway
+
         gateway = get_llm_gateway()
         return gateway.get_stats()
     except Exception:
@@ -151,6 +154,7 @@ async def remove_gateway_endpoint(
 
     try:
         from mox.core.llm_gateway import get_llm_gateway
+
         gateway = get_llm_gateway()
         gateway.remove_endpoint(name)
         return {"success": True}

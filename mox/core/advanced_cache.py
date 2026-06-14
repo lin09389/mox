@@ -12,7 +12,6 @@ import hashlib
 import json
 from typing import Optional, Dict, Any, Generic, TypeVar, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
 from collections import OrderedDict
 from abc import ABC, abstractmethod
 
@@ -26,6 +25,7 @@ T = TypeVar("T")
 @dataclass
 class CacheEntry(Generic[T]):
     """缓存条目"""
+
     key: str
     value: T
     created_at: float
@@ -42,6 +42,7 @@ class CacheEntry(Generic[T]):
 @dataclass
 class CacheStats:
     """缓存统计"""
+
     hits: int = 0
     misses: int = 0
     evictions: int = 0
@@ -186,6 +187,7 @@ class RedisCache(CacheBackend[T]):
         if self._redis is None:
             try:
                 import redis.asyncio as redis
+
                 self._redis = redis.from_url(self.redis_url)
             except ImportError:
                 raise ImportError("redis package required. Install with: pip install redis")
@@ -494,6 +496,7 @@ def cached(
     key_builder: Optional[Callable] = None,
 ):
     """缓存装饰器"""
+
     def decorator(func):
         async def wrapper(*args, **kwargs):
             cache = CacheManager.get_instance()
@@ -519,6 +522,7 @@ def cached(
             return result
 
         return wrapper
+
     return decorator
 
 

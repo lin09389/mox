@@ -34,7 +34,7 @@ import asyncio
 import functools
 import logging
 import traceback
-from typing import Optional, Callable, Any, Dict, List, Type, Union
+from typing import Optional, Callable, Any, Dict, List
 from dataclasses import dataclass, field
 from enum import Enum
 from contextlib import asynccontextmanager
@@ -45,6 +45,7 @@ logger = logging.getLogger("mox.core.error_handling")
 
 class ErrorSeverity(Enum):
     """错误严重程度"""
+
     LOW = "low"  # 低：警告但继续执行
     MEDIUM = "medium"  # 中：可能影响结果
     HIGH = "high"  # 高：操作失败
@@ -53,6 +54,7 @@ class ErrorSeverity(Enum):
 
 class ErrorCategory(Enum):
     """错误类别"""
+
     VALIDATION = "validation"  # 验证错误
     NETWORK = "network"  # 网络错误
     TIMEOUT = "timeout"  # 超时错误
@@ -68,6 +70,7 @@ class ErrorCategory(Enum):
 @dataclass
 class ErrorInfo:
     """错误信息"""
+
     error: Exception
     severity: ErrorSeverity
     category: ErrorCategory
@@ -339,6 +342,7 @@ def async_error_handler(
         async def risky_operation():
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
@@ -346,7 +350,7 @@ def async_error_handler(
                 return await func(*args, **kwargs)
             except Exception as e:
                 handler = get_error_handler()
-                error_info = handler.handle_error(
+                handler.handle_error(
                     error=e,
                     context=func.__qualname__,
                     severity=severity,
@@ -359,6 +363,7 @@ def async_error_handler(
                 return default_return
 
         return wrapper
+
     return decorator
 
 
@@ -381,6 +386,7 @@ def sync_error_handler(
         def risky_operation():
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         def wrapper(*args, **kwargs) -> Any:
@@ -388,7 +394,7 @@ def sync_error_handler(
                 return func(*args, **kwargs)
             except Exception as e:
                 handler = get_error_handler()
-                error_info = handler.handle_error(
+                handler.handle_error(
                     error=e,
                     context=func.__qualname__,
                     severity=severity,
@@ -401,6 +407,7 @@ def sync_error_handler(
                 return default_return
 
         return wrapper
+
     return decorator
 
 
@@ -425,6 +432,7 @@ def retry_on_error(
         async def flaky_operation():
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         @functools.wraps(func)
         async def wrapper(*args, **kwargs) -> Any:
@@ -454,6 +462,7 @@ def retry_on_error(
             raise last_exception
 
         return wrapper
+
     return decorator
 
 

@@ -182,6 +182,7 @@ def get_rate_limiter() -> RateLimiter:
     global _rate_limiter
     if _rate_limiter is None:
         from mox.core.config import settings
+
         _rate_limiter = RateLimiter(
             requests_per_minute=settings.RATE_LIMIT_PER_MINUTE,
             burst_size=settings.RATE_LIMIT_BURST,

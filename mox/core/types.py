@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field, ConfigDict, field_validator, computed_fie
 
 class AttackType(str, Enum):
     """攻击类型枚举"""
+
     PROMPT_INJECTION = "prompt_injection"
     JAILBREAK = "jailbreak"
     GCG = "gcg"
@@ -65,6 +66,7 @@ class AttackType(str, Enum):
 
 class DefenseType(str, Enum):
     """防御类型枚举"""
+
     INPUT_FILTER = "input_filter"
     OUTPUT_FILTER = "output_filter"
     SYSTEM_PROMPT_HARDENING = "system_prompt_hardening"
@@ -84,6 +86,7 @@ class DefenseType(str, Enum):
 
 class AttackResult(str, Enum):
     """攻击结果枚举"""
+
     SUCCESS = "success"
     FAILURE = "failure"
     PARTIAL = "partial"
@@ -92,6 +95,7 @@ class AttackResult(str, Enum):
 
 class ThreatLevel(str, Enum):
     """威胁等级枚举"""
+
     SAFE = "safe"
     LOW = "low"
     MEDIUM = "medium"
@@ -110,13 +114,14 @@ class AttackPayload(BaseModel):
         target_behavior: 目标行为（也接受 target_objective 作为别名）
         metadata: 额外元数据
     """
+
     model_config = ConfigDict(
         str_strip_whitespace=True,
         validate_assignment=True,
         extra="forbid",
         populate_by_name=True,
     )
-    
+
     attack_type: AttackType
     prompt: str = Field(..., min_length=1, max_length=10000, description="攻击提示")
     target_behavior: str = Field(
@@ -126,19 +131,19 @@ class AttackPayload(BaseModel):
         alias="target_objective",
     )
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
-    @field_validator('prompt')
+
+    @field_validator("prompt")
     @classmethod
     def validate_prompt(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError('Prompt cannot be empty')
+            raise ValueError("Prompt cannot be empty")
         return v.strip()
 
-    @field_validator('target_behavior')
+    @field_validator("target_behavior")
     @classmethod
     def validate_target_behavior(cls, v: str) -> str:
         if not v.strip():
-            raise ValueError('Target behavior cannot be empty')
+            raise ValueError("Target behavior cannot be empty")
         return v.strip()
 
     @classmethod
@@ -202,11 +207,12 @@ class AttackPayload(BaseModel):
 
 class AttackOutcome(BaseModel):
     """攻击结果模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
         populate_by_name=True,
     )
-    
+
     result: AttackResult
     success_score: float = Field(..., ge=0.0, le=1.0)
     response: Optional[str] = None
@@ -216,7 +222,7 @@ class AttackOutcome(BaseModel):
     iterations: int = Field(default=1, ge=1)
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+
     @computed_field
     @property
     def is_successful(self) -> bool:
@@ -225,17 +231,18 @@ class AttackOutcome(BaseModel):
 
 class DefenseResult(BaseModel):
     """防御结果模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     is_malicious: bool
     confidence: float = Field(..., ge=0.0, le=1.0)
     detected_patterns: List[str] = Field(default_factory=list)
     filtered_content: Optional[str] = Field(default=None, alias="sanitized_input")
     threat_level: ThreatLevel = ThreatLevel.MEDIUM
     metadata: Dict[str, Any] = Field(default_factory=dict)
-    
+
     @computed_field
     @property
     def is_safe(self) -> bool:
@@ -253,10 +260,11 @@ class DefenseResult(BaseModel):
 
 class EvaluationReport(BaseModel):
     """评估报告模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     total_attacks: int = Field(..., ge=0)
     successful_attacks: int = Field(..., ge=0)
     failed_attacks: int = Field(..., ge=0)
@@ -265,7 +273,7 @@ class EvaluationReport(BaseModel):
     avg_iterations: float = Field(..., ge=0.0)
     detailed_results: List[AttackOutcome] = Field(default_factory=list)
     timestamp: datetime = Field(default_factory=datetime.now)
-    
+
     @computed_field
     @property
     def summary(self) -> str:
@@ -278,11 +286,12 @@ class EvaluationReport(BaseModel):
 
 class LLMConfig(BaseModel):
     """LLM 配置模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
         extra="forbid",
     )
-    
+
     model: str = Field(..., min_length=1)
     provider: str = Field(..., min_length=1)
     temperature: float = Field(default=0.7, ge=0.0, le=2.0)
@@ -296,10 +305,11 @@ class LLMConfig(BaseModel):
 
 class RateLimitConfig(BaseModel):
     """速率限制配置模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     requests_per_minute: int = Field(default=60, ge=1)
     tokens_per_minute: int = Field(default=100000, ge=1)
     concurrent_requests: int = Field(default=10, ge=1)
@@ -307,30 +317,32 @@ class RateLimitConfig(BaseModel):
 
 class CacheConfig(BaseModel):
     """缓存配置模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     enabled: bool = True
     backend: str = Field(default="memory", pattern="^(memory|redis)$")
     ttl: int = Field(default=3600, ge=1)
     max_size: int = Field(default=1000, ge=1)
     redis_url: Optional[str] = None
-    
-    @field_validator('redis_url')
+
+    @field_validator("redis_url")
     @classmethod
     def validate_redis_url(cls, v: Optional[str], info) -> Optional[str]:
-        if info.data.get('backend') == 'redis' and not v:
-            raise ValueError('redis_url is required when backend is redis')
+        if info.data.get("backend") == "redis" and not v:
+            raise ValueError("redis_url is required when backend is redis")
         return v
 
 
 class MonitoringConfig(BaseModel):
     """监控配置模型"""
+
     model_config = ConfigDict(
         validate_assignment=True,
     )
-    
+
     enabled: bool = True
     log_requests: bool = True
     log_responses: bool = False
@@ -342,4 +354,3 @@ class MonitoringConfig(BaseModel):
 # 向后兼容的别名
 AttackRecord = AttackOutcome
 DefenseRecord = DefenseResult
-

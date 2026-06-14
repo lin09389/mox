@@ -1,6 +1,5 @@
 """测试审计日志和敏感数据脱敏模块"""
 
-import pytest
 from mox.core.audit import SensitiveDataMasker, AuditContext
 
 

@@ -1,7 +1,6 @@
 """测试 config 和 logging 模块"""
 
-import pytest
-from mox.core.config import Settings, settings
+from mox.core.config import Settings
 from mox.core.logging import setup_logging, get_logger, set_log_level
 
 

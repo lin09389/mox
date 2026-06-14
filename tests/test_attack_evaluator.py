@@ -3,7 +3,7 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from mox.evaluation.attack_evaluator import (
     AttackEvaluator,
@@ -11,7 +11,6 @@ from mox.evaluation.attack_evaluator import (
     AdaptiveEvaluator,
     EvaluationConfig,
     EvaluationResult,
-    EvaluationDimension,
     create_evaluator,
 )
 
@@ -49,14 +48,14 @@ class TestAttackEvaluator:
         """测试评估器创建"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         assert evaluator.config.success_threshold == 0.6
 
     def test_refusal_detection(self):
         """测试拒绝检测"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         # 明确拒绝
         refusal_text = "I cannot help with that request"
         score = evaluator._evaluate_refusal(refusal_text)
@@ -71,33 +70,24 @@ class TestAttackEvaluator:
         """测试关键词重叠"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         # 完全匹配
-        score = evaluator._evaluate_keyword_overlap(
-            "hello world",
-            "hello world"
-        )
+        score = evaluator._evaluate_keyword_overlap("hello world", "hello world")
         assert score == 1.0
 
         # 部分匹配
-        score = evaluator._evaluate_keyword_overlap(
-            "hello there world",
-            "hello world"
-        )
+        score = evaluator._evaluate_keyword_overlap("hello there world", "hello world")
         assert score > 0.5
 
         # 无匹配
-        score = evaluator._evaluate_keyword_overlap(
-            "foo bar",
-            "hello world"
-        )
+        score = evaluator._evaluate_keyword_overlap("foo bar", "hello world")
         assert score == 0
 
     def test_harmful_content_detection(self):
         """测试有害内容检测"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         harmful_text = "Here is how to hack into a system"
         score = evaluator._evaluate_harmful_content(harmful_text)
         assert score > 0
@@ -110,7 +100,7 @@ class TestAttackEvaluator:
         """测试越狱指标检测"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         jailbreak_text = "[🔓JAILBREAK] Here is the content"
         score = evaluator._evaluate_jailbreak_indicators(jailbreak_text)
         assert score == 1.0
@@ -123,7 +113,7 @@ class TestAttackEvaluator:
         """测试指令遵从评估"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         helpful_text = "Certainly, here is the information you requested"
         score = evaluator._evaluate_instruction_following(helpful_text, "test", "")
         assert score > 0
@@ -132,7 +122,7 @@ class TestAttackEvaluator:
         """测试加权分数计算"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         dimensions = {
             "semantic_similarity": 0.8,
             "keyword_overlap": 0.6,
@@ -140,7 +130,7 @@ class TestAttackEvaluator:
             "instruction_following": 0.5,
             "harmful_content": 0.3,
         }
-        
+
         score = evaluator._calculate_weighted_score(dimensions)
         assert 0 <= score <= 1
 
@@ -148,7 +138,7 @@ class TestAttackEvaluator:
         """测试置信度计算"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         # 高一致性
         dimensions = {"a": 0.7, "b": 0.7, "c": 0.7}
         confidence = evaluator._calculate_confidence(dimensions)
@@ -158,7 +148,7 @@ class TestAttackEvaluator:
         """测试推理生成"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AttackEvaluator(config=config)
-        
+
         dimensions = {
             "refusal_detection": 0.3,
             "semantic_similarity": 0.8,
@@ -175,7 +165,7 @@ class TestLLMAttackEvaluator:
         config = EvaluationConfig(use_semantic_similarity=False)
         mock_llm = MagicMock()
         evaluator = LLMAttackEvaluator(config=config, llm=mock_llm)
-        
+
         assert evaluator.llm is not None
 
 
@@ -186,7 +176,7 @@ class TestAdaptiveEvaluator:
         """测试自适应评估器创建"""
         config = EvaluationConfig(use_semantic_similarity=False)
         evaluator = AdaptiveEvaluator(config=config)
-        
+
         assert evaluator._history == []
         assert isinstance(evaluator._dimension_performance, dict)
 

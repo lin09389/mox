@@ -13,6 +13,7 @@ from .base import AttackConfig
 
 class JudgeStrategy(Enum):
     """判断策略"""
+
     SELF = "self"
     EXTERNAL = "external"
     PATTERN = "pattern"
@@ -20,6 +21,7 @@ class JudgeStrategy(Enum):
 
 class EvaluationStrategy(Enum):
     """评估策略"""
+
     KEYWORD_OVERLAP = "keyword_overlap"
     REFUSAL_PATTERN = "refusal_pattern"
     LLM_JUDGE = "llm_judge"
@@ -29,6 +31,7 @@ class EvaluationStrategy(Enum):
 @dataclass
 class GCGConfig(AttackConfig):
     """GCG 梯度攻击配置"""
+
     target_model: str = "gpt2"
     batch_size: int = 10
     top_k: int = 256
@@ -40,6 +43,7 @@ class GCGConfig(AttackConfig):
 @dataclass
 class TAPConfig(AttackConfig):
     """TAP/PAIR 攻击配置"""
+
     max_depth: int = 5
     max_breadth: int = 3
     judge_strategy: JudgeStrategy = JudgeStrategy.SELF
@@ -51,6 +55,7 @@ class TAPConfig(AttackConfig):
 @dataclass
 class CrescendoConfig(AttackConfig):
     """Crescendo 渐进式攻击配置"""
+
     num_stages: int = 4
     escalation_prompts: List[str] = field(default_factory=list)
 
@@ -68,6 +73,7 @@ class CrescendoConfig(AttackConfig):
 @dataclass
 class JailbreakConfig(AttackConfig):
     """越狱攻击配置"""
+
     template_type: str = "dan"  # dan, developer_mode, aim, etc.
     num_variants: int = 5
 
@@ -75,6 +81,7 @@ class JailbreakConfig(AttackConfig):
 @dataclass
 class PromptInjectionConfig(AttackConfig):
     """提示注入攻击配置"""
+
     injection_type: str = "direct"  # direct, indirect, context, etc.
     use_encoding: bool = False
     encoding_type: str = "base64"  # base64, hex, rot13, etc.
@@ -83,6 +90,7 @@ class PromptInjectionConfig(AttackConfig):
 @dataclass
 class AgentAttackConfig(AttackConfig):
     """Agent 攻击配置"""
+
     attack_vector: str = "tool_abuse"  # tool_abuse, memory_injection, role_hijacking
     available_tools: List[str] = field(default_factory=list)
     injection_point: str = "user"  # user, system, context
@@ -91,6 +99,7 @@ class AgentAttackConfig(AttackConfig):
 @dataclass
 class RAGAttackConfig(AttackConfig):
     """RAG 系统攻击配置"""
+
     rag_attack_type: str = "context_injection"
     knowledge_base_size: int = 1000
     injection_ratio: float = 0.1
@@ -99,6 +108,7 @@ class RAGAttackConfig(AttackConfig):
 @dataclass
 class GradientAttackConfig(AttackConfig):
     """梯度攻击配置"""
+
     attack_type: str = "fgsm"  # fgsm, pgd, gcg
     epsilon: float = 0.25
     alpha: float = 0.01
@@ -108,6 +118,7 @@ class GradientAttackConfig(AttackConfig):
 @dataclass
 class MetaAdversarialConfig(AttackConfig):
     """元对抗攻击配置"""
+
     meta_strategy: str = "recursive"
     max_recursion_depth: int = 5
     reflection_enabled: bool = True
@@ -116,6 +127,7 @@ class MetaAdversarialConfig(AttackConfig):
 @dataclass
 class GOATConfig(AttackConfig):
     """GOAT 多轮对话攻击配置"""
+
     num_turns: int = 10
     conversation_style: str = "academic"
     target_topic: str = ""
@@ -124,6 +136,7 @@ class GOATConfig(AttackConfig):
 @dataclass
 class CodeSecurityConfig(AttackConfig):
     """代码安全攻击配置"""
+
     code_language: str = "python"
     attack_target: str = "execution"  # execution, injection, exfiltration
     sandbox_enabled: bool = True

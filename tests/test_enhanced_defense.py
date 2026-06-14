@@ -3,7 +3,6 @@
 """
 
 import pytest
-from unittest.mock import MagicMock, patch
 
 from mox.defense.enhanced_filter import (
     EnhancedInputFilter,
@@ -263,7 +262,7 @@ class TestEnhancedInputFilter:
         import re
 
         config = EnhancedDefenseConfig(use_semantic_detection=False)
-        filter = EnhancedInputFilter(config=config)
+        EnhancedInputFilter(config=config)
 
         # 测试控制字符移除
         text_with_control = "Hello\u200bWorld"
