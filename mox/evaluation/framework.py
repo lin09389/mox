@@ -108,13 +108,13 @@ class UnifiedEvaluator:
         self.results: List[EvaluationResult] = []
         self._progress_callback: Optional[Callable] = None
 
-    def configure(self, **kwargs):
+    def configure(self, **kwargs) -> None:
         """配置评估器"""
         for key, value in kwargs.items():
             if hasattr(self.config, key):
                 setattr(self.config, key, value)
 
-    def set_progress_callback(self, callback: Callable):
+    def set_progress_callback(self, callback: Callable) -> None:
         """设置进度回调"""
         self._progress_callback = callback
 

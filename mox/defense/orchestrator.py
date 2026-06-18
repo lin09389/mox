@@ -19,6 +19,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from pathlib import Path
 
+from mox.core.llm import BaseLLM
+
 
 class DefenseType(Enum):
     """防御类型"""
@@ -79,7 +81,7 @@ class DefenseOrchestrator:
         report = orchestrator.generate_report(results)
     """
 
-    def __init__(self, target_llm=None):
+    def __init__(self, target_llm: Optional[BaseLLM] = None):
         self.target_llm = target_llm
         self.defenses: Dict[DefenseType, Any] = {}
         self.scenarios = self._build_scenarios()

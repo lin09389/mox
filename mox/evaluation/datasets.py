@@ -27,7 +27,7 @@
 import json
 import csv
 import random
-from typing import List, Dict, Any, Optional, Union
+from typing import List, Dict, Any, Optional, Union, Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from enum import Enum
@@ -128,7 +128,7 @@ class DatasetManager:
         # 注册 OWASP LLM
         self.register_loader("owasp_llm", self._load_owasp_llm)
 
-    def register_loader(self, name: str, loader: callable):
+    def register_loader(self, name: str, loader: Callable):
         """注册数据集加载器
 
         Args:

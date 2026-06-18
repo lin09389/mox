@@ -7,7 +7,7 @@
 """
 
 import re
-from typing import Optional, List, Dict, Any, Set
+from typing import Optional, List, Dict, Any, Set, Callable
 from dataclasses import dataclass, field
 from enum import Enum
 
@@ -33,7 +33,7 @@ class GateDecision(Enum):
 class ValidationRule:
     name: str
     pattern: Optional[str] = None
-    validator: Optional[callable] = None
+    validator: Optional[Callable] = None
     severity: float = 0.5
     action: GateDecision = GateDecision.BLOCK
     description: str = ""

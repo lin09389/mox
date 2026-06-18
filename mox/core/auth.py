@@ -121,7 +121,7 @@ class AuthManager:
         self._password_hashes = {}  # Store password hashes separately
         self._init_default_users()
 
-    def _init_default_users(self):
+    def _init_default_users(self) -> None:
         """初始化默认用户 - 仅当配置了默认用户密码时才创建"""
         import warnings
 
