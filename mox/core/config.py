@@ -214,7 +214,6 @@ class Settings(BaseSettings):
         except OSError:
             pass
         return False
-        return self
 
 
 # 全局配置实例
