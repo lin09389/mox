@@ -22,6 +22,7 @@ from mox.routes import (
     monitoring_router,
     tasks_router,
 )
+from mox.routes.attack_loop import router as attack_loop_router
 from mox.routes.api_v2 import router as api_v2_router
 from mox.routes.websocket import manager as ws_manager
 from mox.routes.websocket import router as websocket_router
@@ -91,6 +92,7 @@ def _register_exception_handlers(app: FastAPI) -> None:
 def _register_routers(app: FastAPI) -> None:
     app.include_router(auth_router, prefix=API_V1_PREFIX)
     app.include_router(attack_router, prefix=API_V1_PREFIX)
+    app.include_router(attack_loop_router, prefix=API_V1_PREFIX)
     app.include_router(defense_router, prefix=API_V1_PREFIX)
     app.include_router(benchmark_router, prefix=API_V1_PREFIX)
     app.include_router(monitoring_router, prefix=API_V1_PREFIX)
@@ -210,8 +212,9 @@ async def list_models() -> Dict[str, List[str]]:
                     model_name = model_info.get("name", "")
                     if model_name and model_name not in models:
                         models.append(model_name)
-    except Exception:
-        pass
+    except Exception as exc:
+        from mox.core.logging import get_logger
+        get_logger("api").debug(f"Ollama 模型发现失败（Ollama 可能未运行）: {exc}")
 
     return {"models": models}
 

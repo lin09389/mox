@@ -4,11 +4,14 @@ import base64
 import urllib.parse
 import re
 import math
+import logging
 from typing import Optional, List, Set, TYPE_CHECKING
 from dataclasses import dataclass
 
 from mox.core import DefenseType
 from .base import BaseDefense, DefenseConfig, DefenseResult
+
+logger = logging.getLogger(__name__)
 
 try:
     import torch
@@ -414,7 +417,8 @@ class RealPerplexityFilter(BaseDefense):
                 },
             )
 
-        except Exception:
+        except Exception as e:
+            logger.warning(f"困惑度计算失败，标记为恶意: {e}")
             return await self._create_result(
                 is_malicious=True,
                 confidence=0.5,
