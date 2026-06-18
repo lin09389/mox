@@ -203,6 +203,20 @@ export async function getAttackTemplates() {
   return unwrap(await api.get(`${API_PREFIX}/templates`))
 }
 
+export const attackLoopApi = {
+  start: async (config) => unwrap(await api.post(`${API_PREFIX}/attack-loop/start`, config)),
+  getProgress: async (taskId) => unwrap(await api.get(`${API_PREFIX}/attack-loop/progress/${taskId}`)),
+  pause: async (taskId) => unwrap(await api.post(`${API_PREFIX}/attack-loop/pause/${taskId}`)),
+  resume: async (taskId) => unwrap(await api.post(`${API_PREFIX}/attack-loop/resume/${taskId}`)),
+  stop: async (taskId) => unwrap(await api.post(`${API_PREFIX}/attack-loop/stop/${taskId}`)),
+  download: async (taskId, format) => unwrap(await api.get(`${API_PREFIX}/attack-loop/download/${taskId}?format=${format}`, { responseType: 'blob' })),
+  getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/attack-loop/history`, { params })),
+  getTypes: async () => withDemoFallback(
+    async () => unwrap(await api.get(`${API_PREFIX}/attack-loop/types`)),
+    () => null
+  ),
+}
+
 function generateMockOWASPResults() {
   const categories = ['LLM01', 'LLM02', 'LLM03', 'LLM04', 'LLM05', 'LLM06', 'LLM07', 'LLM08', 'LLM09', 'LLM10']
   const names = [

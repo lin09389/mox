@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
@@ -7,15 +7,15 @@ import {
   BarChart3,
   Clock3,
   Radar,
-  Shield,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   TrendingUp,
+  AlertTriangle,
+  Database
 } from 'lucide-react'
-import { getDefenseLogs, getRecentAttacks, getStats } from '../api/security'
-import { HeroStat, InfoCallout, InsightList, MetricCard, PageHeader, PanelHeader, QuickLink } from '../components/ui/AppFrame'
-import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import { useDashboardStats, useRecentAttacks, useDefenseLogs } from '../hooks/queries'
+import { HeroStat, InfoCallout, InsightList, MetricCard, MetricCardSkeleton, PageHeader, PanelHeader, QuickLink, Skeleton } from '../components/ui/AppFrame'
 
 function normalizeStats(stats) {
   return {
@@ -35,35 +35,16 @@ function formatRelativeTime(date) {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
+import { containerVariants, itemVariants } from '../utils/animations'
+
 export default function SecurityDashboard() {
-  const [stats, setStats] = useState(normalizeStats())
-  const [recentAttacks, setRecentAttacks] = useState([])
-  const [defenseLogs, setDefenseLogs] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [lastUpdate, setLastUpdate] = useState(new Date())
+  const { data: rawStats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useDashboardStats()
+  const { data: recentAttacks, isLoading: attacksLoading } = useRecentAttacks()
+  const { data: defenseLogs, isLoading: logsLoading } = useDefenseLogs()
 
-  const loadData = async () => {
-    try {
-      const [statsData, attacksData, logsData] = await Promise.all([
-        getStats(),
-        getRecentAttacks(),
-        getDefenseLogs(),
-      ])
-
-      setStats(normalizeStats(statsData))
-      setRecentAttacks(attacksData ?? [])
-      setDefenseLogs(logsData ?? [])
-      setLastUpdate(new Date())
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
-
-  useAutoRefresh(loadData, 30000)
+  const stats = useMemo(() => normalizeStats(rawStats), [rawStats])
+  const [now] = useState(() => Date.now())
+  const lastUpdate = new Date(statsUpdatedAt || now)
 
   const overview = useMemo(() => {
     const riskRatio = stats.totalRequests ? stats.blockedRequests / stats.totalRequests : 0
@@ -126,33 +107,40 @@ export default function SecurityDashboard() {
   )
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="SECURITY OVERVIEW"
-        title="专业监控台"
-        description="把当前请求规模、拦截表现、攻击成功率和近期高风险活动放在同一视野中，便于快速判断是否需要进入专项页面。"
-        badge={
-          <div className="badge badge-neutral px-3 py-1.5">
-            <Clock3 className="h-3.5 w-3.5" />
-            最近更新 {lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}
-          </div>
-        }
-      />
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="show"
+      className="page-shell"
+    >
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="SECURITY OVERVIEW"
+          title="专业监控台"
+          description="把当前请求规模、拦截表现、攻击成功率和近期高风险活动放在同一视野中，便于快速判断是否需要进入专项页面。"
+          badge={
+            <div className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] px-3 py-1.5">
+              <Clock3 className="h-3.5 w-3.5" />
+              {statsLoading ? '正在连接...' : `最近更新 ${lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`}
+            </div>
+          }
+        />
+      </motion.div>
 
-      <section className="hero-panel">
-        <div className="relative z-10 grid gap-4 xl:grid-cols-[1.3fr_0.9fr]">
-          <div className="space-y-4">
-            <span className="badge badge-neutral">
+      <motion.section variants={itemVariants} className="hero-panel mb-2">
+        <div className="relative z-10 grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
+          <div className="space-y-5">
+            <span className="badge badge-info bg-cyan-500/10 border-cyan-500/20 text-cyan-500">
               <Radar className="h-3.5 w-3.5" />
               30 秒自动刷新监控数据
             </span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-graphite-950 sm:text-4xl">
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--text-main)] sm:text-4xl leading-tight">
               先看风险信号，再进入具体模块处理。
             </h2>
-            <p className="max-w-2xl text-sm text-graphite-600 sm:text-base">
+            <p className="max-w-2xl text-sm font-medium text-[var(--text-muted)] sm:text-base leading-relaxed">
               这版首页把随机图表替换成更稳定的监控信号视图。你可以先判断风险热度，再决定是去攻击页复测、防御页排查，还是到历史页做回归分析。
             </p>
-            <div className="flex flex-wrap gap-3">
+            <div className="flex flex-wrap gap-4 pt-2">
               <Link to="/attack" className="btn-primary">
                 进入攻击测试
                 <ArrowRight className="h-4 w-4" />
@@ -163,57 +151,99 @@ export default function SecurityDashboard() {
             </div>
           </div>
 
-          <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-1">
-            <HeroStat
-              label="实时拦截"
-              value={stats.blockedRequests.toLocaleString()}
-              hint="当前累计被防线拦截的请求数"
-              tone="danger"
-            />
-            <HeroStat
-              label="风险热度"
-              value={`${Math.round(stats.attackSuccessRate * 100)}%`}
-              hint="攻击成功率越高，越需要尽快回归"
-              tone="warning"
-            />
-            <HeroStat
-              label="防御韧性"
-              value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
-              hint="反映防护策略当前有效性"
-              tone="success"
-            />
+          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1 justify-center">
+            {statsLoading ? (
+              <>
+                 <Skeleton className="h-[120px] w-full" />
+                 <div className="hidden xl:grid grid-cols-2 gap-4">
+                   <Skeleton className="h-[120px] w-full" />
+                   <Skeleton className="h-[120px] w-full" />
+                 </div>
+              </>
+            ) : (
+              <>
+                <HeroStat
+                  label="实时拦截"
+                  value={stats.blockedRequests.toLocaleString()}
+                  hint="当前累计被防线拦截的请求数"
+                  tone="danger"
+                />
+                <div className="hidden xl:grid grid-cols-2 gap-4">
+                  <HeroStat
+                    label="风险热度"
+                    value={`${Math.round(stats.attackSuccessRate * 100)}%`}
+                    hint="越高越需要回归"
+                    tone="warning"
+                  />
+                  <HeroStat
+                    label="防御韧性"
+                    value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
+                    hint="策略当前有效性"
+                    tone="success"
+                  />
+                </div>
+                {/* Mobile/Tablet Fallback for Hero Stats */}
+                <div className="xl:hidden sm:contents hidden">
+                  <HeroStat
+                    label="风险热度"
+                    value={`${Math.round(stats.attackSuccessRate * 100)}%`}
+                    hint="攻击成功率越高越危险"
+                    tone="warning"
+                  />
+                  <HeroStat
+                    label="防御韧性"
+                    value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
+                    hint="防护策略当前有效性"
+                    tone="success"
+                  />
+                </div>
+              </>
+            )}
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        {overview.map((item) => (
-          <MetricCard
-            key={item.label}
-            icon={item.icon}
-            label={item.label}
-            value={item.value}
-            hint={item.hint}
-            tone={item.tone}
-          />
-        ))}
-      </div>
+      <motion.div variants={itemVariants} className="grid gap-5 md:grid-cols-2 xl:grid-cols-4">
+        {statsLoading ? (
+          Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)
+        ) : (
+          overview.map((item) => (
+            <MetricCard
+              key={item.label}
+              icon={item.icon}
+              label={item.label}
+              value={item.value}
+              hint={item.hint}
+              tone={item.tone}
+            />
+          ))
+        )}
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
-        <section className="card">
+      <motion.div variants={itemVariants} className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
+        <section className="card p-5">
           <PanelHeader
             title="风险信号"
             description="把当前应该优先注意的几项信息做成可读的简短结论。"
           />
-          <InsightList items={signalItems} />
+          {statsLoading ? (
+            <div className="space-y-3">
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+              <Skeleton className="h-16 w-full" />
+            </div>
+          ) : (
+            <InsightList items={signalItems} />
+          )}
         </section>
 
         <InfoCallout
           title="下一步建议"
           description="如果攻击成功率升高，优先进入攻击测试页复刻案例；如果防御成功率下降，优先查看防御日志确认是哪一层失效。"
           icon={Sparkles}
+          tone="electric"
           cta={
-            <div className="space-y-3">
+            <div className="space-y-3 mt-4">
               <Link to="/attack" className="block">
                 <QuickLink label="攻击测试页" description="复刻高风险案例并对比成功分数变化。" />
               </Link>
@@ -226,40 +256,40 @@ export default function SecurityDashboard() {
             </div>
           }
         />
-      </div>
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-2">
-        <section className="card">
+      <motion.div variants={itemVariants} className="grid gap-6 xl:grid-cols-2">
+        <section className="card p-5">
           <PanelHeader
             title="近期攻击事件"
             description="只保留最有用的信息：类型、结果和触发时间。"
           />
 
-          {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="spinner-lg" />
+          {attacksLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
-          ) : recentAttacks.length === 0 ? (
-            <div className="panel-muted flex min-h-[220px] items-center justify-center text-sm text-graphite-500">
+          ) : recentAttacks?.length === 0 ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] text-sm font-medium text-[var(--text-muted)]">
               目前没有新的攻击事件。
             </div>
           ) : (
             <div className="space-y-3">
-              {recentAttacks.slice(0, 5).map((attack, index) => (
+              {recentAttacks?.slice(0, 5).map((attack, index) => (
                 <motion.div
                   key={`${attack.type}-${index}`}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.015, x: 2, boxShadow: 'var(--shadow-soft)' }}
+                  whileHover={{ scale: 1.01, x: 2, boxShadow: 'var(--shadow-soft)' }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 dark:bg-graphite-100/40 px-4 py-3 transition-colors"
+                  className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] px-5 py-4 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-graphite-900">
+                      <p className="text-sm font-bold text-[var(--text-main)]">
                         {attack.type || '未知攻击类型'}
                       </p>
-                      <p className="mt-1 text-xs text-graphite-500">
+                      <p className="mt-1.5 text-xs font-medium text-[var(--text-muted)]">
                         {(attack.prompt || '无提示词内容').slice(0, 64)}
                       </p>
                     </div>
@@ -267,7 +297,7 @@ export default function SecurityDashboard() {
                       <span className={`badge ${attack.success ? 'badge-danger' : 'badge-success'}`}>
                         {attack.success ? '攻击成功' : '已拦截'}
                       </span>
-                      <p className="text-xs text-graphite-400">{formatRelativeTime(attack.created_at || new Date())}</p>
+                      <p className="text-xs font-mono text-[var(--text-muted)] opacity-70">{formatRelativeTime(attack.created_at || new Date())}</p>
                     </div>
                   </div>
                 </motion.div>
@@ -276,37 +306,37 @@ export default function SecurityDashboard() {
           )}
         </section>
 
-        <section className="card">
+        <section className="card p-5">
           <PanelHeader
             title="防御日志快照"
             description="帮助判断当前是输入过滤、输出过滤还是其他策略在承压。"
           />
 
-          {loading ? (
-            <div className="flex min-h-[220px] items-center justify-center">
-              <div className="spinner-lg" />
+          {logsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}
             </div>
-          ) : defenseLogs.length === 0 ? (
-            <div className="panel-muted flex min-h-[220px] items-center justify-center text-sm text-graphite-500">
+          ) : defenseLogs?.length === 0 ? (
+            <div className="flex min-h-[220px] flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] text-sm font-medium text-[var(--text-muted)]">
               暂无防御日志，等待新的请求进入。
             </div>
           ) : (
             <div className="space-y-3">
-              {defenseLogs.slice(0, 5).map((log, index) => (
+              {defenseLogs?.slice(0, 5).map((log, index) => (
                 <motion.div
                   key={`${log.defense_type}-${index}`}
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  whileHover={{ scale: 1.015, x: -2, boxShadow: 'var(--shadow-soft)' }}
+                  whileHover={{ scale: 1.01, x: -2, boxShadow: 'var(--shadow-soft)' }}
                   transition={{ delay: index * 0.04, duration: 0.2 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 dark:bg-graphite-100/40 px-4 py-3 transition-colors"
+                  className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] px-5 py-4 transition-colors"
                 >
-                  <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center justify-between gap-4">
                     <div>
-                      <p className="text-sm font-semibold text-graphite-900">
+                      <p className="text-sm font-bold text-[var(--text-main)]">
                         {log.defense_type || '防御模块'}
                       </p>
-                      <p className="mt-1 text-xs text-graphite-500">
+                      <p className="mt-1.5 text-xs font-medium text-[var(--text-muted)]">
                         置信度 {(Number(log.confidence || 0) * 100).toFixed(1)}%
                       </p>
                     </div>
@@ -319,20 +349,20 @@ export default function SecurityDashboard() {
             </div>
           )}
         </section>
-      </div>
+      </motion.div>
 
-      <section className="card">
+      <motion.section variants={itemVariants} className="card p-6">
         <PanelHeader
           title="快捷入口"
           description="把常用路径放在首页，减少多层导航查找。"
         />
-        <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-4">
-          <Link to="/owasp"><QuickLink label="OWASP 测试" description="用标准化风险类目做专项验证。" /></Link>
-          <Link to="/redteam"><QuickLink label="红队演练" description="按更接近真实攻击链的方式复测。" /></Link>
-          <Link to="/benchmark"><QuickLink label="基准评测" description="对比不同模型或数据集表现。" /></Link>
-          <Link to="/reports"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
+        <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mt-4">
+          <Link to="/owasp" className="block"><QuickLink label="OWASP 测试" description="用标准化风险类目做专项验证。" /></Link>
+          <Link to="/redteam" className="block"><QuickLink label="红队演练" description="按更接近真实攻击链的方式复测。" /></Link>
+          <Link to="/benchmark" className="block"><QuickLink label="基准评测" description="对比不同模型或数据集表现。" /></Link>
+          <Link to="/reports" className="block"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   )
 }

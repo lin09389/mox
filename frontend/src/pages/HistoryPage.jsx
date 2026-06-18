@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   AlertTriangle,
@@ -7,20 +8,23 @@ import {
   Clock3,
   Download,
   Filter,
-  History,
   RefreshCw,
   Search,
   Shield,
   Trash2,
   Zap,
+  History
 } from 'lucide-react'
-import { attackApi, defenseApi } from '../api'
 import {
   MetricCard,
+  MetricCardSkeleton,
   PageHeader,
   PanelHeader,
   TableMobileFallback,
+  Skeleton
 } from '../components/ui/AppFrame'
+import { useAttackHistory, useDefenseHistory } from '../hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
 
 const TABS = [
   { id: 'attack', label: '攻击记录', icon: Zap },
@@ -39,8 +43,8 @@ const DEFENSE_LABELS = {
   output_filter: '输出过滤',
 }
 
-const badgeForAttackResult = (result) => (result === 'success' ? 'badge-danger' : 'badge-success')
-const badgeForDefenseResult = (malicious) => (malicious ? 'badge-danger' : 'badge-success')
+const badgeForAttackResult = (result) => (result === 'success' ? 'badge-danger border-rose-500/30 bg-rose-500/10 text-rose-500' : 'badge-success border-emerald-500/30 bg-emerald-500/10 text-emerald-500')
+const badgeForDefenseResult = (malicious) => (malicious ? 'badge-danger border-rose-500/30 bg-rose-500/10 text-rose-500' : 'badge-success border-emerald-500/30 bg-emerald-500/10 text-emerald-500')
 
 function formatDate(dateStr) {
   const date = new Date(dateStr)
@@ -51,53 +55,30 @@ function formatDate(dateStr) {
   return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
+import { containerVariants, itemVariants } from '../utils/animations'
+
 export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState('attack')
-  const [attackHistory, setAttackHistory] = useState([])
-  const [defenseHistory, setDefenseHistory] = useState([])
-  const [loading, setLoading] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('newest')
+  
+  const queryClient = useQueryClient()
+  const attackQuery = useAttackHistory({ limit: 50 })
+  const defenseQuery = useDefenseHistory({ limit: 50 })
 
-  useEffect(() => {
-    loadHistory()
-  }, [activeTab])
-
-  const loadHistory = async () => {
-    setLoading(true)
-    try {
-      if (activeTab === 'attack') {
-        const { data } = await attackApi.getHistory({ limit: 50 })
-        setAttackHistory(data)
-      } else {
-        const { data } = await defenseApi.getHistory({ limit: 50 })
-        setDefenseHistory(data)
-      }
-    } catch {
-      if (activeTab === 'attack') {
-        setAttackHistory([
-          { id: 1, attack_type: 'prompt_injection', model_name: 'gpt-4', result: 'success', success_score: 0.92, created_at: new Date().toISOString() },
-          { id: 2, attack_type: 'jailbreak', model_name: 'claude-3', result: 'failure', success_score: 0.15, created_at: new Date(Date.now() - 3_600_000).toISOString() },
-          { id: 3, attack_type: 'gcg', model_name: 'gpt-4', result: 'success', success_score: 0.78, created_at: new Date(Date.now() - 7_200_000).toISOString() },
-        ])
-      } else {
-        setDefenseHistory([
-          { id: 1, defense_type: 'input_filter', model_name: 'gpt-4', is_malicious: true, confidence: 0.95, created_at: new Date().toISOString() },
-          { id: 2, defense_type: 'output_filter', model_name: 'gpt-4', is_malicious: false, confidence: 0.12, created_at: new Date(Date.now() - 3_600_000).toISOString() },
-          { id: 3, defense_type: 'input_filter', model_name: 'claude-3', is_malicious: true, confidence: 0.88, created_at: new Date(Date.now() - 7_200_000).toISOString() },
-        ])
-      }
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const currentRaw = activeTab === 'attack' ? attackHistory : defenseHistory
+  const isAttack = activeTab === 'attack'
+  const loading = isAttack ? attackQuery.isLoading : defenseQuery.isLoading
+  const isFetching = isAttack ? attackQuery.isFetching : defenseQuery.isFetching
+  
+  // Fallbacks for demo if queries fail, handled by our api layer already so `data` will be correct
+  const currentRaw = useMemo(() => {
+    return (isAttack ? attackQuery.data?.data : defenseQuery.data?.data) || []
+  }, [isAttack, attackQuery.data?.data, defenseQuery.data?.data])
 
   const filtered = useMemo(() => {
     const search = searchTerm.trim().toLowerCase()
     const list = currentRaw.filter((item) => {
-      const type = activeTab === 'attack' ? item.attack_type : item.defense_type
+      const type = isAttack ? item.attack_type : item.defense_type
       return !search || type?.toLowerCase().includes(search) || item.model_name?.toLowerCase().includes(search)
     })
 
@@ -107,12 +88,12 @@ export default function HistoryPage() {
       if (sortBy === 'confidence') return (b.confidence || 0) - (a.confidence || 0)
       return new Date(b.created_at) - new Date(a.created_at)
     })
-  }, [activeTab, currentRaw, searchTerm, sortBy])
+  }, [isAttack, currentRaw, searchTerm, sortBy])
 
   const metrics = useMemo(() => {
     const total = currentRaw.length
     const successCount =
-      activeTab === 'attack'
+      isAttack
         ? currentRaw.filter((item) => item.result === 'success').length
         : currentRaw.filter((item) => item.is_malicious).length
     const todayCount = currentRaw.filter(
@@ -125,13 +106,14 @@ export default function HistoryPage() {
       ratio: total ? Math.round((successCount / total) * 100) : 0,
       todayCount,
     }
-  }, [activeTab, currentRaw])
+  }, [isAttack, currentRaw])
 
   const clearHistory = () => {
-    if (activeTab === 'attack') {
-      setAttackHistory([])
+    // Optimistically update query client cache
+    if (isAttack) {
+      queryClient.setQueryData(['attack', 'history', { limit: 50 }], { data: [] })
     } else {
-      setDefenseHistory([])
+      queryClient.setQueryData(['defense', 'history', { limit: 50 }], { data: [] })
     }
     toast.success('已清空当前页签记录。')
   }
@@ -148,40 +130,53 @@ export default function HistoryPage() {
     toast.success('已导出当前记录。')
   }
 
+  const refetch = () => {
+    if (isAttack) attackQuery.refetch()
+    else defenseQuery.refetch()
+  }
+
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="HISTORY CENTER"
-        title="历史记录中心"
-        description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端降级浏览。"
-      />
-
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
-        <MetricCard icon={BarChart3} label="总记录数" value={metrics.total} hint="当前页签下的所有记录" tone="electric" />
-        <MetricCard
-          icon={activeTab === 'attack' ? AlertTriangle : Shield}
-          label={activeTab === 'attack' ? '攻击成功数' : '检测到威胁'}
-          value={metrics.successCount}
-          hint={activeTab === 'attack' ? '需要重点复盘的案例' : '被识别出的风险内容'}
-          tone={activeTab === 'attack' ? 'lava' : 'amber'}
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="HISTORY CENTER"
+          title="历史记录中心"
+          description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端降级浏览。"
         />
-        <MetricCard
-          icon={CheckCircle2}
-          label={activeTab === 'attack' ? '成功率' : '识别率'}
-          value={`${metrics.ratio}%`}
-          hint="帮助快速判断近期趋势"
-          tone="neon"
-        />
-        <MetricCard icon={Clock3} label="今日新增" value={metrics.todayCount} hint="便于快速查看今天的变化" tone="graphite" />
-      </div>
+      </motion.div>
 
-      <section className="card">
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        {loading ? (
+          Array.from({ length: 4 }).map((_, i) => <MetricCardSkeleton key={i} />)
+        ) : (
+          <>
+            <MetricCard icon={BarChart3} label="总记录数" value={metrics.total} hint="当前页签下的所有记录" tone="electric" />
+            <MetricCard
+              icon={isAttack ? AlertTriangle : Shield}
+              label={isAttack ? '攻击成功数' : '检测到威胁'}
+              value={metrics.successCount}
+              hint={isAttack ? '需要重点复盘的案例' : '被识别出的风险内容'}
+              tone={isAttack ? 'lava' : 'amber'}
+            />
+            <MetricCard
+              icon={CheckCircle2}
+              label={isAttack ? '成功率' : '识别率'}
+              value={`${metrics.ratio}%`}
+              hint="帮助快速判断近期趋势"
+              tone="neon"
+            />
+            <MetricCard icon={Clock3} label="今日新增" value={metrics.todayCount} hint="便于快速查看今天的变化" tone="graphite" />
+          </>
+        )}
+      </motion.div>
+
+      <motion.section variants={itemVariants} className="card p-5">
         <PanelHeader
           title="筛选与操作"
           description="优先把常用动作聚合在一行，减少来回切页。"
         />
         <div className="flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
-          <div className="flex flex-wrap gap-2">
+          <div className="flex flex-wrap w-fit gap-1 p-1 rounded-xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass-strong)] shadow-sm backdrop-blur-md">
             {TABS.map((tab) => {
               const Icon = tab.icon
               const active = tab.id === activeTab
@@ -190,7 +185,7 @@ export default function HistoryPage() {
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={active ? 'btn-primary' : 'btn-secondary'}
+                  className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all duration-300 ${active ? 'bg-cyan-500 text-white shadow-soft' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-glass)]'}`}
                 >
                   <Icon className="h-4 w-4" />
                   {tab.label}
@@ -201,50 +196,47 @@ export default function HistoryPage() {
 
           <div className="flex flex-col gap-3 md:flex-row md:items-center">
             <label className="relative min-w-[220px]">
-              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
               <input
                 type="text"
                 value={searchTerm}
                 onChange={(event) => setSearchTerm(event.target.value)}
-                className="input-field pl-11"
+                className="input-field pl-10"
                 placeholder="搜索类型或模型"
               />
             </label>
 
             <label className="relative min-w-[180px]">
-              <Filter className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
-              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="select-field pl-11">
+              <Filter className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+              <select value={sortBy} onChange={(event) => setSortBy(event.target.value)} className="input-field pl-10 appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]">
                 <option value="newest">最新优先</option>
                 <option value="oldest">最早优先</option>
-                <option value={activeTab === 'attack' ? 'score' : 'confidence'}>
-                  {activeTab === 'attack' ? '分数优先' : '置信度优先'}
+                <option value={isAttack ? 'score' : 'confidence'}>
+                  {isAttack ? '分数优先' : '置信度优先'}
                 </option>
               </select>
             </label>
 
             <div className="flex gap-2">
-              <button type="button" onClick={loadHistory} className="btn-secondary">
-                <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
-                刷新
+              <button type="button" onClick={refetch} className="btn-secondary h-[42px]" disabled={isFetching}>
+                <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
               </button>
-              <button type="button" onClick={exportHistory} className="btn-secondary">
+              <button type="button" onClick={exportHistory} className="btn-secondary h-[42px]" disabled={currentRaw.length === 0}>
                 <Download className="h-4 w-4" />
-                导出
               </button>
-              <button type="button" onClick={clearHistory} className="btn-danger">
+              <button type="button" onClick={clearHistory} className="btn-ghost text-rose-500 hover:text-rose-600 hover:bg-rose-500/10 h-[42px]" disabled={currentRaw.length === 0}>
                 <Trash2 className="h-4 w-4" />
-                清空
               </button>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="table-shell">
-        <div className="border-b border-graphite-200/70 px-5 py-4">
-          <h2 className="text-lg font-semibold text-graphite-950">{activeTab === 'attack' ? '攻击记录列表' : '防御记录列表'}</h2>
-          <p className="mt-1 text-sm text-graphite-500">
-            {loading ? '正在加载数据…' : `当前共 ${filtered.length} 条可见记录。`}
+      <motion.section variants={itemVariants} className="card overflow-hidden">
+        <div className="border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-5 py-4">
+          <h2 className="text-lg font-bold font-display text-[var(--text-main)]">{isAttack ? '攻击记录列表' : '防御记录列表'}</h2>
+          <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">
+            {loading ? '正在同步数据...' : `当前共检索到 ${filtered.length} 条记录。`}
           </p>
         </div>
 
@@ -252,34 +244,34 @@ export default function HistoryPage() {
           <TableMobileFallback
             items={filtered}
             renderTitle={(item) =>
-              activeTab === 'attack'
+              isAttack
                 ? ATTACK_LABELS[item.attack_type] || item.attack_type
                 : DEFENSE_LABELS[item.defense_type] || item.defense_type
             }
             renderMeta={(item) => (
               <>
-                <p>模型：{item.model_name}</p>
-                <p>时间：{formatDate(item.created_at)}</p>
+                <p>模型: <span className="font-mono">{item.model_name}</span></p>
+                <p>时间: <span className="font-mono">{formatDate(item.created_at)}</span></p>
                 <p>
-                  {activeTab === 'attack'
-                    ? `分数：${Math.round((item.success_score || 0) * 100)}%`
-                    : `置信度：${Math.round((item.confidence || 0) * 100)}%`}
+                  {isAttack
+                    ? `漏洞分值: ${Math.round((item.success_score || 0) * 100)}%`
+                    : `判定置信度: ${Math.round((item.confidence || 0) * 100)}%`}
                 </p>
               </>
             )}
             renderRight={(item) => (
               <span className={`badge ${
-                activeTab === 'attack'
+                isAttack
                   ? badgeForAttackResult(item.result)
                   : badgeForDefenseResult(item.is_malicious)
               }`}>
-                {activeTab === 'attack'
+                {isAttack
                   ? item.result === 'success'
-                    ? '攻击成功'
+                    ? '突破成功'
                     : '已拦截'
                   : item.is_malicious
-                    ? '检测到威胁'
-                    : '内容安全'}
+                    ? '发现威胁'
+                    : '内容合规'}
               </span>
             )}
           />
@@ -287,73 +279,79 @@ export default function HistoryPage() {
 
         <div className="hidden md:block">
           {loading ? (
-            <div className="flex min-h-[280px] items-center justify-center">
-              <div className="spinner-lg" />
+            <div className="p-6 space-y-4">
+               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
             </div>
           ) : filtered.length === 0 ? (
-            <div className="flex min-h-[280px] items-center justify-center px-6 text-center text-sm text-graphite-500">
+            <div className="flex min-h-[300px] flex-col items-center justify-center px-6 text-center text-sm font-bold text-[var(--text-muted)] opacity-60">
+              <History className="h-12 w-12 mb-4" />
               {searchTerm ? '没有找到匹配的记录。' : '当前页签还没有数据。'}
             </div>
           ) : (
-            <div className="table-container">
-              <table className="table">
-                <thead>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-[var(--text-main)]">
+                <thead className="bg-[var(--bg-glass-strong)] text-[var(--text-muted)] font-bold uppercase tracking-wider text-xs border-b border-[var(--border-glass)]">
                   <tr>
-                    <th>时间</th>
-                    <th>{activeTab === 'attack' ? '攻击类型' : '防御类型'}</th>
-                    <th>目标模型</th>
-                    <th>结果</th>
-                    <th>{activeTab === 'attack' ? '成功分数' : '置信度'}</th>
+                    <th className="px-6 py-4">时间戳</th>
+                    <th className="px-6 py-4">{isAttack ? '攻击向量' : '防御切面'}</th>
+                    <th className="px-6 py-4">目标模型</th>
+                    <th className="px-6 py-4">裁决结果</th>
+                    <th className="px-6 py-4">{isAttack ? '漏洞分值' : '判定置信度'}</th>
                   </tr>
                 </thead>
-                <tbody>
+                <tbody className="divide-y divide-[var(--border-glass)]">
                   {filtered.map((item) => {
                     const typeLabel =
-                      activeTab === 'attack'
+                      isAttack
                         ? ATTACK_LABELS[item.attack_type] || item.attack_type
                         : DEFENSE_LABELS[item.defense_type] || item.defense_type
-                    const score = activeTab === 'attack' ? item.success_score || 0 : item.confidence || 0
+                    const score = isAttack ? item.success_score || 0 : item.confidence || 0
 
                     return (
-                      <tr key={item.id}>
-                        <td>{formatDate(item.created_at)}</td>
-                        <td>
-                          <span className="badge badge-neutral">{typeLabel}</span>
+                      <motion.tr 
+                        key={item.id}
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="hover:bg-[var(--bg-glass)] transition-colors"
+                      >
+                        <td className="px-6 py-4 whitespace-nowrap font-mono text-[var(--text-muted)]">{formatDate(item.created_at)}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <span className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass)]">{typeLabel}</span>
                         </td>
-                        <td>{item.model_name}</td>
-                        <td>
+                        <td className="px-6 py-4 whitespace-nowrap font-mono font-bold">{item.model_name}</td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <span
                             className={`badge ${
-                              activeTab === 'attack'
+                              isAttack
                                 ? badgeForAttackResult(item.result)
                                 : badgeForDefenseResult(item.is_malicious)
                             }`}
                           >
-                            {activeTab === 'attack'
+                            {isAttack
                               ? item.result === 'success'
-                                ? '攻击成功'
-                                : '已拦截'
+                                ? '突破成功'
+                                : '安全防御'
                               : item.is_malicious
-                                ? '检测到威胁'
-                                : '内容安全'}
+                                ? '发现威胁'
+                                : '内容合规'}
                           </span>
                         </td>
-                        <td>
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center gap-3">
-                            <div className="h-2 w-24 overflow-hidden rounded-full bg-graphite-100">
+                            <div className="h-2 w-24 overflow-hidden rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)]">
                               <div
-                                className={`h-full rounded-full ${
-                                  score >= 0.6 ? 'bg-lava-500' : 'bg-neon-500'
+                                className={`h-full rounded-full transition-all duration-700 ease-out ${
+                                  score >= 0.6 ? 'bg-rose-500' : 'bg-emerald-500'
                                 }`}
                                 style={{ width: `${Math.round(score * 100)}%` }}
                               />
                             </div>
-                            <span className="text-xs font-medium text-graphite-500">
+                            <span className="font-mono font-bold text-[var(--text-main)]">
                               {Math.round(score * 100)}%
                             </span>
                           </div>
                         </td>
-                      </tr>
+                      </motion.tr>
                     )
                   })}
                 </tbody>
@@ -361,7 +359,7 @@ export default function HistoryPage() {
             </div>
           )}
         </div>
-      </section>
-    </div>
+      </motion.section>
+    </motion.div>
   )
 }

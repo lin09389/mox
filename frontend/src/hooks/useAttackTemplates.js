@@ -87,10 +87,6 @@ export function useAttackTemplates() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
-  useEffect(() => {
-    fetchTemplates()
-  }, [])
-
   const fetchTemplates = async () => {
     setLoading(true)
     setError(null)
@@ -106,6 +102,11 @@ export function useAttackTemplates() {
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    const t = setTimeout(() => fetchTemplates(), 0)
+    return () => clearTimeout(t)
+  }, [])
 
   const getTemplatesByCategory = (category) => templates[category] || []
 

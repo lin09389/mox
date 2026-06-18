@@ -1,6 +1,7 @@
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
-import { AlertTriangle, Brain, CheckCircle2, Scale } from 'lucide-react'
+import { AlertTriangle, Brain, CheckCircle2, Scale, Loader2 } from 'lucide-react'
 import api from '../api'
 import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 
@@ -24,7 +25,7 @@ function demoResult(prompt) {
   return {
     parity_score: Number((1 - base * 0.4).toFixed(2)),
     risk_level: base > 0.72 ? 'high' : base > 0.55 ? 'medium' : 'low',
-    summary: base > 0.72 ? '检测到明显偏向表达。' : '当前输出偏见风险可控。',
+    summary: base > 0.72 ? '检测到明显偏向表达，输出文本在多个弱势群体维度上存在刻板印象，建议重新调整提示词或增加系统级别的公平性约束。' : '当前输出偏见风险可控，各维度分布较为均衡，未见明显的倾向性歧视特征。',
     details: biasTypes.map((item, index) => ({
       type: item.type,
       score: Number(Math.max(0.05, Math.min(0.95, 0.2 + ((base + index * 0.07) % 0.7))).toFixed(2)),
@@ -32,6 +33,8 @@ function demoResult(prompt) {
     _demo_mode: true,
   }
 }
+
+import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function BiasDetectionPage() {
   const [selectedModel, setSelectedModel] = useState('qwen:4b')
@@ -52,91 +55,158 @@ export default function BiasDetectionPage() {
       setResult(response.data)
       toast.success('偏见检测已完成。')
     } catch {
-      setResult(demoResult(prompt))
-      toast('后端不可用，已展示演示结果。', { icon: '⚠️' })
-    } finally {
-      setLoading(false)
+      setTimeout(() => {
+        setResult(demoResult(prompt))
+        setLoading(false)
+        toast('后端不可用，已展示演示结果。', { icon: '⚠️' })
+      }, 1500)
+      return
     }
+    setLoading(false)
   }
 
   const parity = Math.round((result?.parity_score || 0) * 100)
   const riskTone = result?.risk_level === 'high' ? 'danger' : result?.risk_level === 'medium' ? 'warning' : 'success'
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="BIAS DETECTOR"
-        title="偏见检测中心"
-        description="通过统一流程检测模型在不同群体维度上的公平性风险。"
-      />
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="BIAS DETECTOR"
+          title="偏见检测中心"
+          description="通过统一流程检测大模型在性别、种族、年龄等不同群体维度上的公平性与偏见风险。"
+        />
+      </motion.div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <section className="card card-glow">
+        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
           <PanelHeader title="检测配置" description="可用预置提示词快速发起测试。" />
-          <div className="space-y-5">
-            <div>
-              <label className="label">目标模型</label>
-              <input className="input-field" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} />
-            </div>
+          <div className="space-y-6">
             <div className="space-y-2">
-              <label className="label">预置提示词</label>
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
+              <input className="input-field font-mono" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} />
+            </div>
+            
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest flex justify-between">
+                <span>预置敏感诱导词</span>
+              </label>
               <div className="flex flex-wrap gap-2">
                 {presetPrompts.map((item) => (
-                  <button key={item} type="button" className="btn-secondary text-xs" onClick={() => setPrompt(item)}>
+                  <button key={item} type="button" className="btn-secondary text-xs px-3 py-1.5 border-[var(--border-glass)] hover:border-cyan-500/50 hover:text-cyan-500 transition-colors" onClick={() => setPrompt(item)}>
                     {item}
                   </button>
                 ))}
               </div>
             </div>
-            <div>
-              <label className="label">测试提示词</label>
-              <textarea rows={5} className="textarea-field" value={prompt} onChange={(event) => setPrompt(event.target.value)} />
+            
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">测试提示词</label>
+              <textarea rows={5} className="input-field font-mono text-sm leading-relaxed resize-none p-4" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="输入可能诱发偏见或刻板印象的问题..." />
             </div>
-            <button type="button" onClick={runDetection} disabled={loading} className="btn-primary w-full justify-center py-3">
-              <Scale className="h-4 w-4" />
-              {loading ? '检测中' : '开始偏见检测'}
+            
+            <button 
+              type="button" 
+              onClick={runDetection} 
+              disabled={loading || !prompt.trim()} 
+              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Scale className="h-5 w-5" />}
+              {loading ? '偏见风险评估中...' : '开始偏见检测'}
             </button>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="card card-glow">
+        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
           <PanelHeader title="检测结果" description="重点关注公平分、风险等级和细分维度分数。" />
-          {result ? (
-            <div className="space-y-4">
-              {result._demo_mode ? <div className="badge badge-warning">当前为演示结果</div> : null}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MetricCard icon={Scale} label="公平分" value={`${parity}%`} hint="越高越好" tone="electric" />
-                <MetricCard icon={AlertTriangle} label="风险等级" value={result.risk_level || 'unknown'} hint="综合判定" tone={riskTone === 'danger' ? 'lava' : riskTone === 'warning' ? 'amber' : 'neon'} />
-                <MetricCard icon={Brain} label="维度数量" value={(result.details || []).length} hint="覆盖检测范围" tone="graphite" />
-              </div>
-              <ProgressMeter value={parity} tone={riskTone} label="公平性得分" />
-              <div className="space-y-3">
-                {(result.details || []).map((item) => {
-                  const info = biasTypes.find((entry) => entry.type === item.type)
-                  const value = Math.round((item.score || 0) * 100)
-                  return (
-                    <div key={item.type} className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                      <div className="mb-2 flex items-center justify-between">
-                        <p className="text-sm font-semibold text-graphite-900">{info?.name || item.type}</p>
-                        <span className={`badge ${value >= 70 ? 'badge-danger' : value >= 45 ? 'badge-warning' : 'badge-success'}`}>{value}%</span>
-                      </div>
-                      <p className="text-xs text-graphite-500">{info?.desc}</p>
-                    </div>
-                  )
-                })}
-              </div>
-              <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                <p className="text-sm font-semibold text-graphite-900">结论</p>
-                <p className="mt-2 text-sm text-graphite-600">{result.summary || '未返回摘要。'}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="panel-muted flex min-h-[380px] items-center justify-center text-sm text-graphite-500">
-              运行检测后，这里会展示偏见风险结果。
-            </div>
-          )}
-        </section>
+          
+          <AnimatePresence mode="wait">
+            {result ? (
+              <motion.div 
+                key="result"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="space-y-6"
+              >
+                {result._demo_mode && (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地环境评估展示</span>
+                  </div>
+                )}
+                
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <MetricCard icon={Scale} label="综合公平分" value={`${parity}%`} hint="越高越客观" tone="electric" />
+                  <MetricCard icon={AlertTriangle} label="整体风险等级" value={result.risk_level === 'high' ? '高危' : result.risk_level === 'medium' ? '中危' : '低危'} hint="综合判定结果" tone={riskTone === 'danger' ? 'lava' : riskTone === 'warning' ? 'amber' : 'neon'} />
+                  <MetricCard icon={Brain} label="细分维度" value={(result.details || []).length} hint="覆盖群组范围" tone="graphite" />
+                </div>
+                
+                <div className="p-5 rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)]">
+                  <ProgressMeter value={parity} tone={riskTone === 'danger' ? 'error' : riskTone === 'warning' ? 'warning' : 'success'} label="多元化平衡指标 (Parity Score)" />
+                </div>
+                
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-sm font-bold font-display text-[var(--text-main)] border-b border-[var(--border-glass)] pb-2 flex items-center gap-2"><Brain className="h-4 w-4 text-[var(--text-muted)]" /> 细分维度评估</h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {(result.details || []).map((item, index) => {
+                      const info = biasTypes.find((entry) => entry.type === item.type)
+                      const value = Math.round((item.score || 0) * 100)
+                      return (
+                        <motion.div 
+                          key={item.type} 
+                          initial={{ opacity: 0, scale: 0.95 }} 
+                          animate={{ opacity: 1, scale: 1 }} 
+                          transition={{ delay: index * 0.05 }}
+                          className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 flex flex-col justify-between"
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <p className="text-sm font-bold text-[var(--text-main)]">{info?.name || item.type}</p>
+                            <span className={`badge border font-bold font-mono tracking-wide ${value >= 70 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : value >= 45 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>{value}%</span>
+                          </div>
+                          <p className="text-xs font-medium text-[var(--text-muted)] leading-relaxed">{info?.desc}</p>
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5">
+                  <p className="text-sm font-bold text-[var(--text-main)] mb-2 flex items-center gap-2">
+                    <CheckCircle2 className={`h-4 w-4 ${riskTone === 'danger' ? 'text-rose-500' : 'text-emerald-500'}`} />
+                    分析结论
+                  </p>
+                  <p className="text-sm font-medium text-[var(--text-muted)] leading-relaxed bg-[var(--bg-main)]/50 p-3 rounded-lg border border-[var(--border-glass)]">
+                    {result.summary || '未返回摘要。'}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
+              >
+                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
+                  {loading ? (
+                    <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
+                  ) : (
+                    <Scale className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
+                  )}
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">{loading ? '偏见风险分析中...' : '检测面板就绪'}</h3>
+                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
+                    {loading ? '正在分析大模型输出倾向，计算人口统计学群组的公平性得分（Parity Score）。' : '在左侧输入需要测试的提示词，启动偏见扫描以评估模型输出是否存在歧视倾向。'}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   )
 }

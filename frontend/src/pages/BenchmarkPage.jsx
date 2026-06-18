@@ -60,6 +60,8 @@ function buildDemoResult(form) {
   }
 }
 
+import { containerVariants, itemVariants } from '../utils/animations'
+
 export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
@@ -74,10 +76,10 @@ export default function BenchmarkPage() {
   const metrics = useMemo(() => {
     if (!result) return null
     return [
-      { icon: Database, label: '总样本数', value: result.total, hint: `数据集 ${result.dataset}` },
-      { icon: AlertTriangle, label: '攻击成功', value: result.success, hint: `成功率 ${result.successRate}` },
-      { icon: CheckCircle2, label: '攻击失败', value: result.fail, hint: '防线拦截有效样本' },
-      { icon: TrendingUp, label: '平均迭代', value: result.avgIterations, hint: `耗时 ${result.duration}` },
+      { icon: Database, label: '总测试样本数', value: result.total, hint: `数据集: ${result.dataset}` },
+      { icon: AlertTriangle, label: '攻击成功', value: result.success, hint: `穿透率 ${result.successRate}` },
+      { icon: CheckCircle2, label: '防御拦截', value: result.fail, hint: '防线依然稳固' },
+      { icon: TrendingUp, label: '平均迭代次', value: result.avgIterations, hint: `测试耗时 ${result.duration}` },
     ]
   }, [result])
 
@@ -101,29 +103,35 @@ export default function BenchmarkPage() {
       setResult(data)
       toast.success('基准评测已完成。')
     } catch {
-      setProgress(100)
-      setResult(buildDemoResult(form))
-      toast('后端不可用，已展示演示评测结果。', { icon: '⚠️' })
-    } finally {
-      window.clearInterval(timer)
-      setLoading(false)
+      setTimeout(() => {
+        setProgress(100)
+        setResult(buildDemoResult(form))
+        setLoading(false)
+        window.clearInterval(timer)
+        toast('后端不可用，已展示演示评测结果。', { icon: '⚠️' })
+      }, 1800)
+      return
     }
+    window.clearInterval(timer)
+    setLoading(false)
   }
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="BENCHMARK LAB"
-        title="基准评测中心"
-        description="在同一监控台中完成数据集选择、攻击类型配置和结果比对，避免分散式评测。"
-      />
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="BENCHMARK LAB"
+          title="基准评测中心"
+          description="使用业界标准数据集对目标大模型执行高频打分与自动化对抗评测。"
+        />
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-[1.02fr_0.98fr]">
-        <section className="card card-glow">
-          <PanelHeader title="评测配置" description="选择数据集、目标模型和攻击策略后，一键运行。" />
-          <div className="space-y-5">
-            <div>
-              <label className="label">数据集</label>
+      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
+        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+          <PanelHeader title="评测基准配置" description="组装评测矩阵 (数据集 × 攻击类型 × 目标模型)。" />
+          <div className="space-y-6">
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">选择数据集</label>
               <div className="grid gap-3 sm:grid-cols-2">
                 {DATASETS.map((dataset) => {
                   const active = form.dataset === dataset.value
@@ -132,15 +140,15 @@ export default function BenchmarkPage() {
                       key={dataset.value}
                       type="button"
                       onClick={() => setForm((current) => ({ ...current, dataset: dataset.value }))}
-                      className={`rounded-[18px] border px-4 py-4 text-left transition-all ${
+                      className={`rounded-xl border p-4 text-left transition-all duration-300 ${
                         active
-                          ? 'border-electric-200 bg-electric-50/75'
-                          : 'border-graphite-200/70 bg-white/75'
+                          ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]'
+                          : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
                       }`}
                     >
-                      <p className="text-sm font-semibold text-graphite-900">{dataset.label}</p>
-                      <p className="mt-1 text-xs text-graphite-500">{dataset.desc}</p>
-                      <p className="mt-2 text-xs text-graphite-400">样本量 {dataset.count}</p>
+                      <p className={`text-sm font-bold font-display mb-1 ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{dataset.label}</p>
+                      <p className={`text-xs font-medium mb-3 ${active ? 'text-cyan-500/70' : 'text-[var(--text-muted)]'}`}>{dataset.desc}</p>
+                      <p className="text-[10px] font-bold uppercase tracking-widest bg-[var(--bg-main)]/50 px-2 py-1 rounded inline-block text-[var(--text-muted)]">样本量 {dataset.count}</p>
                     </button>
                   )
                 })}
@@ -148,10 +156,10 @@ export default function BenchmarkPage() {
             </div>
 
             <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <label className="label">攻击类型</label>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">攻击类型</label>
                 <select
-                  className="select-field"
+                  className="input-field appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]"
                   value={form.attack_type}
                   onChange={(event) =>
                     setForm((current) => ({ ...current, attack_type: event.target.value }))
@@ -164,10 +172,10 @@ export default function BenchmarkPage() {
                   ))}
                 </select>
               </div>
-              <div>
-                <label className="label">目标模型</label>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
                 <select
-                  className="select-field"
+                  className="input-field appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]"
                   value={form.model}
                   onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
                 >
@@ -180,12 +188,12 @@ export default function BenchmarkPage() {
               </div>
             </div>
 
-            <div>
-              <label className="label">样本上限</label>
-              <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 px-4 py-4">
-                <div className="mb-2 flex items-center justify-between text-sm text-graphite-600">
-                  <span>最大测试样本数</span>
-                  <strong className="text-electric-700">{form.max_cases}</strong>
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">最大测试样本数 (打分切片)</label>
+              <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4">
+                <div className="mb-4 flex items-center justify-between">
+                  <span className="text-sm font-medium text-[var(--text-muted)]">当前截取限制</span>
+                  <strong className="text-cyan-500 font-mono text-lg">{form.max_cases} <span className="text-[10px] uppercase text-[var(--text-muted)]">Samples</span></strong>
                 </div>
                 <input
                   type="range"
@@ -195,56 +203,62 @@ export default function BenchmarkPage() {
                   onChange={(event) =>
                     setForm((current) => ({ ...current, max_cases: Number.parseInt(event.target.value, 10) }))
                   }
-                  className="w-full accent-electric-500"
+                  className="w-full h-1.5 rounded-lg bg-[var(--bg-glass-strong)] appearance-none cursor-pointer accent-cyan-500"
                 />
               </div>
             </div>
 
-            <button type="button" onClick={handleRun} disabled={loading} className="btn-primary w-full justify-center py-3">
+            <button type="button" onClick={handleRun} disabled={loading} className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none">
               {loading ? (
                 <>
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  正在执行评测
+                  <Loader2 className="h-5 w-5 animate-spin" />
+                  矩阵执行中 ({progress}%)
                 </>
               ) : (
                 <>
-                  <Play className="h-4 w-4" />
+                  <Play className="h-5 w-5" />
                   运行基准评测
                 </>
               )}
             </button>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="card card-glow">
-          <PanelHeader title="评测结果" description="展示本次测试的攻防结果和关键指标。" />
+        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+          <PanelHeader title="评测报告摘要" description="攻防对抗结果与安全评估指标反馈。" />
 
           <AnimatePresence mode="wait">
             {loading ? (
-              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-                <ProgressMeter value={progress} tone="electric" label="评测进度" />
-                <div className="panel-muted flex min-h-[280px] items-center justify-center">
-                  <Loader2 className="h-7 w-7 animate-spin text-electric-600" />
+              <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6 pt-4">
+                <div className="p-5 rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)]">
+                   <ProgressMeter value={progress} tone="electric" label="引擎评测进度" />
+                </div>
+                <div className="flex min-h-[300px] flex-col items-center justify-center gap-4 text-center opacity-60">
+                  <div className="w-16 h-16 border-4 border-[var(--border-glass)] border-t-cyan-500 rounded-full animate-spin"></div>
+                  <p className="text-sm font-bold text-[var(--text-muted)]">正在进行对抗推演分析...</p>
                 </div>
               </motion.div>
             ) : result ? (
-              <motion.div key="result" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
+              <motion.div key="result" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-6">
                 {result._demo_mode ? (
-                  <div className="badge badge-warning px-3 py-2">当前为演示结果</div>
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地环境评估展示</span>
+                  </div>
                 ) : null}
                 <div className="grid gap-3 sm:grid-cols-2">
-                  <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">数据集</p>
-                    <p className="mt-2 text-lg font-semibold text-graphite-900">{result.dataset || result['数据集']}</p>
+                  <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 flex flex-col justify-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">测试数据集</p>
+                    <p className="text-base font-bold font-display text-[var(--text-main)]">{result.dataset || result['数据集']}</p>
                   </div>
-                  <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                    <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">攻击类型</p>
-                    <p className="mt-2 text-lg font-semibold text-graphite-900">{result.attackType || result['攻击类型']}</p>
+                  <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 flex flex-col justify-center">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">渗透攻击类型</p>
+                    <p className="text-base font-bold font-display text-[var(--text-main)]">{result.attackType || result['攻击类型']}</p>
                   </div>
                 </div>
 
                 {metrics ? (
-                  <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2">
                     {metrics.map((metric, index) => (
                       <MetricCard
                         key={metric.label}
@@ -259,36 +273,43 @@ export default function BenchmarkPage() {
                 ) : null}
 
                 {(result.details || result['详细结果']) ? (
-                  <div className="space-y-3">
-                    {(result.details || result['详细结果']).map((entry) => (
-                      <div key={entry.attack || entry['攻击方式']} className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                        <div className="mb-2 flex items-center justify-between">
-                          <p className="text-sm font-semibold text-graphite-900">{entry.attack || entry['攻击方式']}</p>
-                          <span className="badge badge-neutral">
-                            成功 {(entry.success || entry['成功数'] || 0)} / 失败 {(entry.fail || entry['失败数'] || 0)}
-                          </span>
+                  <div className="space-y-4 pt-2">
+                    <h4 className="text-sm font-bold font-display text-[var(--text-main)] border-b border-[var(--border-glass)] pb-2 flex items-center gap-2"><Target className="h-4 w-4 text-rose-500" /> 细分维度详情</h4>
+                    {(result.details || result['详细结果']).map((entry) => {
+                      const successCount = (entry.success || entry['成功数'] || 0)
+                      const failCount = (entry.fail || entry['失败数'] || 0)
+                      const rate = Math.round((successCount / Math.max(1, successCount + failCount)) * 100)
+                      return (
+                        <div key={entry.attack || entry['攻击方式']} className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5 transition-transform hover:-translate-y-0.5">
+                          <div className="mb-4 flex items-center justify-between">
+                            <p className="text-sm font-bold text-[var(--text-main)] font-mono">{entry.attack || entry['攻击方式']}</p>
+                            <span className="badge border font-mono tracking-wide bg-[var(--bg-glass-strong)] border-[var(--border-glass)]">
+                              <span className="text-rose-500">攻击 {successCount}</span>
+                              <span className="text-[var(--text-muted)] px-1">/</span>
+                              <span className="text-emerald-500">防御 {failCount}</span>
+                            </span>
+                          </div>
+                          <ProgressMeter value={rate} tone={rate > 50 ? 'danger' : 'warning'} label="该策略攻击成功率" />
                         </div>
-                        <ProgressMeter
-                          value={Math.round(
-                            ((entry.success || entry['成功数'] || 0) /
-                              Math.max(1, (entry.success || entry['成功数'] || 0) + (entry.fail || entry['失败数'] || 0))) * 100
-                          )}
-                          tone="danger"
-                        />
-                      </div>
-                    ))}
+                      )
+                    })}
                   </div>
                 ) : null}
               </motion.div>
             ) : (
-              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="panel-muted flex min-h-[340px] flex-col items-center justify-center gap-3 text-center">
-                <BarChart3 className="h-8 w-8 text-graphite-400" />
-                <p className="text-sm text-graphite-500">运行评测后，这里会显示完整结果。</p>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8">
+                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
+                   <BarChart3 className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">暂无评测数据</h3>
+                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">在左侧配置完成后运行基准评测，平台将为您输出完整的攻防比对结论。</p>
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
-        </section>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   )
 }

@@ -20,7 +20,8 @@ export function useABTest(testName, variants = ['A', 'B']) {
       console.log(`[A/B Test] User assigned to ${assignedVariant} for test: ${testName}`);
     }
 
-    setVariant(assignedVariant);
+    const t = setTimeout(() => setVariant(assignedVariant), 0)
+    return () => clearTimeout(t)
   }, [testName, variants]);
 
   // 记录转化事件

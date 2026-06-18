@@ -7,36 +7,40 @@ import { PageHeader } from '../components/ui/AppFrame'
 const plans = [
   {
     id: 'starter',
-    name: '基础版',
+    name: '基础探索版',
     price: '免费',
     period: '',
-    description: '适合个人开发者和轻量级安全验证。',
+    description: '适用于个人开发者、学生及轻量级模型对齐验证。',
     icon: Zap,
     tone: 'graphite',
-    features: ['基础攻击测试', '每月 100 次 API 调用', '基础报告导出', '社区支持'],
+    popular: false,
+    features: ['基础沙盒攻击测试', '每月 100 次 API 并发调用', '标准漏洞摘要报告', 'Discord 社区技术支持'],
   },
   {
     id: 'pro',
-    name: '专业版',
+    name: '红队专业版',
     price: '¥2,999',
     period: '/月',
-    description: '适合高频评测、团队协作和更完整的攻防闭环。',
+    description: '专为高频安全评测、红蓝对抗及中型 AI 团队设计。',
     icon: Shield,
     tone: 'electric',
     popular: true,
-    features: ['全部基础版能力', '高级攻击与多模态模块', '每月 10,000 次 API 调用', '7x24 技术支持', '团队级报告与留痕'],
+    features: ['全栈高级与多模态渗透模块', '每月 10,000 次高优并发调用', '7x24 专属安全专家响应', '团队级漏洞图谱与审计留痕'],
   },
   {
     id: 'enterprise',
-    name: '企业版',
+    name: '政企旗舰版',
     price: '定制',
     period: '',
-    description: '适合大型组织、私有化部署与合规治理场景。',
+    description: '面向大型组织，提供完全私有化部署与深度合规治理框架。',
     icon: Crown,
     tone: 'lava',
-    features: ['全部专业版能力', '私有化部署', '无限 API 调用', '专属顾问支持', '定制化安全策略与报表'],
+    popular: false,
+    features: ['无限制 API 调用与算力独享', '100% 物理隔离私有化部署', '定制化靶场与合规安全策略', '原厂工程师驻场级保障'],
   },
 ]
+
+import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState(null)
@@ -45,7 +49,7 @@ export default function PricingPage() {
 
   const handleSubscribe = (plan) => {
     if (plan.id === 'enterprise') {
-      toast.success('企业版咨询请求已记录，我们会尽快联系你。')
+      toast.success('企业旗舰版意向已收到，专职架构师将在 24 小时内与您联络。')
       return
     }
     setSelectedPlan(plan)
@@ -57,92 +61,94 @@ export default function PricingPage() {
     window.setTimeout(() => {
       setIsProcessing(false)
       setShowCheckout(false)
-      toast.success(`已成功订阅 ${selectedPlan.name}。`)
-    }, 1200)
+      toast.success(`您已成功订阅 ${selectedPlan.name}，算力资源正在调配。`)
+    }, 1500)
   }
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="PLANS"
-        title="适合安全团队的订阅方案"
-        description="这次定价页不再走营销站浮夸路线，而是保持和产品一致的专业监控台风格，让方案信息更清晰、动作更直接。"
-      />
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="SUBSCRIPTION PLANS"
+          title="系统算力与配额订阅"
+          description="从轻量级的概念验证到企业级安全治理，为各类红蓝对抗场景提供充足的计算资源与专家支持。"
+        />
+      </motion.div>
 
-      <section className="hero-panel">
-        <div className="relative z-10 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <div className="space-y-4">
-            <span className="badge badge-neutral">统一品牌体验 · 更清晰的方案层级</span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-graphite-950 sm:text-4xl">
-              从轻量验证到企业治理，按真实攻防需求选择。
+      <motion.section variants={itemVariants} className="card p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)] mb-8">
+        <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
+          <div className="space-y-5">
+            <span className="badge border text-[10px] uppercase font-bold tracking-widest bg-cyan-500/10 text-cyan-500 border-cyan-500/20 px-3 py-1">透明与可扩展的算力矩阵</span>
+            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--text-main)] sm:text-4xl leading-tight">
+              构建更强韧的模型安全防线
             </h2>
-            <p className="text-sm text-graphite-600 sm:text-base">
-              所有方案都围绕同一条主线：更稳定的评测流程、更清晰的结果沉淀、以及更可持续的安全运营能力。
+            <p className="text-sm font-medium text-[var(--text-muted)] sm:text-base leading-relaxed max-w-2xl">
+              所有方案均依托底层统一的渗透测试引擎。升级方案将解锁更高的并发吞吐量、更复杂的多模态攻击载荷以及企业级合规报告导出能力。
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">统一设计</p>
-              <p className="mt-2 text-sm font-semibold text-graphite-900">与主应用视觉一致</p>
+          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
+              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">架构保障</p>
+              <p className="text-sm font-bold text-[var(--text-main)]">金融级安全沙盒隔离</p>
             </div>
-            <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">聚焦决策</p>
-              <p className="mt-2 text-sm font-semibold text-graphite-900">突出能力边界与调用量</p>
+            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
+              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">算力调度</p>
+              <p className="text-sm font-bold text-[var(--text-main)]">全球分布式边缘推理</p>
             </div>
-            <div className="rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-graphite-400">专业感</p>
-              <p className="mt-2 text-sm font-semibold text-graphite-900">更像产品控制台，而不是广告页</p>
+            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
+              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">合规标准</p>
+              <p className="text-sm font-bold text-[var(--text-main)]">满足 ISO 27001 与 SOC2</p>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="grid gap-6 lg:grid-cols-3">
+      <div className="grid gap-6 lg:grid-cols-3">
         {plans.map((plan, index) => {
           const Icon = plan.icon
           const toneStyles = {
-            graphite: 'border-graphite-200 bg-white/82',
-            electric: 'border-electric-200 bg-electric-50/80',
-            lava: 'border-lava-200 bg-lava-50/80',
+            graphite: 'border-[var(--border-glass-strong)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/20',
+            electric: 'border-cyan-500/50 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.1),0_10px_30px_rgba(6,182,212,0.1)] transform scale-[1.02] z-10',
+            lava: 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50',
           }
 
           return (
             <motion.article
               key={plan.id}
-              initial={{ opacity: 0, y: 16 }}
+              initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.08 }}
-              className={`relative rounded-[28px] border p-6 shadow-fine ${toneStyles[plan.tone]} ${
-                plan.popular ? 'shadow-glow-electric' : ''
-              }`}
+              transition={{ delay: 0.2 + index * 0.1, ease: [0.22, 1, 0.36, 1], duration: 0.5 }}
+              className={`relative rounded-[24px] border p-8 transition-all duration-300 flex flex-col ${toneStyles[plan.tone]}`}
             >
               {plan.popular && (
-                <div className="absolute right-5 top-5 badge badge-success">
-                  <Sparkles className="h-3.5 w-3.5" />
-                  推荐
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 badge border text-[10px] uppercase font-bold tracking-widest bg-cyan-500 text-[var(--bg-main)] border-cyan-400 px-4 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.5)]">
+                  <Sparkles className="h-3.5 w-3.5 mr-1" />
+                  团队优选
                 </div>
               )}
 
-              <div className="mb-6 flex items-center gap-3">
-                <div className="rounded-[18px] bg-white/82 p-3 shadow-fine">
-                  <Icon className="h-5 w-5 text-graphite-900" />
+              <div className="mb-6 flex items-start gap-4">
+                <div className={`shrink-0 rounded-xl p-3 shadow-lg border ${plan.popular ? 'bg-cyan-500/20 border-cyan-500/30 text-cyan-500' : plan.tone === 'lava' ? 'bg-amber-500/20 border-amber-500/30 text-amber-500' : 'bg-[var(--bg-glass-strong)] border-[var(--border-glass)] text-[var(--text-muted)]'}`}>
+                  <Icon className="h-6 w-6" />
                 </div>
                 <div>
-                  <h2 className="text-xl font-semibold text-graphite-950">{plan.name}</h2>
-                  <p className="text-sm text-graphite-500">{plan.description}</p>
+                  <h2 className={`text-xl font-bold font-display ${plan.popular ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{plan.name}</h2>
+                  <p className="mt-2 text-xs font-medium leading-relaxed text-[var(--text-muted)]">{plan.description}</p>
                 </div>
               </div>
 
-              <div className="mb-6 flex items-end gap-1">
-                <span className="font-display text-4xl font-bold tracking-tight text-graphite-950">{plan.price}</span>
-                {plan.period ? <span className="pb-1 text-sm text-graphite-500">{plan.period}</span> : null}
+              <div className="mb-8 flex items-end gap-1">
+                <span className="font-display text-4xl font-bold tracking-tight text-[var(--text-main)]">{plan.price}</span>
+                {plan.period && <span className="pb-1 text-sm font-bold text-[var(--text-muted)]">{plan.period}</span>}
               </div>
 
-              <div className="space-y-3">
+              <div className="space-y-4 flex-1">
                 {plan.features.map((feature) => (
-                  <div key={feature} className="flex items-start gap-3 rounded-[18px] border border-white/70 bg-white/72 px-4 py-3">
-                    <Check className="mt-0.5 h-4 w-4 text-neon-600" />
-                    <span className="text-sm text-graphite-700">{feature}</span>
+                  <div key={feature} className="flex items-start gap-3">
+                    <div className={`mt-0.5 shrink-0 rounded-full p-1 ${plan.popular ? 'bg-cyan-500/20 text-cyan-500' : 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)]'}`}>
+                      <Check className="h-3 w-3" />
+                    </div>
+                    <span className="text-sm font-medium text-[var(--text-muted)]">{feature}</span>
                   </div>
                 ))}
               </div>
@@ -150,91 +156,104 @@ export default function PricingPage() {
               <button
                 type="button"
                 onClick={() => handleSubscribe(plan)}
-                className={`mt-6 w-full justify-center ${plan.popular ? 'btn-primary' : 'btn-secondary'}`}
+                className={`mt-10 w-full justify-center py-3.5 text-sm font-bold transition-all shadow-lg ${
+                  plan.popular 
+                    ? 'btn-primary bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-cyan-500/30' 
+                    : plan.tone === 'lava'
+                      ? 'btn-secondary bg-amber-500/10 hover:bg-amber-500/20 border-amber-500/30 text-amber-500'
+                      : 'btn-secondary bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] text-[var(--text-main)] border-[var(--border-glass-strong)]'
+                }`}
               >
-                {plan.id === 'enterprise' ? '联系销售' : '立即订阅'}
+                {plan.id === 'enterprise' ? '联络企业专家' : plan.id === 'starter' ? '免费接入引擎' : '立即升级算力'}
               </button>
             </motion.article>
           )
         })}
-      </section>
+      </div>
 
       <AnimatePresence>
         {showCheckout && selectedPlan && (
           <motion.div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-graphite-950/35 p-4 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-md"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onClick={() => setShowCheckout(false)}
           >
             <motion.div
-              className="w-full max-w-[520px] rounded-[28px] border border-white/80 bg-[#f9fbff] p-6 shadow-modal"
-              initial={{ scale: 0.96, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.96, opacity: 0 }}
+              className="w-full max-w-[520px] rounded-2xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] p-8 shadow-[0_20px_50px_rgba(0,0,0,0.5)] relative overflow-hidden"
+              initial={{ scale: 0.96, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.96, opacity: 0, y: 20 }}
               onClick={(event) => event.stopPropagation()}
             >
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="rounded-[18px] bg-electric-50 p-3 text-electric-700">
-                    <CreditCard className="h-5 w-5" />
+              <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-50"></div>
+              
+              <div className="mb-8 flex items-start justify-between">
+                <div className="flex items-center gap-4">
+                  <div className="rounded-xl border border-cyan-500/30 bg-cyan-500/10 p-3 text-cyan-500 shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">
+                    <CreditCard className="h-6 w-6" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-semibold text-graphite-950">确认订阅信息</h3>
-                    <p className="text-sm text-graphite-500">支付弹层也已统一为控制台风格。</p>
+                    <h3 className="text-xl font-bold font-display text-[var(--text-main)]">核对配额网关信息</h3>
+                    <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">加密通道已建立，交易受高强度加密保护。</p>
                   </div>
                 </div>
-                <button type="button" onClick={() => setShowCheckout(false)} className="btn-ghost px-2 py-2">
-                  <X className="h-4 w-4" />
+                <button type="button" onClick={() => setShowCheckout(false)} className="rounded-lg p-2 text-[var(--text-muted)] hover:bg-[var(--bg-glass)] hover:text-[var(--text-main)] transition-colors">
+                  <X className="h-5 w-5" />
                 </button>
               </div>
 
-              <div className="rounded-[22px] border border-graphite-200/70 bg-white/80 p-4">
-                <div className="flex items-center justify-between text-sm text-graphite-500">
-                  <span>订阅方案</span>
-                  <span className="font-medium text-graphite-900">{selectedPlan.name}</span>
+              <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-6 mb-8">
+                <div className="flex items-center justify-between text-sm text-[var(--text-muted)] mb-4">
+                  <span className="font-bold uppercase tracking-widest text-[10px]">许可协议类型</span>
+                  <span className="font-bold font-display text-cyan-500 text-base">{selectedPlan.name}</span>
                 </div>
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-sm text-graphite-500">应付金额</span>
-                  <span className="font-display text-3xl font-bold tracking-tight text-graphite-950">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold uppercase tracking-widest text-[10px] text-[var(--text-muted)]">计费结算周期</span>
+                  <span className="font-display text-3xl font-bold tracking-tight text-[var(--text-main)]">
                     {selectedPlan.price}
-                    {selectedPlan.period}
+                    <span className="text-base text-[var(--text-muted)] font-normal ml-1">{selectedPlan.period}</span>
                   </span>
                 </div>
               </div>
 
-              <div className="mt-5 space-y-4">
+              <div className="space-y-5">
                 <div>
-                  <label className="label">银行卡号</label>
-                  <input className="input-field font-mono" placeholder="0000 0000 0000 0000" />
+                  <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">安全结算凭证号</label>
+                  <input className="input-field font-mono tracking-widest text-lg py-3 px-4" placeholder="XXXX XXXX XXXX XXXX" />
                 </div>
                 <div className="grid gap-4 sm:grid-cols-2">
                   <div>
-                    <label className="label">有效期</label>
-                    <input className="input-field" placeholder="MM / YY" />
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">有效周期</label>
+                    <input className="input-field font-mono tracking-widest py-3 px-4" placeholder="MM / YY" />
                   </div>
                   <div>
-                    <label className="label">安全码</label>
-                    <input className="input-field" placeholder="123" />
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">授权密匙 (CVV)</label>
+                    <input className="input-field font-mono tracking-widest py-3 px-4" placeholder="•••" type="password" />
                   </div>
                 </div>
               </div>
 
-              <button type="button" onClick={handlePayment} disabled={isProcessing} className="btn-primary mt-6 w-full justify-center py-3">
+              <button 
+                type="button" 
+                onClick={handlePayment} 
+                disabled={isProcessing} 
+                className="btn-primary mt-10 w-full justify-center py-4 text-base bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none"
+              >
                 {isProcessing ? (
                   <>
-                    <div className="spinner" />
-                    正在处理支付
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3" />
+                    验证凭证并建立通道...
                   </>
                 ) : (
-                  `确认支付 ${selectedPlan.price}${selectedPlan.period}`
+                  `授权支付 ${selectedPlan.price}`
                 )}
               </button>
             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }
