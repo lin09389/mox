@@ -285,7 +285,7 @@ async def run_quick_test(args):
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Mox v0.2.0 - 大模型对抗攻防平台 CLI",
+        description="Mox v0.3.0 - 大模型对抗攻防平台 CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 支持的攻击类型:
