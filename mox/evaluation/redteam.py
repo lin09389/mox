@@ -528,17 +528,23 @@ class RedTeamEvaluator:
         technique: AttackTechnique,
         prompt: str = "",
     ) -> Dict[str, Any]:
-        """同步评估（用于测试）"""
+        """同步评估（用于测试和同步上下文）"""
         import asyncio
 
         try:
-            loop = asyncio.get_event_loop()
-            if loop.is_running():
-                return asyncio.run(self.evaluate(response, target_behavior, technique, prompt))
-            return loop.run_until_complete(
-                self.evaluate(response, target_behavior, technique, prompt)
-            )
+            loop = asyncio.get_running_loop()
         except RuntimeError:
+            loop = None
+
+        if loop and loop.is_running():
+            # 在已有事件循环中（如 Jupyter），使用 nest_asyncio 兼容
+            import concurrent.futures
+            with concurrent.futures.ThreadPoolExecutor() as pool:
+                return pool.submit(
+                    asyncio.run,
+                    self.evaluate(response, target_behavior, technique, prompt)
+                ).result()
+        else:
             return asyncio.run(self.evaluate(response, target_behavior, technique, prompt))
 
 
