@@ -24,7 +24,7 @@ import warnings
 import functools
 import logging
 from typing import Optional, Callable, Any, Dict, List, Set
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime, date
 from enum import Enum
 
@@ -34,6 +34,7 @@ logger = logging.getLogger("mox.core.deprecation")
 
 class DeprecationLevel(Enum):
     """弃用级别"""
+
     WARNING = "warning"  # 警告
     ERROR = "error"  # 错误
     REMOVED = "removed"  # 已移除
@@ -42,6 +43,7 @@ class DeprecationLevel(Enum):
 @dataclass
 class DeprecationInfo:
     """弃用信息"""
+
     name: str
     since: str  # 弃用起始版本
     removed_in: Optional[str] = None  # 计划移除版本
@@ -162,13 +164,15 @@ class DeprecationManager:
 
     def _log_usage(self, name: str, info: DeprecationInfo):
         """记录使用日志"""
-        self._usage_log.append({
-            "name": name,
-            "timestamp": datetime.now().isoformat(),
-            "version": self.current_version,
-            "since": info.since,
-            "removed_in": info.removed_in,
-        })
+        self._usage_log.append(
+            {
+                "name": name,
+                "timestamp": datetime.now().isoformat(),
+                "version": self.current_version,
+                "since": info.since,
+                "removed_in": info.removed_in,
+            }
+        )
 
     def suppress(self, name: str):
         """抑制弃用警告
@@ -246,6 +250,7 @@ class DeprecationManager:
         Returns:
             -1 if v1 < v2, 0 if v1 == v2, 1 if v1 > v2
         """
+
         def parse_version(v: str) -> List[int]:
             return [int(x) for x in v.split(".")]
 
@@ -263,11 +268,13 @@ class DeprecationManager:
 
 class DeprecationError(Exception):
     """弃用错误"""
+
     pass
 
 
 class FeatureRemovedError(Exception):
     """功能已移除错误"""
+
     pass
 
 
@@ -280,6 +287,7 @@ def get_deprecation_manager() -> DeprecationManager:
     global _manager
     if _manager is None:
         from .version import PACKAGE_VERSION
+
         _manager = DeprecationManager(current_version=PACKAGE_VERSION)
         _register_default_deprecations(_manager)
     return _manager
@@ -294,7 +302,7 @@ def _register_default_deprecations(manager: DeprecationManager):
         removed_in="0.5.0",
         use_instead="TextBasedAdversarialAttack",
         message="MultimodalAdversarialAttack has been renamed to TextBasedAdversarialAttack. "
-                "The old name is kept as an alias for backward compatibility.",
+        "The old name is kept as an alias for backward compatibility.",
     )
 
     manager.register(
@@ -303,7 +311,7 @@ def _register_default_deprecations(manager: DeprecationManager):
         removed_in="0.5.0",
         use_instead="KnowledgeExtractionAttack",
         message="KnowledgeDistillationAttack has been renamed to KnowledgeExtractionAttack. "
-                "The old name is kept as an alias for backward compatibility.",
+        "The old name is kept as an alias for backward compatibility.",
     )
 
     manager.register(
@@ -352,6 +360,7 @@ def deprecated(
         def old_function():
             pass
     """
+
     def decorator(func: Callable) -> Callable:
         # 注册到管理器
         manager = get_deprecation_manager()
@@ -406,6 +415,7 @@ def deprecated_class(
         class OldClass:
             pass
     """
+
     def decorator(cls: type) -> type:
         # 注册到管理器
         manager = get_deprecation_manager()

@@ -1,9 +1,8 @@
-
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from mox.core import BaseLLM, LLMFactory, AttackType, settings
+from mox.core import BaseLLM, LLMFactory, AttackType
 from mox.core.auth import get_optional_active_user, User
 
 router = APIRouter(prefix="/api/v2", tags=["API v2"])
@@ -11,13 +10,14 @@ router = APIRouter(prefix="/api/v2", tags=["API v2"])
 
 # ============        ============
 
+
 class AgentAttackRequest(BaseModel):
     attack_type: str = "tool_chaining"
     prompt: str
     target_behavior: Optional[str] = None
     model_name: str = "gpt-4"
     tools: List[str] = Field(default_factory=lambda: ["read_file", "http_request"])
-    # Ollama   
+    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -29,7 +29,7 @@ class MultimodalAttackRequest(BaseModel):
     image_url: Optional[str] = None
     audio_url: Optional[str] = None
     template: Optional[str] = None
-    # Ollama   
+    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -39,7 +39,7 @@ class NovelAttackRequest(BaseModel):
     prompt: str
     target_behavior: Optional[str] = None
     model_name: str = "gpt-4"
-    # Ollama   
+    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -70,12 +70,14 @@ class OllamaStatusRequest(BaseModel):
 _llm_cache: Dict[str, BaseLLM] = {}
 
 
-def get_llm(model: str, use_ollama: bool = False, ollama_base_url: str = "http://localhost:11434/v1") -> BaseLLM:
+def get_llm(
+    model: str, use_ollama: bool = False, ollama_base_url: str = "http://localhost:11434/v1"
+) -> BaseLLM:
     cache_key = f"{model}:{use_ollama}:{ollama_base_url}"
 
     if cache_key not in _llm_cache:
         if use_ollama:
-            #     Ollama      
+            #     Ollama
             _llm_cache[cache_key] = LLMFactory.create_from_model_name(
                 model,
                 base_url=ollama_base_url,
@@ -88,6 +90,7 @@ def get_llm(model: str, use_ollama: bool = False, ollama_base_url: str = "http:/
 
 
 # ============ Ollama       ?============
+
 
 @router.get("/ollama/status")
 async def get_ollama_status(
@@ -160,6 +163,7 @@ async def pull_ollama_model(
 
 # ============ Agent       ============
 
+
 @router.post("/attacks/agent")
 async def run_agent_attack(
     request: AgentAttackRequest,
@@ -174,12 +178,11 @@ async def run_agent_attack(
             DataExfiltrationAttack,
             MultiAgentAttack,
             CompositeAgentAttack,
-            DEFAULT_TOOLS,
         )
         from mox.attacks.base import AttackConfig
         from mox.core import AttackPayload
 
-        #    Ollama      
+        #    Ollama
         llm = get_llm(
             request.model_name,
             use_ollama=request.use_ollama,
@@ -187,7 +190,7 @@ async def run_agent_attack(
         )
         config = AttackConfig()
 
-        #          
+        #
         attack_map = {
             "tool_chaining": ToolChainingAttack,
             "indirect_injection": IndirectToolInjection,
@@ -201,18 +204,20 @@ async def run_agent_attack(
         attack_class = attack_map.get(request.attack_type, ToolChainingAttack)
         attack = attack_class(llm, config)
 
-        #          
+        #
         payload = AttackPayload(
             attack_type=AttackType.AGENT_ATTACK,
             prompt=request.prompt,
             target_behavior=request.target_behavior or request.prompt,
         )
 
-        #      
+        #
         outcome = await attack.generate_attack(payload)
 
         return {
-            "result": outcome.result.value if hasattr(outcome.result, 'value') else str(outcome.result),
+            "result": outcome.result.value
+            if hasattr(outcome.result, "value")
+            else str(outcome.result),
             "success_score": outcome.success_score,
             "adversarial_prompt": outcome.adversarial_prompt,
             "model_response": outcome.response,
@@ -227,6 +232,7 @@ async def run_agent_attack(
 
 
 # ============           ?============
+
 
 @router.post("/attacks/multimodal")
 async def run_multimodal_attack(
@@ -244,7 +250,7 @@ async def run_multimodal_attack(
         from mox.attacks.base import AttackConfig
         from mox.core import AttackPayload
 
-        #    Ollama      
+        #    Ollama
         llm = get_llm(
             request.model_name,
             use_ollama=request.use_ollama,
@@ -252,7 +258,7 @@ async def run_multimodal_attack(
         )
         config = AttackConfig()
 
-        #          
+        #
         attack_map = {
             "image_injection": ImageInjectionAttack,
             "audio_injection": AudioInjectionAttack,
@@ -264,18 +270,20 @@ async def run_multimodal_attack(
         attack_class = attack_map.get(request.attack_type, ImageInjectionAttack)
         attack = attack_class(llm, config)
 
-        #          
+        #
         payload = AttackPayload(
             attack_type=AttackType.MULTIMODAL_ADVERSARIAL,
             prompt=request.prompt,
             target_behavior=request.prompt,
         )
 
-        #      
+        #
         outcome = await attack.generate_attack(payload)
 
         return {
-            "result": outcome.result.value if hasattr(outcome.result, 'value') else str(outcome.result),
+            "result": outcome.result.value
+            if hasattr(outcome.result, "value")
+            else str(outcome.result),
             "success_score": outcome.success_score,
             "adversarial_prompt": outcome.adversarial_prompt,
             "model_response": outcome.response,
@@ -289,6 +297,7 @@ async def run_multimodal_attack(
 
 
 # ============          ============
+
 
 @router.post("/attacks/novel")
 async def run_novel_attack(
@@ -307,7 +316,7 @@ async def run_novel_attack(
         from mox.attacks.base import AttackConfig
         from mox.core import AttackPayload
 
-        #    Ollama      
+        #    Ollama
         llm = get_llm(
             request.model_name,
             use_ollama=request.use_ollama,
@@ -336,7 +345,9 @@ async def run_novel_attack(
         outcome = await attack.generate_attack(payload)
 
         return {
-            "result": outcome.result.value if hasattr(outcome.result, 'value') else str(outcome.result),
+            "result": outcome.result.value
+            if hasattr(outcome.result, "value")
+            else str(outcome.result),
             "success_score": outcome.success_score,
             "adversarial_prompt": outcome.adversarial_prompt,
             "model_response": outcome.response,
@@ -351,6 +362,7 @@ async def run_novel_attack(
 
 # ============       ============
 
+
 @router.post("/defense/semantic-firewall")
 async def run_semantic_firewall(
     request: SemanticFirewallRequest,
@@ -364,7 +376,9 @@ async def run_semantic_firewall(
 
         return {
             "is_malicious": result.is_malicious,
-            "threat_level": result.threat_level.value if hasattr(result.threat_level, 'value') else str(result.threat_level),
+            "threat_level": result.threat_level.value
+            if hasattr(result.threat_level, "value")
+            else str(result.threat_level),
             "confidence": result.confidence,
             "intent": result.metadata.get("intent", "unknown"),
             "risk_score": result.metadata.get("risk_score", 0.0),
@@ -400,7 +414,6 @@ async def run_output_validator(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-
 class ConstitutionalAIRequest(BaseModel):
     text: str
     model_name: str = "gpt-4"
@@ -432,6 +445,7 @@ async def run_constitutional_ai_v2(
 
 # ============          ============
 
+
 @router.post("/safety-cards/generate")
 async def generate_safety_card(
     request: SafetyCardRequest,
@@ -447,7 +461,9 @@ async def generate_safety_card(
             "model_name": card.model_name,
             "version": card.version,
             "generated_at": card.generated_at.isoformat() if card.generated_at else None,
-            "overall_risk_level": card.overall_risk_level.value if hasattr(card.overall_risk_level, 'value') else str(card.overall_risk_level),
+            "overall_risk_level": card.overall_risk_level.value
+            if hasattr(card.overall_risk_level, "value")
+            else str(card.overall_risk_level),
             "overall_safety_score": card.overall_safety_score,
             "tests_passed": card.tests_passed,
             "total_tests": card.total_tests,
@@ -458,7 +474,7 @@ async def generate_safety_card(
                 {
                     "category": r.category,
                     "description": r.description,
-                    "level": r.level.value if hasattr(r.level, 'value') else str(r.level),
+                    "level": r.level.value if hasattr(r.level, "value") else str(r.level),
                 }
                 for r in card.risk_assessment
             ],
@@ -491,6 +507,7 @@ async def get_recent_safety_cards(
 
 # ============          ============
 
+
 @router.get("/benchmarks/cases")
 async def get_benchmark_cases(
     benchmark_type: str = "harmbench_v2",
@@ -521,9 +538,13 @@ async def get_benchmark_cases(
             "cases": [
                 {
                     "id": c.id,
-                    "category": c.category.value if hasattr(c.category, 'value') else str(c.category),
+                    "category": c.category.value
+                    if hasattr(c.category, "value")
+                    else str(c.category),
                     "prompt": c.prompt,
-                    "severity": c.severity.value if hasattr(c.severity, 'value') else str(c.severity),
+                    "severity": c.severity.value
+                    if hasattr(c.severity, "value")
+                    else str(c.severity),
                 }
                 for c in cases[:20]  #     ?0 ?
             ],

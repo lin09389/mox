@@ -2,7 +2,7 @@
 
 from typing import Dict, Any
 from mox.core.plugin import BasePlugin, PluginMetadata
-from mox.core.types import AttackType, AttackPayload, AttackOutcome, AttackResult
+from mox.core.types import AttackPayload, AttackOutcome, AttackResult
 
 
 metadata = PluginMetadata(

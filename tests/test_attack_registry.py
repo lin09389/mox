@@ -32,7 +32,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -46,7 +46,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 

@@ -1,9 +1,7 @@
-
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from fastapi import FastAPI
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
 
 from mox.routes.attack import router as attack_router
 from mox.routes.defense import router as defense_router
@@ -12,6 +10,7 @@ from mox.core.auth import get_current_active_user, User
 
 
 # ============ Fixtures ============
+
 
 @pytest.fixture
 def app():
@@ -33,8 +32,8 @@ def client(app):
 
 # ============ Attack Routes Tests ============
 
-class TestAttackRoutes:
 
+class TestAttackRoutes:
     def test_list_attack_types(self, client):
         response = client.get("/api/attack/types")
         assert response.status_code == 200
@@ -61,8 +60,8 @@ class TestAttackRoutes:
 
 # ============ Defense Routes Tests ============
 
-class TestDefenseRoutes:
 
+class TestDefenseRoutes:
     def test_defense_history_empty(self, client):
         with patch("mox.routes.defense._db") as mock_db:
             mock_db.get_defense_records = AsyncMock(return_value=[])
@@ -80,12 +79,11 @@ class TestDefenseRoutes:
 
 # ============ Auth Routes Tests ============
 
-class TestAuthRoutes:
 
+class TestAuthRoutes:
     def test_login_invalid_user(self, client):
         response = client.post(
-            "/api/auth/login",
-            json={"username": "invalid", "password": "invalid"}
+            "/api/auth/login", json={"username": "invalid", "password": "invalid"}
         )
         assert response.status_code == 401
 
@@ -96,10 +94,9 @@ class TestAuthRoutes:
             mock_user.email = "admin@test.com"
             mock_user.scopes = ["admin"]
             mock_auth.authenticate_user.return_value = mock_user
-            
+
             response = client.post(
-                "/api/auth/login",
-                json={"username": "admin", "password": "admin"}
+                "/api/auth/login", json={"username": "admin", "password": "admin"}
             )
             # 娉ㄦ剰锛氱敱浜?TokenManager 闇€瑕?SECRET_KEY锛岃繖閲屽彲鑳借繑鍥?500
             # 鍦ㄥ疄闄呮祴璇曚腑闇€瑕?mock 鏇村渚濊禆

@@ -18,7 +18,6 @@ from mox.core import (
     AttackType,
     AttackPayload,
     AttackOutcome,
-    AttackResult,
 )
 
 
@@ -36,7 +35,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -50,7 +49,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 
@@ -89,7 +88,10 @@ class TestProgressiveKnowledgeExtraction:
 
     def test_attack_initialization(self):
         """测试攻击初始化"""
-        from mox.attacks.knowledge_extraction import ProgressiveKnowledgeExtraction, KnowledgeExtractionConfig
+        from mox.attacks.knowledge_extraction import (
+            ProgressiveKnowledgeExtraction,
+            KnowledgeExtractionConfig,
+        )
 
         llm = MockLLM()
         config = KnowledgeExtractionConfig()
@@ -103,11 +105,13 @@ class TestProgressiveKnowledgeExtraction:
         """测试攻击执行"""
         from mox.attacks.knowledge_extraction import ProgressiveKnowledgeExtraction
 
-        llm = MockLLM(responses=[
-            "This is a general overview of the topic.",
-            "The key technical details are important.",
-            "The implementation methods vary.",
-        ])
+        llm = MockLLM(
+            responses=[
+                "This is a general overview of the topic.",
+                "The key technical details are important.",
+                "The implementation methods vary.",
+            ]
+        )
         attack = ProgressiveKnowledgeExtraction(target_llm=llm)
 
         payload = AttackPayload(
@@ -132,23 +136,16 @@ class TestProgressiveKnowledgeExtraction:
         attack = ProgressiveKnowledgeExtraction(target_llm=llm)
 
         # 完全匹配
-        score = await attack.evaluate_success(
-            "This is about test topic",
-            "test topic"
-        )
+        score = await attack.evaluate_success("This is about test topic", "test topic")
         assert score == 1.0
 
         # 部分匹配
-        score = await attack.evaluate_success(
-            "This is a test response",
-            "test topic"
-        )
+        score = await attack.evaluate_success("This is a test response", "test topic")
         assert 0.0 <= score <= 1.0
 
         # 包含详细信息
         score = await attack.evaluate_success(
-            "This is a comprehensive and detailed response about test topic",
-            "test topic"
+            "This is a comprehensive and detailed response about test topic", "test topic"
         )
         assert score > 0.5
 
@@ -171,12 +168,14 @@ class TestFeatureProbingAttack:
         """测试攻击执行"""
         from mox.attacks.knowledge_extraction import FeatureProbingAttack
 
-        llm = MockLLM(responses=[
-            "The definition is clear.",
-            "It works through a specific mechanism.",
-            "The main components are important.",
-            "It has various applications.",
-        ])
+        llm = MockLLM(
+            responses=[
+                "The definition is clear.",
+                "It works through a specific mechanism.",
+                "The main components are important.",
+                "It has various applications.",
+            ]
+        )
         attack = FeatureProbingAttack(target_llm=llm)
 
         payload = AttackPayload(
@@ -197,7 +196,10 @@ class TestSoftLabelExtractionAttack:
 
     def test_attack_initialization(self):
         """测试攻击初始化"""
-        from mox.attacks.knowledge_extraction import SoftLabelExtractionAttack, KnowledgeExtractionConfig
+        from mox.attacks.knowledge_extraction import (
+            SoftLabelExtractionAttack,
+            KnowledgeExtractionConfig,
+        )
 
         llm = MockLLM()
         config = KnowledgeExtractionConfig()
@@ -210,12 +212,14 @@ class TestSoftLabelExtractionAttack:
         """测试攻击执行"""
         from mox.attacks.knowledge_extraction import SoftLabelExtractionAttack
 
-        llm = MockLLM(responses=[
-            "I am 80% confident about this topic.",
-            "I am very certain about the main aspects.",
-            "There are alternative interpretations.",
-            "There are some unknowns.",
-        ])
+        llm = MockLLM(
+            responses=[
+                "I am 80% confident about this topic.",
+                "I am very certain about the main aspects.",
+                "There are alternative interpretations.",
+                "There are some unknowns.",
+            ]
+        )
         attack = SoftLabelExtractionAttack(target_llm=llm)
 
         payload = AttackPayload(
@@ -236,7 +240,10 @@ class TestKnowledgeDistillationAttack:
 
     def test_attack_initialization(self):
         """测试攻击初始化"""
-        from mox.attacks.knowledge_extraction import KnowledgeDistillationAttack, KnowledgeExtractionConfig
+        from mox.attacks.knowledge_extraction import (
+            KnowledgeDistillationAttack,
+            KnowledgeExtractionConfig,
+        )
 
         llm = MockLLM()
         config = KnowledgeExtractionConfig()
@@ -249,11 +256,13 @@ class TestKnowledgeDistillationAttack:
         """测试攻击执行"""
         from mox.attacks.knowledge_extraction import KnowledgeDistillationAttack
 
-        llm = MockLLM(responses=[
-            "Basic knowledge about the topic.",
-            "Deep technical details.",
-            "Practical applications.",
-        ])
+        llm = MockLLM(
+            responses=[
+                "Basic knowledge about the topic.",
+                "Deep technical details.",
+                "Practical applications.",
+            ]
+        )
         attack = KnowledgeDistillationAttack(target_llm=llm)
 
         payload = AttackPayload(
@@ -274,7 +283,10 @@ class TestKnowledgeExtractionEnsemble:
 
     def test_attack_initialization(self):
         """测试攻击初始化"""
-        from mox.attacks.knowledge_extraction import KnowledgeExtractionEnsemble, KnowledgeExtractionConfig
+        from mox.attacks.knowledge_extraction import (
+            KnowledgeExtractionEnsemble,
+            KnowledgeExtractionConfig,
+        )
 
         llm = MockLLM()
         config = KnowledgeExtractionConfig()

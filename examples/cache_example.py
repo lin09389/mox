@@ -2,7 +2,6 @@
 
 import asyncio
 from mox.core.cache import LLMCache, MemoryCache, DiskCache
-from mox.core.llm import Message
 
 
 async def main():

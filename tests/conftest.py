@@ -1,7 +1,7 @@
 """测试 fixtures"""
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import MagicMock, patch
 from mox.core.llm import Message
 
 

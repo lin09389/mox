@@ -1,7 +1,5 @@
 """测试报告生成模块"""
 
-import pytest
-from datetime import datetime
 from mox.core.report import ReportGenerator, EvaluationReport
 
 

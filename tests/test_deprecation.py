@@ -9,7 +9,6 @@
 
 import pytest
 import warnings
-from datetime import date
 
 from mox.core.deprecation import (
     DeprecationLevel,
@@ -179,6 +178,7 @@ class TestDeprecatedDecorator:
 
     def test_function_deprecation(self):
         """测试函数弃用"""
+
         @deprecated(since="0.2.0", removed_in="0.4.0", use_instead="new_function")
         def old_function():
             return "old"
@@ -193,6 +193,7 @@ class TestDeprecatedDecorator:
 
     def test_class_deprecation(self):
         """测试类弃用"""
+
         @deprecated_class(since="0.2.0", removed_in="0.4.0", use_instead="NewClass")
         class OldClass:
             pass
@@ -250,7 +251,6 @@ class TestModuleExports:
             deprecated,
             deprecated_class,
             check_deprecation,
-            warn_deprecation,
             get_deprecation_stats,
             get_all_deprecations,
         )

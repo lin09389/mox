@@ -6,32 +6,33 @@ from enum import Enum
 
 class ErrorCode(str, Enum):
     """错误码枚举"""
+
     # 通用错误
     INTERNAL_ERROR = "INTERNAL_ERROR"
     INVALID_REQUEST = "INVALID_REQUEST"
     NOT_FOUND = "NOT_FOUND"
-    
+
     # 认证错误
     UNAUTHORIZED = "UNAUTHORIZED"
     INVALID_TOKEN = "INVALID_TOKEN"
     TOKEN_EXPIRED = "TOKEN_EXPIRED"
     INVALID_CREDENTIALS = "INVALID_CREDENTIALS"
     INSUFFICIENT_SCOPE = "INSUFFICIENT_SCOPE"
-    
+
     # 攻击相关
     ATTACK_FAILED = "ATTACK_FAILED"
     INVALID_ATTACK_TYPE = "INVALID_ATTACK_TYPE"
     MODEL_NOT_FOUND = "MODEL_NOT_FOUND"
-    
+
     # 防御相关
     DEFENSE_FAILED = "DEFENSE_FAILED"
     SCAN_FAILED = "SCAN_FAILED"
-    
+
     # 网关相关
     GATEWAY_ERROR = "GATEWAY_ERROR"
     ENDPOINT_NOT_FOUND = "ENDPOINT_NOT_FOUND"
     RATE_LIMIT_EXCEEDED = "RATE_LIMIT_EXCEEDED"
-    
+
     # 任务相关
     TASK_NOT_FOUND = "TASK_NOT_FOUND"
     TASK_FAILED = "TASK_FAILED"
@@ -39,7 +40,7 @@ class ErrorCode(str, Enum):
 
 class MoxException(Exception):
     """Mox 基础异常"""
-    
+
     def __init__(
         self,
         code: ErrorCode,
@@ -52,7 +53,7 @@ class MoxException(Exception):
         self.details = details or {}
         self.status_code = status_code
         super().__init__(message)
-    
+
     def to_dict(self) -> Dict[str, Any]:
         return {
             "error": self.code.value,
@@ -63,7 +64,7 @@ class MoxException(Exception):
 
 class AuthenticationError(MoxException):
     """认证错误"""
-    
+
     def __init__(
         self,
         message: str = "Authentication failed",
@@ -80,7 +81,7 @@ class AuthenticationError(MoxException):
 
 class AuthorizationError(MoxException):
     """授权错误"""
-    
+
     def __init__(
         self,
         message: str = "Insufficient permissions",
@@ -97,7 +98,7 @@ class AuthorizationError(MoxException):
 
 class NotFoundError(MoxException):
     """资源未找到错误"""
-    
+
     def __init__(
         self,
         resource: str,
@@ -116,7 +117,7 @@ class NotFoundError(MoxException):
 
 class ValidationError(MoxException):
     """验证错误"""
-    
+
     def __init__(
         self,
         message: str,
@@ -138,7 +139,7 @@ class ValidationError(MoxException):
 
 class AttackError(MoxException):
     """攻击执行错误"""
-    
+
     def __init__(
         self,
         message: str,
@@ -156,7 +157,7 @@ class AttackError(MoxException):
 
 class DefenseError(MoxException):
     """防御执行错误"""
-    
+
     def __init__(
         self,
         message: str,
@@ -173,7 +174,7 @@ class DefenseError(MoxException):
 
 class GatewayError(MoxException):
     """网关错误"""
-    
+
     def __init__(
         self,
         message: str,
@@ -191,7 +192,7 @@ class GatewayError(MoxException):
 
 class RateLimitError(MoxException):
     """速率限制错误"""
-    
+
     def __init__(
         self,
         retry_after: int = 60,

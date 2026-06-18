@@ -191,12 +191,14 @@ python examples/minimax_usage.py
 
 ## API 认证
 
+用户通过 `MOX_DEFAULT_USERS` 环境变量配置（格式 `username:password:email:scopes`，多个用户用 `|` 分隔）。**生产环境务必使用强密码**，切勿使用示例值。
+
 ### 登录获取 Token
 
 ```bash
 curl -X POST http://localhost:8000/api/auth/login \
   -H "Content-Type: application/json" \
-  -d '{"username": "admin", "password": "admin"}'
+  -d '{"username": "YOUR_USERNAME", "password": "YOUR_PASSWORD"}'
 ```
 
 返回:
@@ -207,8 +209,8 @@ curl -X POST http://localhost:8000/api/auth/login \
   "token_type": "bearer",
   "expires_in": 1800,
   "user": {
-    "username": "admin",
-    "email": "admin@mox.ai",
+    "username": "YOUR_USERNAME",
+    "email": "user@mox.ai",
     "scopes": ["admin", "attack", "defense", "eval"]
   }
 }
@@ -385,7 +387,7 @@ docker-compose --profile monitoring up -d
 # - API: http://localhost:8000
 # - Web UI: http://localhost:7860
 # - Prometheus: http://localhost:9090
-# - Grafana: http://localhost:3000 (admin/admin)
+# - Grafana: http://localhost:3000 (set GRAFANA_ADMIN_USER / GRAFANA_ADMIN_PASSWORD in .env)
 ```
 
 ### 环境变量

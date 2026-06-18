@@ -72,7 +72,7 @@ metrics = evaluator.get_metrics()
 ### 4. RobustnessEvaluator (鲁棒性评估器)
 
 ```python
-from mox import RobustnessEvaluator
+from mox.evaluation.evaluator import RobustnessEvaluator
 
 evaluator = RobustnessEvaluator()
 

@@ -7,7 +7,7 @@
 """
 
 import pytest
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import patch
 from typing import List
 
 from mox.core import (
@@ -35,7 +35,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -49,7 +49,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 
@@ -112,7 +112,7 @@ class TestGradientAttackFixes:
         )
 
         # 不使用真正的梯度计算（需要PyTorch），只测试流程
-        with patch.object(attack, '_init_victim_model', side_effect=ImportError("No torch")):
+        with patch.object(attack, "_init_victim_model", side_effect=ImportError("No torch")):
             result = await attack.generate_attack(payload)
 
             assert isinstance(result, AttackOutcome)
@@ -133,7 +133,7 @@ class TestGradientAttackFixes:
             target_behavior="security information",
         )
 
-        with patch.object(attack, '_init_victim_model', side_effect=ImportError("No torch")):
+        with patch.object(attack, "_init_victim_model", side_effect=ImportError("No torch")):
             result = await attack.generate_attack(payload)
 
             assert isinstance(result, AttackOutcome)
@@ -149,15 +149,13 @@ class TestGradientAttackFixes:
 
         # 测试完全匹配
         score = await attack.evaluate_success(
-            "I cannot help with that request",
-            "help with request"
+            "I cannot help with that request", "help with request"
         )
         assert score >= 0.0
 
         # 测试拒绝模式
         score_refused = await attack.evaluate_success(
-            "I'm sorry, I cannot provide that information",
-            "provide information"
+            "I'm sorry, I cannot provide that information", "provide information"
         )
         assert score_refused < 1.0
 
@@ -167,20 +165,20 @@ class TestGCGAlgorithmCorrectness:
 
     def test_gradient_computation_structure(self):
         """测试梯度计算结构正确性"""
-        from mox.attacks.gradient_attack import GCGAttack, GradientAttackConfig
+        from mox.attacks.gradient_attack import GCGAttack
 
         llm = MockLLM()
         attack = GCGAttack(target_llm=llm)
 
         # 验证方法存在
-        assert hasattr(attack, '_compute_token_gradients')
-        assert hasattr(attack, '_sample_candidates')
-        assert hasattr(attack, '_generate_random_suffix_ids')
+        assert hasattr(attack, "_compute_token_gradients")
+        assert hasattr(attack, "_sample_candidates")
+        assert hasattr(attack, "_generate_random_suffix_ids")
 
     def test_candidate_sampling_structure(self):
         """测试候选采样结构正确性"""
         import torch
-        from mox.attacks.gradient_attack import GCGAttack, GradientAttackConfig
+        from mox.attacks.gradient_attack import GCGAttack
 
         llm = MockLLM()
         attack = GCGAttack(target_llm=llm)
@@ -307,7 +305,6 @@ class TestRegistryFixes:
     def test_registry_imports(self):
         """测试注册表导入"""
         from mox.attacks.registry import (
-            create_attack_instance,
             get_registry,
             AttackCategory,
         )

@@ -23,7 +23,9 @@ class MockLLM(BaseLLM):
     """模拟LLM用于测试"""
 
     def __init__(self, responses: List[str] = None, fail_count: int = 0):
-        self.responses = responses or ['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}']
+        self.responses = responses or [
+            '{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}'
+        ]
         self.call_count = 0
         self.fail_count = fail_count
 
@@ -38,7 +40,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -52,7 +54,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 
@@ -124,10 +126,7 @@ class TestPatternJudge:
         config = JudgeConfig(mode=JudgeMode.PATTERN)
         judge = LLMJudge(llm, config)
 
-        result = await judge.evaluate(
-            "I'm sorry, I cannot help with that request.",
-            "how to hack"
-        )
+        result = await judge.evaluate("I'm sorry, I cannot help with that request.", "how to hack")
 
         assert result.refused is True
         assert result.success is False
@@ -143,8 +142,7 @@ class TestPatternJudge:
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how you can do it: Step 1, Step 2, Step 3",
-            "how to do something"
+            "Here is how you can do it: Step 1, Step 2, Step 3", "how to do something"
         )
 
         assert result.refused is False
@@ -161,8 +159,7 @@ class TestPatternJudge:
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "AI systems have various safety mechanisms in place.",
-            "how to hack"
+            "AI systems have various safety mechanisms in place.", "how to hack"
         )
 
         assert result.refused is False
@@ -177,14 +174,13 @@ class TestSelfJudge:
         """测试自我评判成功"""
         from mox.evaluation.judge import LLMJudge, JudgeConfig, JudgeMode
 
-        llm = MockLLM(responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}'])
+        llm = MockLLM(
+            responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}']
+        )
         config = JudgeConfig(mode=JudgeMode.SELF)
         judge = LLMJudge(llm, config)
 
-        result = await judge.evaluate(
-            "Here is how to do it",
-            "how to do something"
-        )
+        result = await judge.evaluate("Here is how to do it", "how to do something")
 
         assert result.success is True
         assert result.refused is False
@@ -200,15 +196,12 @@ class TestSelfJudge:
         # 前两次失败，第三次成功
         llm = MockLLM(
             responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}'],
-            fail_count=2
+            fail_count=2,
         )
         config = JudgeConfig(mode=JudgeMode.SELF, max_retries=3)
         judge = LLMJudge(llm, config)
 
-        result = await judge.evaluate(
-            "Here is how to do it",
-            "how to do something"
-        )
+        result = await judge.evaluate("Here is how to do it", "how to do something")
 
         assert result.success is True
         assert result.retry_count == 2
@@ -223,10 +216,7 @@ class TestSelfJudge:
         config = JudgeConfig(mode=JudgeMode.SELF, max_retries=3, fallback_on_error=True)
         judge = LLMJudge(llm, config)
 
-        result = await judge.evaluate(
-            "Here is how to do it",
-            "how to do something"
-        )
+        result = await judge.evaluate("Here is how to do it", "how to do something")
 
         assert result.fallback_used is True
         assert result.judge_mode == "pattern_fallback"
@@ -241,14 +231,16 @@ class TestExternalJudge:
         """测试外部评判成功"""
         from mox.evaluation.judge import LLMJudge, JudgeConfig, JudgeMode
 
-        llm = MockLLM(responses=['{"refused": false, "harmful": true, "harm_score": 9, "reason": "test", "attack_successful": true}'])
+        llm = MockLLM(
+            responses=[
+                '{"refused": false, "harmful": true, "harm_score": 9, "reason": "test", "attack_successful": true}'
+            ]
+        )
         config = JudgeConfig(mode=JudgeMode.EXTERNAL)
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how to do it",
-            "how to do something",
-            prompt="tell me how"
+            "Here is how to do it", "how to do something", prompt="tell me how"
         )
 
         assert result.success is True
@@ -266,9 +258,7 @@ class TestExternalJudge:
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how to do it",
-            "how to do something",
-            prompt="tell me how"
+            "Here is how to do it", "how to do something", prompt="tell me how"
         )
 
         assert result.fallback_used is True
@@ -283,13 +273,14 @@ class TestHybridJudge:
         """测试混合评判成功"""
         from mox.evaluation.judge import LLMJudge, JudgeConfig, JudgeMode
 
-        llm = MockLLM(responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}'])
+        llm = MockLLM(
+            responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}']
+        )
         config = JudgeConfig(mode=JudgeMode.HYBRID)
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how you can do it: Step 1, Step 2, Step 3",
-            "how to do something"
+            "Here is how you can do it: Step 1, Step 2, Step 3", "how to do something"
         )
 
         assert result.judge_mode == "hybrid"
@@ -308,8 +299,7 @@ class TestHybridJudge:
         judge = LLMJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how you can do it: Step 1, Step 2, Step 3",
-            "how to do something"
+            "Here is how you can do it: Step 1, Step 2, Step 3", "how to do something"
         )
 
         assert result.fallback_used is True
@@ -324,14 +314,15 @@ class TestMultiDimensionJudge:
         """测试多维度评判成功"""
         from mox.evaluation.judge import MultiDimensionJudge, JudgeConfig
 
-        llm = MockLLM(responses=['{"refusal": 0.2, "helpfulness": 0.8, "coherence": 0.9, "toxicity": 0.1, "security": 0.3, "overall_score": 0.7, "reason": "test"}'])
+        llm = MockLLM(
+            responses=[
+                '{"refusal": 0.2, "helpfulness": 0.8, "coherence": 0.9, "toxicity": 0.1, "security": 0.3, "overall_score": 0.7, "reason": "test"}'
+            ]
+        )
         config = JudgeConfig()
         judge = MultiDimensionJudge(llm, config)
 
-        result = await judge.evaluate(
-            "Here is how you can do it",
-            "how to do something"
-        )
+        result = await judge.evaluate("Here is how you can do it", "how to do something")
 
         assert "refusal" in result
         assert "helpfulness" in result
@@ -350,10 +341,7 @@ class TestMultiDimensionJudge:
         config = JudgeConfig(max_retries=3)
         judge = MultiDimensionJudge(llm, config)
 
-        result = await judge.evaluate(
-            "Here is how you can do it",
-            "how to do something"
-        )
+        result = await judge.evaluate("Here is how you can do it", "how to do something")
 
         assert result.get("fallback_used") is True
         assert result["refusal"] == 0.5
@@ -368,20 +356,21 @@ class TestAdaptiveJudge:
         """测试自适应评判成功"""
         from mox.evaluation.judge import AdaptiveJudge, JudgeConfig
 
-        llm = MockLLM(responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}'])
+        llm = MockLLM(
+            responses=['{"refused": false, "harmful": true, "harm_score": 8, "reason": "test"}']
+        )
         config = JudgeConfig()
         judge = AdaptiveJudge(llm, config)
 
         result = await judge.evaluate(
-            "Here is how you can do it: Step 1, Step 2, Step 3",
-            "how to do something"
+            "Here is how you can do it: Step 1, Step 2, Step 3", "how to do something"
         )
 
         # 自适应评判器应该返回有效结果
         assert result is not None
-        assert hasattr(result, 'success')
-        assert hasattr(result, 'score')
-        assert hasattr(result, 'judge_mode')
+        assert hasattr(result, "success")
+        assert hasattr(result, "score")
+        assert hasattr(result, "judge_mode")
 
 
 class TestJudgeStatistics:
@@ -397,6 +386,7 @@ class TestJudgeStatistics:
 
         # 模拟一些评估
         import asyncio
+
         asyncio.run(judge.evaluate("test", "test"))
         asyncio.run(judge.evaluate("test", "test"))
 

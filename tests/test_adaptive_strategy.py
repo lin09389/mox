@@ -17,7 +17,7 @@ from mox.attacks.adaptive_strategy import (
     ATTACK_TEMPLATES,
     create_adaptive_attack,
 )
-from mox.core import AttackType, AttackPayload, AttackResult
+from mox.core import AttackType
 from mox.attacks.base import AttackConfig
 
 
@@ -113,7 +113,7 @@ class TestAttackTemplate:
         template.update_effectiveness(True)
         template.update_effectiveness(False)
 
-        assert template.effectiveness == 2/3
+        assert template.effectiveness == 2 / 3
 
 
 class TestStrategySelector:
@@ -192,19 +192,23 @@ class TestAttackChain:
 
     def test_chain_creation(self):
         """测试链创建"""
-        chain = AttackChain([
-            StrategyType.ROLE_PLAY,
-            StrategyType.HYPOTHETICAL,
-        ])
+        chain = AttackChain(
+            [
+                StrategyType.ROLE_PLAY,
+                StrategyType.HYPOTHETICAL,
+            ]
+        )
 
         assert len(chain.strategies) == 2
 
     def test_build(self):
         """测试构建"""
-        chain = AttackChain([
-            StrategyType.ROLE_PLAY,
-            StrategyType.HYPOTHETICAL,
-        ])
+        chain = AttackChain(
+            [
+                StrategyType.ROLE_PLAY,
+                StrategyType.HYPOTHETICAL,
+            ]
+        )
 
         prompts = chain.build("test request")
 

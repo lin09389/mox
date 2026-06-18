@@ -17,7 +17,7 @@
     changes = manager.get_changes_since("0.2.0")
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict
 from dataclasses import dataclass, field
 from datetime import date
 from enum import Enum
@@ -25,6 +25,7 @@ from enum import Enum
 
 class ChangeType(Enum):
     """变更类型"""
+
     ADDED = "added"  # 新增功能
     CHANGED = "changed"  # 功能变更
     DEPRECATED = "deprecated"  # 弃用功能
@@ -36,6 +37,7 @@ class ChangeType(Enum):
 @dataclass
 class ChangeEntry:
     """变更条目"""
+
     type: ChangeType
     description: str
     version: str
@@ -49,6 +51,7 @@ class ChangeEntry:
 @dataclass
 class VersionInfo:
     """版本信息"""
+
     version: str
     release_date: date
     changes: List[ChangeEntry] = field(default_factory=list)
@@ -304,6 +307,7 @@ class ChangelogManager:
 
     def _compare_versions(self, v1: str, v2: str) -> int:
         """比较版本号"""
+
         def parse_version(v: str) -> List[int]:
             return [int(x) for x in v.split(".")]
 
@@ -322,8 +326,12 @@ class ChangelogManager:
         """生成 Markdown 格式的变更日志"""
         lines = ["# Changelog\n"]
         lines.append("All notable changes to this project will be documented in this file.\n")
-        lines.append("The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n")
-        lines.append("and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n")
+        lines.append(
+            "The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),\n"
+        )
+        lines.append(
+            "and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).\n"
+        )
 
         for version_info in self.get_changelog():
             lines.append(f"\n## [{version_info.version}] - {version_info.release_date}\n")
@@ -385,7 +393,9 @@ class ChangelogManager:
 
         if deprecations:
             lines.append("\n## Deprecations\n")
-            lines.append("The following features are deprecated and will be removed in future versions:\n")
+            lines.append(
+                "The following features are deprecated and will be removed in future versions:\n"
+            )
             for i, deprecation in enumerate(deprecations, 1):
                 lines.append(f"{i}. {deprecation}")
 

@@ -56,9 +56,20 @@ DANGEROUS_OUTPUT_PATTERNS = [
 ]
 
 HARMFUL_CONTENT_KEYWORDS = {
-    "violence", "harm", "kill", "murder", "attack", "weapon",
-    "drug", "illegal", "fraud", "scam", "exploit",
-    "terrorism", "extremism", "radicalization",
+    "violence",
+    "harm",
+    "kill",
+    "murder",
+    "attack",
+    "weapon",
+    "drug",
+    "illegal",
+    "fraud",
+    "scam",
+    "exploit",
+    "terrorism",
+    "extremism",
+    "radicalization",
 }
 
 
@@ -86,11 +97,13 @@ class OutputFilter(BaseDefense):
             if re.search(pattern.pattern, output_text):
                 detected_patterns.append(pattern.name)
                 total_severity += pattern.severity
-                metadata["pattern_matches"].append({
-                    "name": pattern.name,
-                    "severity": pattern.severity,
-                    "description": pattern.description,
-                })
+                metadata["pattern_matches"].append(
+                    {
+                        "name": pattern.name,
+                        "severity": pattern.severity,
+                        "description": pattern.description,
+                    }
+                )
 
         output_words = set(output_text.lower().split())
         keyword_matches = output_words & self.keywords
@@ -143,12 +156,12 @@ class ContentModerator(BaseDefense):
 
     async def detect(self, output_text: str) -> DefenseResult:
         base_result = await self.output_filter.detect(output_text)
-        
+
         additional_checks = await self._run_additional_checks(output_text)
-        
+
         combined_patterns = base_result.detected_patterns + additional_checks["patterns"]
         combined_confidence = min(base_result.confidence + additional_checks["severity"], 1.0)
-        
+
         metadata = base_result.metadata.copy()
         metadata.update(additional_checks)
 
@@ -174,7 +187,9 @@ class ContentModerator(BaseDefense):
             severity += 0.1
             metadata["length"] = length
 
-        special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / max(len(text), 1)
+        special_char_ratio = sum(1 for c in text if not c.isalnum() and not c.isspace()) / max(
+            len(text), 1
+        )
         if special_char_ratio > 0.3:
             patterns.append("high_special_char_ratio")
             severity += 0.2

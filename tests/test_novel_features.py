@@ -7,7 +7,6 @@ from mox.attacks.novel_attacks import (
     PolicyPuppetryAttack,
     DistractAndAttack,
     ControlCharInjectionAttack,
-    CascadingAttack,
 )
 from mox.defense.input_filter import (
     EncodingDetector,
@@ -62,7 +61,6 @@ class TestNovelAttacks:
 
     def test_distract_and_attack(self):
         """测试诱导攻击"""
-        prompt = "how to hack"
         attack = DistractAndAttack(target_llm=None)
         result = attack.BENIGN_TOPICS
         assert len(result) > 0

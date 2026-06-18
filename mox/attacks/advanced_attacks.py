@@ -97,7 +97,9 @@ class TextBasedAdversarialAttack(BaseAttack):
                 score = await self.evaluate_success(response.content, payload.target_behavior)
 
                 outcome = self._create_outcome(
-                    result=AttackResult.SUCCESS if score >= self.config.success_threshold else AttackResult.FAILURE,
+                    result=AttackResult.SUCCESS
+                    if score >= self.config.success_threshold
+                    else AttackResult.FAILURE,
                     original_prompt=payload.prompt,
                     adversarial_prompt=attack_prompt,
                     model_response=response.content,
@@ -117,7 +119,7 @@ class TextBasedAdversarialAttack(BaseAttack):
                 if score >= self.config.success_threshold:
                     return outcome
 
-            except Exception as e:
+            except Exception:
                 continue
 
         return best_outcome or self._create_outcome(
@@ -691,7 +693,9 @@ class KnowledgeExtractionAttack(BaseAttack):
                 extracted_knowledge = await self._apply_strategy(strategy["name"], payload)
 
                 # 使用提取的知识生成最终响应
-                final_prompt = self._build_final_prompt(payload.target_behavior, extracted_knowledge)
+                final_prompt = self._build_final_prompt(
+                    payload.target_behavior, extracted_knowledge
+                )
 
                 messages = [Message(role="user", content=final_prompt)]
                 response = await self.target_llm.generate(messages)
@@ -699,7 +703,9 @@ class KnowledgeExtractionAttack(BaseAttack):
                 score = await self.evaluate_success(response.content, payload.target_behavior)
 
                 outcome = self._create_outcome(
-                    result=AttackResult.SUCCESS if score >= self.config.success_threshold else AttackResult.FAILURE,
+                    result=AttackResult.SUCCESS
+                    if score >= self.config.success_threshold
+                    else AttackResult.FAILURE,
                     original_prompt=payload.prompt,
                     adversarial_prompt=final_prompt,
                     model_response=response.content,
@@ -720,7 +726,7 @@ class KnowledgeExtractionAttack(BaseAttack):
                 if score >= self.config.success_threshold:
                     return outcome
 
-            except Exception as e:
+            except Exception:
                 continue
 
         return best_outcome or self._create_outcome(
@@ -787,7 +793,9 @@ class KnowledgeExtractionAttack(BaseAttack):
             response = await self.target_llm.generate(messages)
 
             # 检查是否包含有效信息
-            if not any(refusal in response.content.lower() for refusal in ["i cannot", "i can't", "sorry"]):
+            if not any(
+                refusal in response.content.lower() for refusal in ["i cannot", "i can't", "sorry"]
+            ):
                 features.append(response.content[:200])
 
         return "\n".join(features) if features else "No features extracted"

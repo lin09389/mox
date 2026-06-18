@@ -202,7 +202,9 @@ class GradientBasedAttack(BaseAttack):
         top_k_indices = torch.topk(token_scores, k=top_k, dim=-1).indices  # (suffix_len, top_k)
 
         # 生成batch_size个候选
-        candidates = current_suffix_ids.unsqueeze(0).repeat(batch_size, 1)  # (batch_size, suffix_len)
+        candidates = current_suffix_ids.unsqueeze(0).repeat(
+            batch_size, 1
+        )  # (batch_size, suffix_len)
 
         for i in range(batch_size):
             # 随机选择要修改的位置数（1到3个位置）
@@ -288,7 +290,7 @@ class GCGAttack(GradientBasedAttack):
             best_suffix_ids = suffix_ids.clone()
             best_score = 0.0
             best_response = ""
-            best_loss = float('inf')
+            best_loss = float("inf")
 
             for iteration in range(self.gradient_config.max_iterations):
                 # 构建完整输入
@@ -337,7 +339,9 @@ class GCGAttack(GradientBasedAttack):
                         best_loss = best_candidate_loss
 
                     if self.gradient_config.verbose and iteration % 50 == 0:
-                        print(f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}")
+                        print(
+                            f"Iteration {iteration}: Score = {score:.4f}, Loss = {best_candidate_loss:.4f}"
+                        )
 
                     if score >= self.gradient_config.early_stop_threshold:
                         return self._create_outcome(
@@ -638,7 +642,7 @@ class GradientBasedSuffixAttack(GradientBasedAttack):
                 # 更新精英池
                 elite_pool.append((best_candidate.clone(), best_candidate_score))
                 elite_pool.sort(key=lambda x: x[1], reverse=True)
-                elite_pool = elite_pool[:self.gradient_config.num_elite]
+                elite_pool = elite_pool[: self.gradient_config.num_elite]
 
                 if best_candidate_score > best_score:
                     best_score = best_candidate_score

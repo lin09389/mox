@@ -21,6 +21,7 @@ logger = get_logger("evaluation.safety_card")
 
 class RiskLevel(str, Enum):
     """风险等级"""
+
     VERY_LOW = "very_low"
     LOW = "low"
     MEDIUM = "medium"
@@ -31,6 +32,7 @@ class RiskLevel(str, Enum):
 
 class SafetyCategory(str, Enum):
     """安全类别"""
+
     HARMFUL_CONTENT = "harmful_content"
     PRIVACY = "privacy"
     FAIRNESS = "fairness"
@@ -42,6 +44,7 @@ class SafetyCategory(str, Enum):
 @dataclass
 class SafetyMetric:
     """安全指标"""
+
     name: str
     value: float
     description: str
@@ -52,6 +55,7 @@ class SafetyMetric:
 @dataclass
 class RiskAssessment:
     """风险评估"""
+
     category: SafetyCategory
     risk_level: RiskLevel
     description: str
@@ -62,6 +66,7 @@ class RiskAssessment:
 @dataclass
 class UsageLimitation:
     """使用限制"""
+
     category: str
     description: str
     severity: str
@@ -71,6 +76,7 @@ class UsageLimitation:
 @dataclass
 class SafetyTestResult:
     """安全测试结果"""
+
     test_name: str
     category: SafetyCategory
     passed: bool
@@ -81,6 +87,7 @@ class SafetyTestResult:
 @dataclass
 class ModelSafetyCard:
     """模型安全卡片"""
+
     # 基本信息
     model_name: str
     model_version: str
@@ -196,61 +203,73 @@ class ModelSafetyCard:
             status = "✅ 通过" if m.value >= m.pass_threshold else "❌ 未通过"
             lines.append(f"| {m.name} | {m.value:.2f} | {m.benchmark} | {status} |")
 
-        lines.extend([
-            "",
-            "---",
-            "",
-            "## 风险评估",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## 风险评估",
+                "",
+            ]
+        )
 
         for r in self.risk_assessments:
-            lines.extend([
-                f"### {r.category.value}",
-                "",
-                f"- **风险等级**: {r.risk_level.value}",
-                f"- **描述**: {r.description}",
-                f"- **缓解措施**: {r.mitigation}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### {r.category.value}",
+                    "",
+                    f"- **风险等级**: {r.risk_level.value}",
+                    f"- **描述**: {r.description}",
+                    f"- **缓解措施**: {r.mitigation}",
+                    "",
+                ]
+            )
 
-        lines.extend([
-            "---",
-            "",
-            "## 测试结果",
-            "",
-            "| 测试名称 | 类别 | 结果 | 分数 |",
-            "|----------|------|------|------|",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## 测试结果",
+                "",
+                "| 测试名称 | 类别 | 结果 | 分数 |",
+                "|----------|------|------|------|",
+            ]
+        )
 
         for t in self.test_results:
             result = "✅ 通过" if t.passed else "❌ 失败"
             lines.append(f"| {t.test_name} | {t.category.value} | {result} | {t.score:.2f} |")
 
-        lines.extend([
-            "",
-            "---",
-            "",
-            "## 使用限制",
-            "",
-        ])
+        lines.extend(
+            [
+                "",
+                "---",
+                "",
+                "## 使用限制",
+                "",
+            ]
+        )
 
         for u in self.usage_limitations:
-            lines.extend([
-                f"### {u.category}",
-                "",
-                f"- **严重程度**: {u.severity}",
-                f"- **描述**: {u.description}",
-                f"- **建议**: {u.recommendation}",
-                "",
-            ])
+            lines.extend(
+                [
+                    f"### {u.category}",
+                    "",
+                    f"- **严重程度**: {u.severity}",
+                    f"- **描述**: {u.description}",
+                    f"- **建议**: {u.recommendation}",
+                    "",
+                ]
+            )
 
-        lines.extend([
-            "---",
-            "",
-            "## 建议",
-            "",
-        ])
+        lines.extend(
+            [
+                "---",
+                "",
+                "## 建议",
+                "",
+            ]
+        )
 
         for i, rec in enumerate(self.recommendations, 1):
             lines.append(f"{i}. {rec}")
@@ -493,21 +512,22 @@ class SafetyCardGenerator:
 
         # 基于风险评估生成建议
         high_risks = [
-            a for a in card.risk_assessments
+            a
+            for a in card.risk_assessments
             if a.risk_level in [RiskLevel.HIGH, RiskLevel.VERY_HIGH, RiskLevel.CRITICAL]
         ]
         if high_risks:
-            recommendations.append(
-                f"存在 {len(high_risks)} 个高风险领域，建议实施针对性防御措施"
-            )
+            recommendations.append(f"存在 {len(high_risks)} 个高风险领域，建议实施针对性防御措施")
 
         # 通用建议
-        recommendations.extend([
-            "定期进行安全评估和更新",
-            "监控模型输出并收集用户反馈",
-            "建立应急响应机制处理安全问题",
-            "对敏感应用场景实施人工审核流程",
-        ])
+        recommendations.extend(
+            [
+                "定期进行安全评估和更新",
+                "监控模型输出并收集用户反馈",
+                "建立应急响应机制处理安全问题",
+                "对敏感应用场景实施人工审核流程",
+            ]
+        )
 
         return recommendations
 

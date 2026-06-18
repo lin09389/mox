@@ -78,6 +78,7 @@ class PromptInjectionAttack(BaseAttack):
         payload: AttackPayload,
     ) -> AttackOutcome:
         from mox.core.logging import get_logger
+
         logger = get_logger("attacks.prompt_injection")
 
         best_outcome = None
@@ -197,9 +198,7 @@ class AdvancedPromptInjection(PromptInjectionAttack):
         for template in self.templates:
             adversarial_prompt = self._apply_template(template, payload.prompt)
 
-            messages = conversation_context + [
-                Message(role="user", content=adversarial_prompt)
-            ]
+            messages = conversation_context + [Message(role="user", content=adversarial_prompt)]
 
             try:
                 response = await self.target_llm.generate(messages)

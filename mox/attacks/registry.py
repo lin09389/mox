@@ -27,6 +27,7 @@ from .base import AttackConfig, BaseAttack
 # 攻击类型枚举
 class AttackCategory(Enum):
     """攻击类别"""
+
     BASIC = "basic"  # 基础攻击
     NOVEL = "novel"  # 新型攻击
     GRADIENT = "gradient"  # 梯度攻击
@@ -39,6 +40,7 @@ class AttackCategory(Enum):
 @dataclass
 class AttackTypeInfo:
     """攻击类型信息"""
+
     name: str
     category: AttackCategory
     attack_class: Type[BaseAttack]
@@ -113,7 +115,7 @@ class AttackRegistry:
         self._categories[category].add(name)
 
         # 注册别名
-        for alias in (aliases or []):
+        for alias in aliases or []:
             self._aliases[alias] = name
 
     def create(
@@ -179,9 +181,7 @@ class AttackRegistry:
             "total_types": len(self._factories),
             "total_aliases": len(self._aliases),
             "by_category": {
-                category.value: len(types)
-                for category, types in self._categories.items()
-                if types
+                category.value: len(types) for category, types in self._categories.items() if types
             },
         }
 
@@ -400,7 +400,6 @@ def _register_advanced_attacks(registry: AttackRegistry):
         ZeroShotAdversarialAttack,
         HallucinationInductionAttack,
         CollaborativeAttack,
-        KnowledgeExtractionAttack,
         EvasionAttack,
         AdvancedAttackConfig,
     )
@@ -587,6 +586,7 @@ def _register_knowledge_attacks(registry: AttackRegistry):
 
     def _build_knowledge_extraction(llm: BaseLLM, max_iterations: int):
         from .advanced_attacks import AdvancedAttackConfig
+
         config = AdvancedAttackConfig(max_iterations=max_iterations)
         return KnowledgeExtractionAttack(target_llm=llm, advanced_config=config)
 

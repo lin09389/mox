@@ -17,7 +17,6 @@ from mox.core import (
     AttackType,
     AttackPayload,
     AttackOutcome,
-    AttackResult,
 )
 
 
@@ -35,7 +34,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
     async def chat(self, messages: List[Message], **kwargs) -> LLMResponse:
@@ -49,7 +48,7 @@ class MockLLM(BaseLLM):
             content=response,
             model="mock",
             usage={"prompt_tokens": 10, "completion_tokens": 20, "total_tokens": 30},
-            finish_reason="stop"
+            finish_reason="stop",
         )
 
 
@@ -130,23 +129,16 @@ class TestImageInjectionAttack:
 
         # 完全匹配
         score = await attack.evaluate_success(
-            "The image says: test instruction",
-            "test instruction"
+            "The image says: test instruction", "test instruction"
         )
         assert score == 1.0
 
         # 部分匹配
-        score = await attack.evaluate_success(
-            "The image contains some text",
-            "image text"
-        )
+        score = await attack.evaluate_success("The image contains some text", "image text")
         assert 0.0 <= score <= 1.0
 
         # 无匹配
-        score = await attack.evaluate_success(
-            "I cannot help with that",
-            "test instruction"
-        )
+        score = await attack.evaluate_success("I cannot help with that", "test instruction")
         assert score < 0.5
 
 

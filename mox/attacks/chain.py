@@ -19,6 +19,7 @@ from mox.attacks.base import BaseAttack
 @dataclass
 class AttackChainResult:
     """攻击链结果"""
+
     chain_name: str
     results: List[AttackOutcome]
     overall_success: bool
@@ -54,6 +55,7 @@ class AttackChain:
     async def execute(self, payload: AttackPayload) -> AttackChainResult:
         """执行攻击链"""
         import time
+
         start_time = time.time()
 
         results = []
@@ -108,6 +110,7 @@ class AttackChain:
 @dataclass
 class EnsembleResult:
     """集成攻击结果"""
+
     ensemble_name: str
     results: List[AttackOutcome]
     successful_attacks: List[AttackOutcome]
@@ -140,6 +143,7 @@ class AttackEnsemble:
     async def execute(self, payload: AttackPayload) -> EnsembleResult:
         """并行执行攻击集成"""
         import time
+
         start_time = time.time()
 
         # 使用信号量控制并发
@@ -158,24 +162,24 @@ class AttackEnsemble:
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 # 创建错误结果
-                outcomes.append(AttackOutcome(
-                    result=AttackResult.ERROR,
-                    original_prompt=payload.prompt,
-                    adversarial_prompt="",
-                    model_response=str(result),
-                    iterations=0,
-                    success_score=0.0,
-                    metadata={
-                        "error": str(result),
-                        "attack_name": self.attacks[i].__class__.__name__,
-                    },
-                ))
+                outcomes.append(
+                    AttackOutcome(
+                        result=AttackResult.ERROR,
+                        original_prompt=payload.prompt,
+                        adversarial_prompt="",
+                        model_response=str(result),
+                        iterations=0,
+                        success_score=0.0,
+                        metadata={
+                            "error": str(result),
+                            "attack_name": self.attacks[i].__class__.__name__,
+                        },
+                    )
+                )
             else:
                 outcomes.append(result)
 
-        successful_attacks = [
-            o for o in outcomes if o.result == AttackResult.SUCCESS
-        ]
+        successful_attacks = [o for o in outcomes if o.result == AttackResult.SUCCESS]
 
         # 选择最佳结果（分数最高的成功攻击）
         best_result = None
@@ -233,12 +237,14 @@ class LLMTargetModel(TargetModel):
 
     async def generate(self, prompt: str) -> str:
         from mox.core import Message
+
         messages = [Message(role="user", content=prompt)]
         response = await self.llm.generate(messages)
         return response.content
 
     async def batch_generate(self, prompts: List[str]) -> List[str]:
         from mox.core import Message
+
         tasks = []
         for prompt in prompts:
             messages = [Message(role="user", content=prompt)]
@@ -271,6 +277,7 @@ class RAGTargetModel(TargetModel):
 
     async def _generate_with_llm(self, prompt: str) -> str:
         from mox.core import Message
+
         messages = [Message(role="user", content=prompt)]
         response = await self.llm.generate(messages)
         return response.content
@@ -285,6 +292,7 @@ class MultimodalTargetModel(TargetModel):
     async def generate(self, prompt: str) -> str:
         # 处理多模态输入（简化版本）
         from mox.core import Message
+
         messages = [Message(role="user", content=prompt)]
         response = await self.llm.generate(messages)
         return response.content

@@ -352,7 +352,6 @@ async def run_attack(
 
         elif request.attack_type in gradient_attack_types:
             from mox.attacks.gradient_attack import (
-                GCGAttack,
                 AutoPromptAttack,
                 GradientBasedSuffixAttack,
                 GradientAttackConfig,

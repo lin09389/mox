@@ -98,6 +98,78 @@
   --radius-lg: 24px;
 }
 
+.dark {
+  color-scheme: dark;
+
+  /* Inverted Graphite Scale */
+  --color-graphite-50: #09111d;
+  --color-graphite-100: #121b2b;
+  --color-graphite-200: #1f2a3f;
+  --color-graphite-300: #314158;
+  --color-graphite-400: #495a74;
+  --color-graphite-500: #667794;
+  --color-graphite-600: #8fa0bc;
+  --color-graphite-700: #b8c4d9;
+  --color-graphite-800: #d7deea;
+  --color-graphite-900: #edf1f7;
+  --color-graphite-950: #f5f7fb;
+
+  /* Inverted Electric Scale */
+  --color-electric-50: #10395a;
+  --color-electric-100: #0d456a;
+  --color-electric-200: #0a5586;
+  --color-electric-300: #0a6db0;
+  --color-electric-400: #1188d8;
+  --color-electric-500: #36aaf4;
+  --color-electric-600: #74c7ff;
+  --color-electric-700: #afdfff;
+  --color-electric-800: #d8efff;
+  --color-electric-900: #eef8ff;
+
+  /* Inverted Lava Scale */
+  --color-lava-50: #682614;
+  --color-lava-100: #7f2b14;
+  --color-lava-200: #9d3010;
+  --color-lava-300: #c83c12;
+  --color-lava-400: #ef4f1e;
+  --color-lava-500: #ff6b37;
+  --color-lava-600: #ff9462;
+  --color-lava-700: #ffc09f;
+  --color-lava-800: #ffe1d2;
+  --color-lava-900: #fff5ef;
+
+  /* Inverted Neon Scale */
+  --color-neon-50: #12462d;
+  --color-neon-100: #135535;
+  --color-neon-200: #146b41;
+  --color-neon-300: #188850;
+  --color-neon-400: #23ae66;
+  --color-neon-500: #43c983;
+  --color-neon-600: #7adea8;
+  --color-neon-700: #b2efca;
+  --color-neon-800: #d9f8e5;
+  --color-neon-900: #effdf5;
+
+  /* Inverted Amber Scale */
+  --color-amber-50: #653a13;
+  --color-amber-100: #7a4511;
+  --color-amber-200: #97570d;
+  --color-amber-300: #bc7109;
+  --color-amber-400: #df910d;
+  --color-amber-500: #f3af1f;
+  --color-amber-600: #f9cb46;
+  --color-amber-700: #fde18a;
+  --color-amber-800: #fef0c7;
+  --color-amber-900: #fffaeb;
+
+  /* Inverted Shadows for Dark Mode */
+  --shadow-fine: 0 1px 2px rgba(0, 0, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.2);
+  --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.4);
+  --shadow-lifted: 0 16px 40px rgba(0, 0, 0, 0.6);
+  --shadow-card: 0 20px 50px rgba(0, 0, 0, 0.5);
+  --shadow-modal: 0 24px 80px rgba(0, 0, 0, 0.8);
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -108,13 +180,30 @@ html {
   scroll-behavior: smooth;
 }
 
+@keyframes bg-drift {
+  0% { background-position: 0% 0%; }
+  50% { background-position: 100% 100%; }
+  100% { background-position: 0% 0%; }
+}
+
 body {
   min-height: 100vh;
   background:
-    radial-gradient(circle at top left, rgba(17, 136, 216, 0.1), transparent 28%),
-    radial-gradient(circle at top right, rgba(35, 174, 102, 0.08), transparent 24%),
+    radial-gradient(circle at 20% 20%, rgba(17, 136, 216, 0.12), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(35, 174, 102, 0.08), transparent 40%),
     linear-gradient(180deg, #f8fbff 0%, #f4f7fb 38%, #eef2f9 100%);
+  background-size: 200% 200%;
+  animation: bg-drift 25s ease-in-out infinite;
   color: var(--color-graphite-900);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.dark body {
+  background:
+    radial-gradient(circle at 20% 20%, rgba(17, 136, 216, 0.15), transparent 40%),
+    radial-gradient(circle at 80% 80%, rgba(35, 174, 102, 0.1), transparent 40%),
+    linear-gradient(180deg, #09111d 0%, #0d1624 38%, #121b2b 100%);
+  background-size: 200% 200%;
 }
 
 a {
@@ -172,18 +261,35 @@ textarea {
   @apply relative overflow-hidden rounded-[28px] border border-white/70 p-6 shadow-card backdrop-blur-xl sm:p-8;
 }
 
+.dark .hero-panel {
+  background:
+    linear-gradient(140deg, rgba(17, 136, 216, 0.12), rgba(12, 32, 60, 0.2)),
+    rgba(18, 27, 43, 0.5);
+  border-color: rgba(255, 255, 255, 0.06);
+}
+
 .hero-panel::after {
   content: "";
   position: absolute;
   inset: 0;
   background:
     radial-gradient(circle at 85% 16%, rgba(255, 255, 255, 0.85), transparent 22%),
-    radial-gradient(circle at 12% 100%, rgba(17, 136, 216, 0.08), transparent 30%);
+    radial-gradient(circle at 12% 100%, rgba(17, 136, 216, 0.12), transparent 40%);
   pointer-events: none;
 }
 
+.dark .hero-panel::after {
+  background:
+    radial-gradient(circle at 85% 16%, rgba(17, 136, 216, 0.15), transparent 22%),
+    radial-gradient(circle at 12% 100%, rgba(35, 174, 102, 0.1), transparent 40%);
+}
+
 .card {
-  @apply rounded-[22px] border border-white/80 bg-white/76 p-5 shadow-fine backdrop-blur-xl sm:p-6;
+  @apply rounded-[22px] border border-white/80 bg-white/76 p-5 shadow-fine backdrop-blur-xl sm:p-6 transition-colors duration-300;
+}
+
+.dark .card {
+  @apply border-white/10 bg-graphite-100/60;
 }
 
 .card-hover {
@@ -272,15 +378,17 @@ textarea {
 }
 
 .btn-primary {
-  @apply bg-graphite-950 text-white shadow-soft hover:-translate-y-0.5 hover:bg-graphite-900;
+  @apply bg-graphite-950 text-white shadow-soft hover:-translate-y-0.5 hover:bg-graphite-900 hover:shadow-lifted transition-all duration-300;
+  background: linear-gradient(135deg, var(--color-graphite-800), var(--color-graphite-950));
 }
 
 .btn-secondary {
-  @apply border border-graphite-200 bg-white/90 text-graphite-700 hover:border-graphite-300 hover:bg-white;
+  @apply border border-graphite-200 bg-white/90 text-graphite-700 hover:border-electric-300 hover:bg-electric-50/60 hover:text-electric-700 hover:shadow-sm transition-all duration-300;
 }
 
 .btn-danger {
-  @apply bg-lava-600 text-white shadow-soft hover:-translate-y-0.5 hover:bg-lava-700;
+  @apply bg-lava-600 text-white shadow-soft hover:-translate-y-0.5 hover:bg-lava-700 hover:shadow-lifted transition-all duration-300;
+  background: linear-gradient(135deg, var(--color-lava-500), var(--color-lava-700));
 }
 
 .btn-ghost {
@@ -300,7 +408,11 @@ textarea {
 }
 
 .table-shell {
-  @apply overflow-hidden rounded-[22px] border border-white/80 bg-white/82 shadow-fine backdrop-blur-xl;
+  @apply overflow-hidden rounded-[22px] border border-white/80 bg-white/82 shadow-fine backdrop-blur-xl transition-colors duration-300;
+}
+
+.dark .table-shell {
+  @apply border-white/10 bg-graphite-100/60;
 }
 
 .table-container {

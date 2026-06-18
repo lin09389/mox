@@ -1,13 +1,15 @@
 """测试 config 和 logging 模块"""
 
-import pytest
-from mox.core.config import Settings, settings
+from mox.core.config import Settings
 from mox.core.logging import setup_logging, get_logger, set_log_level
 
 
 class TestSettings:
-    def test_default_values(self):
-        s = Settings()
+    def test_default_values(self, monkeypatch):
+        # 隔离真实 .env 与裸环境变量，确保读到的是字段默认值
+        for var in ("OPENAI_API_KEY", "DEFAULT_MODEL", "DEFAULT_TEMPERATURE", "MAX_TOKENS"):
+            monkeypatch.delenv(var, raising=False)
+        s = Settings(_env_file="nonexistent.env")
         assert s.DEFAULT_MODEL == "abab2.5-chat"
         assert s.DEFAULT_TEMPERATURE == 0.7
         assert s.MAX_TOKENS == 2048

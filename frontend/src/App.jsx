@@ -19,6 +19,7 @@ const BiasDetectionPage = lazy(() => import('./pages/BiasDetectionPage'))
 const OWASPPage = lazy(() => import('./pages/OWASPPage'))
 const RedTeamPage = lazy(() => import('./pages/RedTeamPage'))
 const TemplatePage = lazy(() => import('./pages/TemplatePage'))
+const DatasetPage = lazy(() => import('./pages/DatasetPage'))
 const ReportPage = lazy(() => import('./pages/ReportPage'))
 const TaskProgressPage = lazy(() => import('./pages/TaskProgressPage'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
@@ -64,6 +65,7 @@ export default function App() {
             <Route path="/owasp" element={<OWASPPage />} />
             <Route path="/redteam" element={<RedTeamPage />} />
             <Route path="/templates" element={<TemplatePage />} />
+            <Route path="/datasets" element={<DatasetPage />} />
             <Route path="/reports" element={<ReportPage />} />
             <Route path="/tasks" element={<TaskProgressPage />} />
             <Route path="/audit" element={<AuditLogPage />} />

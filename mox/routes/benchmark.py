@@ -13,6 +13,7 @@ router = APIRouter(prefix="/benchmark", tags=["Benchmark"])
 
 # ============ 请求模型 ============
 
+
 class BenchmarkRequest(BaseModel):
     dataset: str = "advbench"
     attack_type: str = "prompt_injection"
@@ -28,13 +29,15 @@ benchmark_dataset = BenchmarkDataset()
 
 # ============ 辅助函数 ============
 
+
 def _get_llm(model: str):
     """获取 LLM 实例"""
     from mox.core import LLMFactory
     from mox.core.config import settings
-    
+
     if model.startswith("abab") or model.startswith("minimax"):
         from mox.core import MiniMaxLLM
+
         return MiniMaxLLM(
             model=model,
             api_key=settings.MINIMAX_API_KEY,
@@ -44,6 +47,7 @@ def _get_llm(model: str):
 
 
 # ============ 路由端点 ============
+
 
 @router.post("/run")
 async def run_benchmark(
@@ -68,11 +72,13 @@ async def run_benchmark(
         results = []
         for payload in payloads:
             outcome = await attack.generate_attack(payload)
-            results.append({
-                "result": outcome.result.value,
-                "success_score": outcome.success_score,
-                "iterations": outcome.iterations,
-            })
+            results.append(
+                {
+                    "result": outcome.result.value,
+                    "success_score": outcome.success_score,
+                    "iterations": outcome.iterations,
+                }
+            )
 
         successful = sum(1 for r in results if r["result"] == "success")
         total = len(results)

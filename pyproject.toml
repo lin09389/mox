@@ -48,7 +48,7 @@ dependencies = [
     "asyncpg>=0.30.0",
     # Auth & Security
     "python-jose[cryptography]>=3.4.0",
-    "passlib[bcrypt]>=1.7.4",
+    "pwdlib[bcrypt]>=0.2.0",
     "itsdangerous>=2.2.0",
     "bandit>=1.8.0",
     # Cache & Queue

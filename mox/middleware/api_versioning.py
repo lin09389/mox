@@ -9,9 +9,10 @@
 """
 
 import re
+import asyncio
 from typing import Optional, Dict, Any, List, Callable
 from dataclasses import dataclass, field
-from datetime import datetime, timedelta
+from datetime import datetime
 from enum import Enum
 
 from mox.core.logging import get_logger
@@ -21,6 +22,7 @@ logger = get_logger("middleware.versioning")
 
 class VersioningStrategy(str, Enum):
     """版本控制策略"""
+
     URL_PATH = "url_path"  # /v1/endpoint
     HEADER = "header"  # Accept: application/json; version=1
     QUERY_PARAM = "query_param"  # ?version=1
@@ -29,6 +31,7 @@ class VersioningStrategy(str, Enum):
 @dataclass
 class APIVersion:
     """API 版本"""
+
     major: int
     minor: int = 0
     patch: int = 0
@@ -75,6 +78,7 @@ class APIVersion:
 @dataclass
 class VersionInfo:
     """版本信息"""
+
     version: APIVersion
     release_date: Optional[datetime] = None
     deprecation_date: Optional[datetime] = None
@@ -107,6 +111,7 @@ class VersionInfo:
 @dataclass
 class VersioningConfig:
     """版本控制配置"""
+
     strategy: VersioningStrategy = VersioningStrategy.URL_PATH
     default_version: APIVersion = field(default_factory=lambda: APIVersion(1))
     supported_versions: List[APIVersion] = field(default_factory=lambda: [APIVersion(1)])
@@ -243,21 +248,21 @@ class VersionManager:
         """获取所有版本列表"""
         versions = []
         for key, info in sorted(self._versions.items()):
-            versions.append({
-                "version": str(info.version),
-                "status": info.deprecation_status,
-                "release_date": info.release_date.isoformat() if info.release_date else None,
-                "deprecation_date": info.deprecation_date.isoformat() if info.deprecation_date else None,
-                "sunset_date": info.sunset_date.isoformat() if info.sunset_date else None,
-                "description": info.description,
-                "changes": info.changes,
-                "breaking_changes": info.breaking_changes,
-            })
+            versions.append(
+                {
+                    "version": str(info.version),
+                    "status": info.deprecation_status,
+                    "release_date": info.release_date.isoformat() if info.release_date else None,
+                    "deprecation_date": info.deprecation_date.isoformat()
+                    if info.deprecation_date
+                    else None,
+                    "sunset_date": info.sunset_date.isoformat() if info.sunset_date else None,
+                    "description": info.description,
+                    "changes": info.changes,
+                    "breaking_changes": info.breaking_changes,
+                }
+            )
         return versions
-
-
-# 需要导入 asyncio
-import asyncio
 
 
 class VersionedRouter:
@@ -308,10 +313,7 @@ class VersionedRouter:
                 return route_info["handler"]
 
         # 回退到较低版本
-        for v in sorted(
-            self.manager.config.supported_versions,
-            reverse=True
-        ):
+        for v in sorted(self.manager.config.supported_versions, reverse=True):
             key = v.short
             if key in path_routes and v <= version:
                 route_info = path_routes[key]
@@ -331,7 +333,7 @@ DEFAULT_VERSION_MANAGER.register_version(
         version=APIVersion(1, 0, 0),
         release_date=datetime(2024, 1, 1),
         description="Initial API version",
-    )
+    ),
 )
 DEFAULT_VERSION_MANAGER.register_version(
     APIVersion(2, 0, 0),
@@ -348,7 +350,7 @@ DEFAULT_VERSION_MANAGER.register_version(
             "Response format changed",
             "Some endpoints renamed",
         ],
-    )
+    ),
 )
 
 

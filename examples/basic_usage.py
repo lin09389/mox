@@ -6,16 +6,12 @@ Mox 使用示例
 import asyncio
 from mox.core import (
     LLMFactory,
-    ModelProvider,
-    Message,
     AttackType,
     AttackPayload,
 )
 from mox.attacks import (
     PromptInjectionAttack,
     JailbreakAttack,
-    GCGAttack,
-    AutoDANAttack,
     AttackConfig,
 )
 from mox.defense import (

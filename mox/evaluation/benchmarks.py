@@ -440,8 +440,12 @@ OWASP_LLM_TEST_CASES = [
 
 
 @dataclass
-class EvaluationResult:
-    """评估结果"""
+class BenchmarkEvaluationResult:
+    """基准测试评估结果
+
+    注意：此类与 mox.evaluation.attack_evaluator.EvaluationResult 含义不同。
+    本类表示一次基准测试的汇总统计，后者表示单次攻击的评估结果。
+    """
 
     attack_type: str
     target_model: str
@@ -458,14 +462,14 @@ class AutoEvaluator:
     """自动化评估器 - 批量运行攻击/防御测试"""
 
     def __init__(self):
-        self.results: List[EvaluationResult] = []
+        self.results: List[BenchmarkEvaluationResult] = []
 
     async def evaluate_attack(
         self,
         attack,
         payloads: List[AttackPayload],
         target_llm,
-    ) -> EvaluationResult:
+    ) -> BenchmarkEvaluationResult:
         """评估攻击效果"""
         successful = 0
         confidences = []
@@ -483,7 +487,7 @@ class AutoEvaluator:
         success_rate = successful / total if total > 0 else 0.0
         avg_confidence = sum(confidences) / len(confidences) if confidences else 0.0
 
-        result = EvaluationResult(
+        result = BenchmarkEvaluationResult(
             attack_type=str(attack.attack_type),
             target_model=target_llm.model,
             success_rate=success_rate,

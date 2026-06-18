@@ -1,4 +1,4 @@
-"""Mox v0.2.0 package entry point"""
+"""Mox v0.3.0 package entry point"""
 
 from mox.api import run_server
 from mox.ui import launch_ui

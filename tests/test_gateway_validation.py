@@ -43,5 +43,9 @@ def test_rejects_resolved_localhost_name():
 
 
 def test_allows_public_domain():
-    req = _build_request("https://api.openai.com/v1")
-    assert req.base_url == "https://api.openai.com/v1"
+    from unittest.mock import patch
+    with patch("socket.getaddrinfo") as mock_getaddrinfo:
+        # Mocking a public IP response to avoid flaky DNS in CI/Test environments
+        mock_getaddrinfo.return_value = [(2, 1, 6, '', ('8.8.8.8', 0))]
+        req = _build_request("https://api.openai.com/v1")
+        assert req.base_url == "https://api.openai.com/v1"

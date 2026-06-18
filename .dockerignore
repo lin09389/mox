@@ -1,0 +1,140 @@
+# ===========================================
+# Mox .dockerignore
+# Keeps the Docker build context lean and prevents
+# host artifacts (.venv, node_modules, caches, logs, data,
+# secrets) from leaking into the image via `COPY . .`.
+# ===========================================
+
+# ---- Version control ----
+.git/
+.gitignore
+.gitattributes
+.github/
+.gitlab-ci.yml
+
+# ---- Virtual environments (rebuilt inside the image) ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Python bytecode & caches ----
+**/__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg-info/
+*.egg
+build/
+dist/
+
+# ---- Test, type-check and lint caches ----
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+*.cover
+.tox/
+.nox/
+
+# ---- Runtime data (must NOT be baked into the image) ----
+data/
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# ---- Logs, traces and debug output ----
+*.log
+logs/
+trace*.log
+import_check*.py
+debug_*
+
+# ---- Temporary & backup files ----
+*.tmp
+*.temp
+*.bak
+*.old
+*.orig
+*.swp
+*.swo
+*~
+
+# ---- Secrets & environment (use runtime env_file / -e instead) ----
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+secrets.json
+
+# ---- Security scan reports ----
+bandit-report.*
+safety-report.*
+pip-audit-report.*
+
+# ---- IDE / editor ----
+.idea/
+.vscode/
+*.code-workspace
+.fleet/
+.project
+.pydevproject
+.settings/
+
+# ---- OS-specific ----
+.DS_Store
+Thumbs.db
+desktop.ini
+nul
+con
+prn
+aux
+
+# ---- AI assistant / agent tooling (local only) ----
+.claude/
+.trae/
+.qwen/
+.aider*
+.cursor/
+.continue/
+.codeium/
+
+# ---- Frontend build artifacts (built in a separate stage or CI) ----
+frontend/node_modules/
+frontend/dist/
+frontend/build/
+frontend/.vite/
+node_modules/
+
+# ---- Docker compose & local launcher scripts (not needed in image) ----
+docker-compose.yml
+docker-compose.*.yml
+start.bat
+start.ps1
+start.py
+run_ollama_attack.bat
+run_ollama_attack.ps1
+sitecustomize.py
+
+# ---- Docs & examples (optional; uncomment to slim the image further) ----
+# docs/
+# examples/
+
+# ---- Local development databases / scratch ----
+debug_task.db
+trace.log
+scratch/
+local/
+private/
+
+# ---- Jupyter ----
+.ipynb_checkpoints/

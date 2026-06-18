@@ -250,8 +250,9 @@ export default function SecurityDashboard() {
                   key={`${attack.type}-${index}`}
                   initial={{ opacity: 0, x: -8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 px-4 py-3"
+                  whileHover={{ scale: 1.015, x: 2, boxShadow: 'var(--shadow-soft)' }}
+                  transition={{ delay: index * 0.04, duration: 0.2 }}
+                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 dark:bg-graphite-100/40 px-4 py-3 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>
@@ -296,8 +297,9 @@ export default function SecurityDashboard() {
                   key={`${log.defense_type}-${index}`}
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: index * 0.04 }}
-                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 px-4 py-3"
+                  whileHover={{ scale: 1.015, x: -2, boxShadow: 'var(--shadow-soft)' }}
+                  transition={{ delay: index * 0.04, duration: 0.2 }}
+                  className="rounded-[18px] border border-graphite-200/70 bg-white/75 dark:bg-graphite-100/40 px-4 py-3 transition-colors"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div>

@@ -17,6 +17,7 @@ router = APIRouter(prefix="/auth", tags=["Authentication"])
 
 # ============ 请求/响应模型 ============
 
+
 class LoginRequest(BaseModel):
     username: str
     password: str
@@ -34,6 +35,7 @@ class TokenRefreshRequest(BaseModel):
 
 
 # ============ 路由端点 ============
+
 
 @router.post("/login", response_model=LoginResponse)
 async def login(request: LoginRequest):

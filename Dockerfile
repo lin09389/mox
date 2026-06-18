@@ -1,7 +1,10 @@
 # Mox - LLM Adversarial Attack & Defense Platform
-# Multi-stage build for optimized production image
+# Multi-stage build for optimized production image using uv
 
 FROM python:3.11-slim as builder
+
+# Install uv
+COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
 WORKDIR /app
 
@@ -11,12 +14,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libffi-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy application files
-COPY pyproject.toml ./
+# Install dependencies (caching layer)
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
 
-# Install Python dependencies
-RUN pip install --no-cache-dir --upgrade pip wheel
-RUN pip install --no-cache-dir -e ".[dev]"
+# Copy application code and install the project
+COPY . .
+RUN uv sync --frozen --no-dev
 
 # Production stage
 FROM python:3.11-slim
@@ -30,9 +34,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     && rm -rf /var/lib/apt/lists/* \
     && useradd --create-home --shell /bin/bash mox
 
-# Copy installed packages from builder
-COPY --from=builder /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.11/site-packages
-COPY --from=builder /usr/local/bin /usr/local/bin
+# Copy the virtual environment from builder
+COPY --from=builder --chown=mox:mox /app/.venv /app/.venv
 
 # Copy application code
 COPY --chown=mox:mox . .
@@ -46,7 +49,7 @@ USER mox
 # Environment variables
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
-    PATH=/home/mox/.local/bin:$PATH \
+    PATH=/app/.venv/bin:$PATH \
     PYTHONPATH=/app
 
 # Expose ports

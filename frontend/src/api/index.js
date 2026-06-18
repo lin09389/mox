@@ -74,6 +74,15 @@ export const attackApi = {
   run: async (data) => unwrap(await api.post(`${API_PREFIX}/attack`, data)),
   getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/attack/history`, { params })),
   test: async () => unwrap(await api.get(`${API_PREFIX}/health`)),
+  getRegistry: async () => unwrap(await api.get(`${API_PREFIX}/attacks/registry`)),
+}
+
+export const datasetApi = {
+  list: async (params) => unwrap(await api.get(`${API_PREFIX}/datasets`, { params })),
+  upload: async (formData) => unwrap(await api.post(`${API_PREFIX}/datasets/upload`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  })),
+  delete: async (id) => unwrap(await api.delete(`${API_PREFIX}/datasets/${id}`)),
 }
 
 export const defenseApi = {
