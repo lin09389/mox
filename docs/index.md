@@ -28,6 +28,7 @@ attack = PromptInjectionAttack(target_llm=llm)
 ### 运行示例
 ```bash
 python examples/basic_usage.py
+python examples/attack_loop.py  # 攻击循环测试
 ```
 
 ### 启动服务

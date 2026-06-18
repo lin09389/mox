@@ -13,9 +13,11 @@ import {
   ShieldCheck,
   Sparkles,
   X,
+  Radar
 } from 'lucide-react'
 import { defenseApi, isDemoModeEnabled } from '../api'
 import { useCopyToClipboard, useLocalStorage } from '../hooks/useCommon'
+import { PageHeader, StatusPill } from '../components/ui/AppFrame'
 
 const SAMPLE_TEXTS = [
   { label: 'Benign request', text: 'Hello, how can I help you today?' },
@@ -65,6 +67,8 @@ function normalizeResult(payload) {
     demo: Boolean(payload?._demo_mode),
   }
 }
+
+import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function DefensePage() {
   const [loading, setLoading] = useState(false)
@@ -188,96 +192,91 @@ export default function DefensePage() {
   }
 
   return (
-    <div className="space-y-6">
-      <motion.div
-        initial={{ opacity: 0, y: -10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="flex items-center justify-between gap-4"
-      >
-        <div className="flex items-center gap-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-neon-200/70 bg-neon-100">
-            <ShieldCheck className="h-6 w-6 text-neon-600" />
-          </div>
-          <div>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-graphite-900">Defense Console</h1>
-            <p className="mt-0.5 text-sm text-graphite-500">Scan prompts, inspect threats, and sanitize risky input.</p>
-          </div>
-        </div>
-        <div
-          className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-medium ${
-            apiConnected ? 'border-neon-200/70 bg-neon-50 text-neon-700' : 'border-amber-200/70 bg-amber-50 text-amber-700'
-          }`}
-        >
-          <span className={`h-2 w-2 rounded-full ${apiConnected ? 'bg-neon-500' : 'bg-amber-500'}`} />
-          {apiConnected ? 'Live API' : isDemoModeEnabled ? 'Demo fallback' : 'Offline'}
-        </div>
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="DEFENSE SHIELD"
+          title="防御检测实验室"
+          description="使用安全审计模型，在输入与输出阶段检测并清洗可能存在的恶意注入与敏感信息。"
+          badge={<StatusPill online={apiConnected} onlineLabel="Live API" offlineLabel="Demo Mode" />}
+        />
       </motion.div>
 
-      <div className="flex w-fit gap-2 rounded-lg bg-graphite-100/60 p-1">
+      <motion.div variants={itemVariants} className="flex flex-wrap w-fit gap-2 p-1.5 rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass-strong)] shadow-sm backdrop-blur-md">
         {[
-          { id: 'scan', label: 'Scan', icon: Search },
-          { id: 'sanitize', label: 'Sanitize', icon: Sparkles },
-          { id: 'history', label: 'History', icon: BarChart3 },
+          { id: 'scan', label: '引擎扫描', icon: Search },
+          { id: 'sanitize', label: '文本脱敏', icon: Sparkles },
+          { id: 'history', label: '检测日志', icon: BarChart3 },
         ].map((tab) => (
           <button
             key={tab.id}
             type="button"
             onClick={() => setActiveTab(tab.id)}
-            className={`flex items-center gap-2 rounded-md px-4 py-2 text-sm font-medium transition-all ${
-              activeTab === tab.id ? 'bg-white text-graphite-900 shadow-soft' : 'text-graphite-500 hover:text-graphite-700'
+            className={`flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-bold transition-all duration-300 ${
+              activeTab === tab.id 
+                ? 'bg-cyan-500 text-white shadow-soft' 
+                : 'text-[var(--text-muted)] hover:bg-[var(--bg-glass)] hover:text-[var(--text-main)]'
             }`}
           >
-            <tab.icon className="h-4 w-4" />
+            <tab.icon className="h-4.5 w-4.5" />
             {tab.label}
           </button>
         ))}
-      </div>
+      </motion.div>
 
       <AnimatePresence mode="wait">
         {activeTab === 'scan' && (
           <motion.div
             key="scan"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="grid gap-5 lg:grid-cols-[1.2fr_0.8fr]"
+            exit={{ opacity: 0, y: -15 }}
+            transition={{ duration: 0.3 }}
+            className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]"
           >
-            <div className="space-y-4">
-              <div className="grid gap-3 sm:grid-cols-2">
+            <div className="space-y-5">
+              <div className="grid gap-4 sm:grid-cols-2">
                 {SCAN_TYPES.map((type) => (
                   <button
                     key={type.value}
                     type="button"
                     onClick={() => setScanType(type.value)}
-                    className={`rounded-lg border p-4 text-left transition-all ${
-                      scanType === type.value ? 'border-electric-500 bg-electric-50/50' : 'border-graphite-200/70 bg-white'
+                    className={`rounded-2xl border p-5 text-left transition-all duration-300 group ${
+                      scanType === type.value 
+                        ? 'border-cyan-500 bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]' 
+                        : 'border-[var(--border-glass-strong)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
                     }`}
                   >
-                    <div className="font-medium text-graphite-800">{type.label}</div>
-                    <div className="mt-1 text-xs text-graphite-500">{type.description}</div>
+                    <div className="flex items-center gap-3">
+                      <div className={`w-8 h-8 rounded-full flex items-center justify-center transition-colors ${scanType === type.value ? 'bg-cyan-500 text-white' : 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)] group-hover:text-cyan-500'}`}>
+                        {type.value === 'input' ? <ShieldCheck className="w-4 h-4" /> : <Radar className="w-4 h-4" />}
+                      </div>
+                      <div className={`font-bold font-display text-lg ${scanType === type.value ? 'text-[var(--text-main)]' : 'text-[var(--text-muted)] group-hover:text-[var(--text-main)]'}`}>
+                        {type.label}
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs font-medium text-[var(--text-muted)] leading-relaxed">{type.description}</div>
                   </button>
                 ))}
               </div>
 
-              <div className="card">
+              <div className="card p-5">
                 <textarea
                   value={text}
                   onChange={(event) => setText(event.target.value)}
-                  placeholder="Paste the prompt or model output you want to inspect."
-                  className="input-field resize-none"
-                  rows={8}
+                  placeholder="Paste the prompt or model output you want to inspect..."
+                  className="w-full bg-transparent border-none resize-none outline-none text-[var(--text-main)] placeholder:text-[var(--text-muted)] placeholder:opacity-50 min-h-[160px] text-sm leading-loose"
                 />
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-xs text-graphite-400">{text.length} chars</span>
+                <div className="glass-divider my-3"></div>
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold font-mono text-[var(--text-muted)]">{text.length} chars</span>
                   <div className="flex gap-2">
-                    <button type="button" onClick={checkApiStatus} className="btn-ghost px-3 py-1.5 text-xs">
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      Refresh API
+                    <button type="button" onClick={checkApiStatus} className="btn-secondary px-3 py-1.5 text-xs">
+                      <RefreshCw className="h-3.5 w-3.5" /> 刷新连接
                     </button>
                     {text && (
-                      <button type="button" onClick={clearText} className="btn-ghost px-3 py-1.5 text-xs">
-                        <X className="h-3.5 w-3.5" />
-                        Clear
+                      <button type="button" onClick={clearText} className="btn-ghost px-3 py-1.5 text-xs text-rose-500 hover:text-rose-600 hover:bg-rose-500/10">
+                        <X className="h-3.5 w-3.5" /> 清空
                       </button>
                     )}
                   </div>
@@ -285,102 +284,121 @@ export default function DefensePage() {
               </div>
 
               <div>
-                <p className="mb-2 text-xs font-medium text-graphite-600">Quick samples</p>
-                <div className="grid gap-2 sm:grid-cols-2">
+                <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">快捷预设测试用例</p>
+                <div className="grid gap-3 sm:grid-cols-2">
                   {SAMPLE_TEXTS.map((sample) => (
                     <button
                       key={sample.label}
                       type="button"
                       onClick={() => setText(sample.text)}
-                      className="rounded-lg border border-graphite-200/70 bg-white p-3 text-left transition-all hover:shadow-soft"
+                      className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] p-4 text-left transition-all duration-200 hover:border-cyan-500/50 hover:bg-cyan-500/5 hover:-translate-y-0.5"
                     >
-                      <div className="text-sm font-medium text-graphite-800">{sample.label}</div>
-                      <div className="mt-1 text-xs text-graphite-500">{sample.text.slice(0, 64)}</div>
+                      <div className="text-sm font-bold text-[var(--text-main)]">{sample.label}</div>
+                      <div className="mt-1.5 text-xs font-medium text-[var(--text-muted)] truncate">{sample.text}</div>
                     </button>
                   ))}
                 </div>
               </div>
 
-              <div className="flex gap-3">
-                <button type="button" onClick={handleScan} disabled={loading || !text.trim()} className="btn-primary flex-1">
-                  <Search className="h-4 w-4" />
-                  {loading ? 'Scanning...' : 'Run scan'}
+              <div className="flex gap-4 pt-2">
+                <button type="button" onClick={handleScan} disabled={loading || !text.trim()} className="btn-primary flex-1 py-3 text-base">
+                  {loading ? <RefreshCw className="h-5 w-5 animate-spin" /> : <Search className="h-5 w-5" />}
+                  {loading ? '正在扫描引擎...' : '执行安全扫描'}
                 </button>
-                <button type="button" onClick={handleSanitize} disabled={loading || !text.trim()} className="btn-secondary">
-                  <Sparkles className="h-4 w-4" />
-                  Sanitize
+                <button type="button" onClick={handleSanitize} disabled={loading || !text.trim()} className="btn-secondary py-3 px-6">
+                  <Sparkles className="h-5 w-5" /> 脱敏清洗
                 </button>
               </div>
             </div>
 
-            <div className="space-y-4">
-              <div className="card">
-                <div className="mb-3 flex items-center gap-2">
-                  {normalized?.isMalicious ? (
-                    <AlertTriangle className="h-4 w-4 text-lava-600" />
-                  ) : (
-                    <CheckCircle2 className="h-4 w-4 text-neon-600" />
-                  )}
-                  <h2 className="text-sm font-semibold text-graphite-900">Scan result</h2>
+            <div className="space-y-5">
+              <div className="card p-6 min-h-[300px]">
+                <div className="mb-5 flex items-center gap-3 border-b border-[var(--border-glass)] pb-4">
+                  <div className={`p-2 rounded-lg ${normalized?.isMalicious ? 'bg-rose-500/10' : 'bg-emerald-500/10'}`}>
+                    {normalized?.isMalicious ? (
+                      <AlertTriangle className="h-5 w-5 text-rose-500" />
+                    ) : (
+                      <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+                    )}
+                  </div>
+                  <h2 className="text-lg font-bold font-display text-[var(--text-main)]">扫描研判结果</h2>
                 </div>
 
                 {normalized ? (
-                  <div className="space-y-4">
-                    <div className={`rounded-2xl border px-4 py-4 ${normalized.isMalicious ? 'border-lava-200/70 bg-lava-50/70' : 'border-neon-200/70 bg-neon-50/70'}`}>
-                      <div className="text-sm font-semibold text-graphite-900">
-                        {normalized.isMalicious ? 'Threat detected' : 'No obvious threat'}
+                  <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
+                    <div className={`rounded-2xl border px-5 py-5 ${normalized.isMalicious ? 'border-rose-500/30 bg-rose-500/10' : 'border-emerald-500/30 bg-emerald-500/10'}`}>
+                      <div className="flex justify-between items-start mb-4">
+                        <div>
+                          <div className={`text-base font-bold ${normalized.isMalicious ? 'text-rose-500' : 'text-emerald-500'}`}>
+                            {normalized.isMalicious ? '威胁命中 (Threat Detected)' : '安全放行 (No Obvious Threat)'}
+                          </div>
+                          <div className="mt-1 text-sm font-medium text-[var(--text-main)]">
+                            推荐动作: <span className="font-bold">{normalized.recommendedAction}</span>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">置信度</div>
+                          <div className="font-mono text-2xl font-bold text-[var(--text-main)]">
+                            {(normalized.confidence * 100).toFixed(1)}%
+                          </div>
+                        </div>
                       </div>
-                      <div className="mt-2 text-sm text-graphite-600">
-                        Confidence: {(normalized.confidence * 100).toFixed(1)}%
-                      </div>
-                      <div className="mt-1 text-sm text-graphite-600">Action: {normalized.recommendedAction}</div>
+                      
                       {normalized.demo && (
-                        <div className="mt-3 rounded-xl border border-amber-200/70 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                          This result is coming from demo mode, not a live backend scan.
+                        <div className="mt-4 rounded-xl border border-amber-500/20 bg-amber-500/10 px-4 py-2.5 text-xs font-bold text-amber-500 flex items-center gap-2">
+                          <AlertTriangle className="w-3.5 h-3.5" /> 此研判结果由本地演示模式生成
                         </div>
                       )}
                     </div>
 
                     <div>
-                      <p className="mb-2 text-xs font-semibold uppercase tracking-[0.18em] text-graphite-400">Patterns</p>
+                      <p className="mb-3 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">触发的风险特征池</p>
                       {normalized.detectedPatterns.length > 0 ? (
                         <div className="flex flex-wrap gap-2">
                           {normalized.detectedPatterns.map((pattern) => (
-                            <span key={pattern} className="badge badge-danger">
-                              {pattern}
+                            <span key={pattern} className="badge badge-danger border-rose-500/30 bg-rose-500/10 text-rose-500 px-3 py-1.5">
+                              <Radar className="w-3.5 h-3.5 mr-1" /> {pattern}
                             </span>
                           ))}
                         </div>
                       ) : (
-                        <p className="text-sm text-graphite-500">No suspicious pattern was identified.</p>
+                        <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm font-medium text-emerald-500 flex items-center gap-2">
+                          <CheckCircle2 className="w-4 h-4" /> 未发现任何可疑注入或恶意特征片段。
+                        </div>
                       )}
                     </div>
-                  </div>
+                  </motion.div>
                 ) : (
-                  <div className="flex min-h-[220px] flex-col items-center justify-center text-center">
-                    <ShieldAlert className="h-8 w-8 text-graphite-300" />
-                    <p className="mt-3 text-sm text-graphite-500">Run a scan to populate this panel.</p>
+                  <div className="flex h-full flex-col items-center justify-center text-center opacity-60 pb-10">
+                    <ShieldAlert className="h-12 w-12 text-[var(--text-muted)] mb-4" />
+                    <p className="text-sm font-bold text-[var(--text-muted)]">请在左侧输入文本并执行扫描<br/>研判引擎会在此给出结论</p>
                   </div>
                 )}
               </div>
 
-              <div className="card">
-                <div className="mb-3 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <FileText className="h-4 w-4 text-electric-600" />
-                    <h2 className="text-sm font-semibold text-graphite-900">Sanitized output</h2>
+              <div className="card p-6">
+                <div className="mb-4 flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="p-1.5 bg-cyan-500/10 rounded-lg">
+                      <FileText className="h-4 w-4 text-cyan-500" />
+                    </div>
+                    <h2 className="text-base font-bold font-display text-[var(--text-main)]">脱敏后安全输出</h2>
                   </div>
                   {sanitized && (
-                    <button type="button" className="btn-ghost px-2 py-1" onClick={() => copyToClipboard(sanitized)}>
-                      <Copy className="h-4 w-4" />
-                      {copied ? 'Copied' : 'Copy'}
+                    <button type="button" className="btn-secondary px-3 py-1.5 text-xs h-8" onClick={() => copyToClipboard(sanitized)}>
+                      <Copy className="h-3.5 w-3.5" />
+                      {copied ? '已复制' : '复制结果'}
                     </button>
                   )}
                 </div>
                 {sanitized ? (
-                  <div className="rounded-2xl bg-graphite-50/80 p-4 text-sm leading-7 text-graphite-700">{sanitized}</div>
+                  <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] p-5 text-sm font-mono leading-relaxed text-[var(--text-main)] shadow-inner break-words">
+                    {sanitized}
+                  </div>
                 ) : (
-                  <p className="text-sm text-graphite-500">Sanitized content will appear here after a successful run.</p>
+                  <div className="rounded-xl border border-dashed border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5 text-sm font-medium text-[var(--text-muted)] text-center">
+                    如果检测到违规或敏感内容，净化后的文本将展示于此。
+                  </div>
                 )}
               </div>
             </div>
@@ -390,22 +408,27 @@ export default function DefensePage() {
         {activeTab === 'sanitize' && (
           <motion.div
             key="sanitize"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="card"
+            exit={{ opacity: 0, y: -15 }}
+            className="card p-8"
           >
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-electric-600" />
-              <h2 className="text-sm font-semibold text-graphite-900">Sanitize the current text</h2>
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2 bg-cyan-500/10 rounded-xl">
+                <Sparkles className="h-6 w-6 text-cyan-500" />
+              </div>
+              <h2 className="text-xl font-bold font-display text-[var(--text-main)]">定向数据清洗</h2>
             </div>
-            <p className="mt-2 text-sm text-graphite-500">
-              This uses the current text area content. It strips or neutralizes risky instructions before they are reused.
+            <p className="text-sm font-medium text-[var(--text-muted)] max-w-2xl leading-relaxed">
+              此功能将使用目前输入框中的文本，剥离或模糊化其中的高危指令、个人隐私或越狱前缀，使其在进入下游系统前变得安全无害。
             </p>
-            <div className="mt-4 flex gap-3">
-              <button type="button" onClick={handleSanitize} disabled={loading || !text.trim()} className="btn-primary">
-                <Sparkles className="h-4 w-4" />
-                Run sanitization
+            <div className="mt-8 flex gap-4">
+              <button type="button" onClick={handleSanitize} disabled={loading || !text.trim()} className="btn-primary py-3 px-6">
+                <Sparkles className="h-5 w-5" />
+                立即执行净化
+              </button>
+              <button type="button" onClick={() => setActiveTab('scan')} className="btn-ghost">
+                返回扫描页
               </button>
             </div>
           </motion.div>
@@ -414,38 +437,44 @@ export default function DefensePage() {
         {activeTab === 'history' && (
           <motion.div
             key="history"
-            initial={{ opacity: 0, y: 8 }}
+            initial={{ opacity: 0, y: 15 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            className="space-y-3"
+            exit={{ opacity: 0, y: -15 }}
+            className="space-y-4"
           >
             {scanHistory.length > 0 ? (
               scanHistory.map((entry) => (
-                <div key={entry.id} className="card">
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="min-w-0">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <span className={`badge ${entry.result?.isMalicious ? 'badge-danger' : 'badge-success'}`}>
-                          {entry.result?.isMalicious ? 'Threat' : 'Clean'}
+                <div key={entry.id} className="card p-5 hover:bg-[var(--bg-glass-strong)] transition-colors">
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-3 mb-3">
+                        <span className={`badge ${entry.result?.isMalicious ? 'badge-danger border-rose-500/30 bg-rose-500/10 text-rose-500' : 'badge-success border-emerald-500/30 bg-emerald-500/10 text-emerald-500'}`}>
+                          {entry.result?.isMalicious ? '高危拦截' : '合规放行'}
                         </span>
-                        <span className="text-xs text-graphite-400">{new Date(entry.timestamp).toLocaleString()}</span>
-                        <span className="text-xs text-graphite-400">{entry.scanType}</span>
+                        <span className="text-xs font-mono font-bold text-[var(--text-muted)] opacity-70">
+                          {new Date(entry.timestamp).toLocaleString()}
+                        </span>
+                        <span className="text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                          {entry.scanType === 'input' ? '输入检查' : '输出审查'}
+                        </span>
                       </div>
-                      <p className="mt-2 truncate text-sm text-graphite-700">{entry.text}</p>
+                      <p className="truncate text-sm font-medium text-[var(--text-main)] bg-[var(--bg-glass)] px-3 py-2 rounded-lg border border-[var(--border-glass)]">
+                        {entry.text}
+                      </p>
                     </div>
-                    <div className={`mt-1 h-2.5 w-2.5 rounded-full ${entry.result?.isMalicious ? 'bg-lava-500' : 'bg-neon-500'}`} />
+                    <div className={`mt-2 flex-shrink-0 h-3 w-3 rounded-full shadow-sm ${entry.result?.isMalicious ? 'bg-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.6)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.6)]'}`} />
                   </div>
                 </div>
               ))
             ) : (
-              <div className="card flex min-h-[260px] flex-col items-center justify-center text-center">
-                <BarChart3 className="h-8 w-8 text-graphite-300" />
-                <p className="mt-3 text-sm text-graphite-500">No defense history yet.</p>
+              <div className="card flex min-h-[300px] flex-col items-center justify-center text-center p-10">
+                <BarChart3 className="h-12 w-12 text-[var(--text-muted)] opacity-40 mb-4" />
+                <p className="text-sm font-bold text-[var(--text-muted)]">暂无历史检测记录</p>
               </div>
             )}
           </motion.div>
         )}
       </AnimatePresence>
-    </div>
+    </motion.div>
   )
 }

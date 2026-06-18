@@ -96,7 +96,7 @@ export function useMediaQuery(query) {
   useEffect(() => {
     const media = window.matchMedia(query)
     if (media.matches !== matches) {
-      setMatches(media.matches)
+      setTimeout(() => setMatches(media.matches), 0)
     }
     const listener = () => setMatches(media.matches)
     media.addEventListener('change', listener)
@@ -111,14 +111,15 @@ export function useCommon() {
   const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    setModels([
-      { id: 'gpt-4', name: 'GPT-4' },
-      { id: 'gpt-3.5', name: 'GPT-3.5' },
-      { id: 'claude-3', name: 'Claude 3' },
-      { id: 'gemini-pro', name: 'Gemini Pro' },
-      { id: 'abab2.5', name: 'MiniMax' },
-      { id: 'qwen:4b', name: 'Qwen 4B' },
-    ])
+    const t = setTimeout(() => {
+      setModels([
+        { id: 'gpt-4', name: 'GPT-4' },
+        { id: 'gpt-3.5', name: 'GPT-3.5' },
+        { id: 'claude-3', name: 'Claude 3' },
+        { id: 'llama-2', name: 'Llama 2' },
+      ])
+    }, 0)
+    return () => clearTimeout(t)
   }, [])
 
   return { models, loading }

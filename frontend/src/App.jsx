@@ -3,6 +3,8 @@ import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Loader } from 'lucide-react'
 import Layout from './components/Layout'
+import { ErrorBoundary } from './components/ErrorBoundary'
+import { ProtectedRoute } from './components/ProtectedRoute'
 
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'))
 const AttackPage = lazy(() => import('./pages/AttackPage'))
@@ -23,6 +25,7 @@ const DatasetPage = lazy(() => import('./pages/DatasetPage'))
 const ReportPage = lazy(() => import('./pages/ReportPage'))
 const TaskProgressPage = lazy(() => import('./pages/TaskProgressPage'))
 const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
+const AttackLoopPage = lazy(() => import('./pages/AttackLoopPage'))
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
@@ -46,31 +49,36 @@ export default function App() {
     <BrowserRouter>
       <Layout>
         <Suspense fallback={<PageLoader />}>
-          <Routes>
-            <Route path="/" element={<SecurityDashboard />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/pricing" element={<PricingPage />} />
-            <Route path="/attack" element={<AttackPage />} />
-            <Route path="/attack/advanced" element={<AdvancedAttackPage />} />
-            <Route path="/attack/novel" element={<NovelAttackPage />} />
-            <Route path="/attack/agent" element={<AgentAttackPage />} />
-            <Route path="/attack/multimodal" element={<MultimodalAttackPage />} />
-            <Route path="/defense" element={<DefensePage />} />
-            <Route path="/benchmark" element={<BenchmarkPage />} />
-            <Route path="/safety-card" element={<SafetyCardPage />} />
-            <Route path="/history" element={<HistoryPage />} />
-            <Route path="/code-security" element={<CodeSecurityPage />} />
-            <Route path="/bias" element={<BiasDetectionPage />} />
-            <Route path="/owasp" element={<OWASPPage />} />
-            <Route path="/redteam" element={<RedTeamPage />} />
-            <Route path="/templates" element={<TemplatePage />} />
-            <Route path="/datasets" element={<DatasetPage />} />
-            <Route path="/reports" element={<ReportPage />} />
-            <Route path="/tasks" element={<TaskProgressPage />} />
-            <Route path="/audit" element={<AuditLogPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
+          <ErrorBoundary>
+            <Routes>
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/pricing" element={<PricingPage />} />
+              
+              {/* Protected Routes */}
+              <Route path="/" element={<ProtectedRoute><SecurityDashboard /></ProtectedRoute>} />
+              <Route path="/attack" element={<ProtectedRoute><AttackPage /></ProtectedRoute>} />
+              <Route path="/attack/advanced" element={<ProtectedRoute><AdvancedAttackPage /></ProtectedRoute>} />
+              <Route path="/attack/novel" element={<ProtectedRoute><NovelAttackPage /></ProtectedRoute>} />
+              <Route path="/attack/agent" element={<ProtectedRoute><AgentAttackPage /></ProtectedRoute>} />
+              <Route path="/attack/multimodal" element={<ProtectedRoute><MultimodalAttackPage /></ProtectedRoute>} />
+              <Route path="/attack/loop" element={<ProtectedRoute><AttackLoopPage /></ProtectedRoute>} />
+              <Route path="/defense" element={<ProtectedRoute><DefensePage /></ProtectedRoute>} />
+              <Route path="/benchmark" element={<ProtectedRoute><BenchmarkPage /></ProtectedRoute>} />
+              <Route path="/safety-card" element={<ProtectedRoute><SafetyCardPage /></ProtectedRoute>} />
+              <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+              <Route path="/code-security" element={<ProtectedRoute><CodeSecurityPage /></ProtectedRoute>} />
+              <Route path="/bias" element={<ProtectedRoute><BiasDetectionPage /></ProtectedRoute>} />
+              <Route path="/owasp" element={<ProtectedRoute><OWASPPage /></ProtectedRoute>} />
+              <Route path="/redteam" element={<ProtectedRoute><RedTeamPage /></ProtectedRoute>} />
+              <Route path="/templates" element={<ProtectedRoute><TemplatePage /></ProtectedRoute>} />
+              <Route path="/datasets" element={<ProtectedRoute><DatasetPage /></ProtectedRoute>} />
+              <Route path="/reports" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
+              <Route path="/tasks" element={<ProtectedRoute><TaskProgressPage /></ProtectedRoute>} />
+              <Route path="/audit" element={<ProtectedRoute><AuditLogPage /></ProtectedRoute>} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </ErrorBoundary>
         </Suspense>
       </Layout>
       <Toaster

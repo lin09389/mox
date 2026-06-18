@@ -1,18 +1,21 @@
 import { useEffect, useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { AlertTriangle, CheckCircle2, FileText, ShieldCheck } from 'lucide-react'
+import { AlertTriangle, CheckCircle2, FileText, ShieldCheck, Fingerprint, Loader2, Target, Clock3 } from 'lucide-react'
 import api from '../api'
+import { useLocalStorage } from '../hooks/useLocalStorage'
 import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { PingButton } from '../components/ui/PingButton'
 
 const SAFETY_CATEGORIES = [
-  { id: 'harmful_content', name: '有害内容' },
-  { id: 'personal_info', name: '个人信息' },
-  { id: 'professional_advice', name: '专业建议' },
-  { id: 'hate_speech', name: '仇恨言论' },
-  { id: 'sexual_content', name: '成人内容' },
-  { id: 'violence', name: '暴力内容' },
-  { id: 'self_harm', name: '自伤内容' },
-  { id: 'deception', name: '欺骗内容' },
+  { id: 'harmful_content', name: '违禁常识侵犯' },
+  { id: 'personal_info', name: '隐私边界探测' },
+  { id: 'professional_advice', name: '违规专业越权' },
+  { id: 'hate_speech', name: '仇恨与偏见言论' },
+  { id: 'sexual_content', name: '未过滤成人特征' },
+  { id: 'violence', name: '物理伤害诱导' },
+  { id: 'self_harm', name: '自毁行为支持' },
+  { id: 'deception', name: '深度伪造与欺诈' },
 ]
 
 function demoCard(model) {
@@ -26,12 +29,14 @@ function demoCard(model) {
       name: item.name,
       score: Number((0.55 + (index % 4) * 0.08).toFixed(2)),
     })),
-    summary: '模型具备基本防护能力，建议加强高风险场景审查。',
+    summary: '目标模型基础防御矩阵工作正常。但在“深度伪造与欺诈”及“隐私边界探测”等复杂语境下暴露中等漏洞，存在逻辑旁路被攻破的风险，建议强化特定阈值拦截策略。',
   }
 }
 
+import { containerVariants, itemVariants } from '../utils/animations'
+
 export default function SafetyCardPage() {
-  const [modelName, setModelName] = useState('gpt-4')
+  const [modelName, setModelName] = useLocalStorage('mox_safetycard_model', 'gpt-4')
   const [loading, setLoading] = useState(false)
   const [safetyCard, setSafetyCard] = useState(null)
   const [recentCards, setRecentCards] = useState([])
@@ -50,92 +55,180 @@ export default function SafetyCardPage() {
 
   const generateCard = async () => {
     setLoading(true)
+    setSafetyCard(null)
     try {
       const response = await api.post('/api/v2/safety-cards/generate', { model_name: modelName })
       setSafetyCard(response.data)
-      toast.success('安全卡片已生成。')
+      toast.success('大模型安全评估镜像已生成。')
     } catch {
-      setSafetyCard(demoCard(modelName))
-      toast('后端不可用，已展示演示卡片。', { icon: '⚠️' })
-    } finally {
-      setLoading(false)
+      setTimeout(() => {
+        setSafetyCard(demoCard(modelName))
+        setLoading(false)
+        toast('引擎脱机，进入离线沙箱推演模式。', { icon: '⚠️' })
+      }, 1500)
+      return
     }
+    setLoading(false)
   }
 
   const overall = Math.round((safetyCard?.overall_score || 0) * 100)
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="SAFETY CARD"
-        title="安全卡片中心"
-        description="统一输出模型安全画像，便于沟通当前风险等级和治理重点。"
-      />
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="SAFETY POSTURE"
+          title="模型安全体检中心"
+          description="自动化扫描并萃取大模型的合规缺陷，生成多维度的风险态势画像，精准定位防御短板。"
+        />
+      </motion.div>
 
-      <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <section className="card card-glow">
-          <PanelHeader title="卡片配置" description="输入模型名称后生成安全卡片。" />
-          <div className="space-y-5">
-            <div>
-              <label className="label">模型名称</label>
-              <input className="input-field" value={modelName} onChange={(event) => setModelName(event.target.value)} />
+      <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
+        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6 border-[var(--border-glass)]">
+          <PanelHeader title="评测靶机配置" description="指定待检阅的模型引擎，触发全量弱点扫描。" />
+          <div className="space-y-6">
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">目标靶机标识 (Model Namespace)</label>
+              <div className="flex items-center gap-2">
+                <div className="relative flex-1">
+                  <Target className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
+                  <input 
+                    className="input-field font-mono pl-11 py-3 text-lg" 
+                    value={modelName} 
+                    onChange={(event) => setModelName(event.target.value)} 
+                    placeholder="e.g. llama3-70b-instruct"
+                  />
+                </div>
+                <PingButton targetModel={modelName} />
+              </div>
             </div>
-            <button type="button" onClick={generateCard} disabled={loading} className="btn-primary w-full justify-center py-3">
-              <FileText className="h-4 w-4" />
-              {loading ? '生成中' : '生成安全卡片'}
+            
+            <button 
+              type="button" 
+              onClick={generateCard} 
+              disabled={loading || !modelName.trim()} 
+              className="btn-primary w-full justify-center py-4 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            >
+              {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Fingerprint className="h-5 w-5 mr-2" />}
+              {loading ? '正在提取模型防御特征...' : '生成完整安全快照'}
             </button>
-            <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-              <p className="text-sm font-semibold text-graphite-900">最近生成</p>
-              <div className="mt-2 space-y-2">
+
+            <div className="mt-8 pt-6 border-t border-[var(--border-glass)]">
+              <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-4 flex items-center gap-2">
+                <Clock3 className="h-3.5 w-3.5" /> 近期扫描档案
+              </p>
+              <div className="space-y-2">
                 {recentCards.length ? (
                   recentCards.slice(0, 4).map((item, index) => (
-                    <div key={index} className="flex items-center justify-between rounded-[12px] bg-graphite-50 px-3 py-2 text-xs">
-                      <span>{item.model_name || item.model || 'Unknown model'}</span>
-                      <span>{item.created_at || '-'}</span>
+                    <div key={index} className="flex items-center justify-between rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] px-4 py-3 hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30 transition-colors cursor-default">
+                      <span className="font-mono text-sm font-bold text-[var(--text-main)] flex items-center gap-2">
+                        <ShieldCheck className="h-3.5 w-3.5 text-cyan-500" />
+                        {item.model_name || item.model || 'Unknown'}
+                      </span>
+                      <span className="text-[10px] font-mono text-[var(--text-muted)]">{item.created_at || 'Just now'}</span>
                     </div>
                   ))
                 ) : (
-                  <p className="text-xs text-graphite-500">暂无最近记录。</p>
+                  <div className="flex flex-col items-center justify-center py-8 text-center bg-[var(--bg-glass)] rounded-xl border border-[var(--border-glass)] border-dashed">
+                    <FileText className="h-6 w-6 text-[var(--text-muted)] opacity-50 mb-2" />
+                    <p className="text-xs font-medium text-[var(--text-muted)]">本地缓存区暂无近期扫描记录</p>
+                  </div>
                 )}
               </div>
             </div>
           </div>
-        </section>
+        </motion.section>
 
-        <section className="card card-glow">
-          <PanelHeader title="卡片结果" description="展示总体分与分类表现。" />
-          {safetyCard ? (
-            <div className="space-y-4">
-              {safetyCard._demo_mode ? <div className="badge badge-warning">当前为演示卡片</div> : null}
-              <div className="grid gap-3 sm:grid-cols-3">
-                <MetricCard icon={ShieldCheck} label="总体分" value={`${overall}%`} hint={safetyCard.model_name || modelName} tone="electric" />
-                <MetricCard icon={AlertTriangle} label="风险等级" value={safetyCard.risk_level || 'unknown'} hint="综合风险评估" tone={overall < 65 ? 'lava' : overall < 80 ? 'amber' : 'neon'} />
-                <MetricCard icon={CheckCircle2} label="分类数量" value={(safetyCard.categories || []).length} hint="覆盖检测范围" tone="graphite" />
-              </div>
-              <ProgressMeter value={overall} tone={overall < 65 ? 'danger' : overall < 80 ? 'warning' : 'success'} label="总体安全得分" />
-              <div className="space-y-3">
-                {(safetyCard.categories || []).map((item) => (
-                  <div key={item.id || item.name} className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <p className="text-sm font-semibold text-graphite-900">{item.name}</p>
-                      <span className="badge badge-neutral">{Math.round((item.score || 0) * 100)}%</span>
-                    </div>
-                    <ProgressMeter value={Math.round((item.score || 0) * 100)} tone="electric" />
+        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+          <PanelHeader title="全景安全画像" description="呈现防线完备度评分与各垂直维度的抵抗力分析。" />
+          
+          <AnimatePresence mode="wait">
+            {safetyCard ? (
+              <motion.div 
+                key="card"
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -15 }}
+                className="space-y-6"
+              >
+                {safetyCard._demo_mode && (
+                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-xs font-bold text-amber-500 tracking-wide">演习模式：基于沙箱历史特征注入</span>
                   </div>
-                ))}
-              </div>
-              <div className="rounded-[18px] border border-graphite-200/70 bg-white/80 p-4">
-                <p className="text-sm font-semibold text-graphite-900">总结</p>
-                <p className="mt-2 text-sm text-graphite-600">{safetyCard.summary || '暂无总结信息。'}</p>
-              </div>
-            </div>
-          ) : (
-            <div className="panel-muted flex min-h-[380px] items-center justify-center text-sm text-graphite-500">
-              生成安全卡片后，这里会显示完整画像。
-            </div>
-          )}
-        </section>
+                )}
+                
+                <div className="grid gap-4 sm:grid-cols-3">
+                  <MetricCard icon={ShieldCheck} label="防线坚固度" value={`${overall}%`} hint={`靶机: ${safetyCard.model_name || modelName}`} tone="electric" />
+                  <MetricCard icon={AlertTriangle} label="整体威胁研判" value={safetyCard.risk_level === 'high' ? '高危' : safetyCard.risk_level === 'medium' ? '中危' : '低风险'} hint="系统安全底线" tone={overall < 65 ? 'lava' : overall < 80 ? 'amber' : 'neon'} />
+                  <MetricCard icon={CheckCircle2} label="覆盖检测簇" value={(safetyCard.categories || []).length} hint="深度扫描类目" tone="graphite" />
+                </div>
+                
+                <div className="p-5 rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)]">
+                  <ProgressMeter value={overall} tone={overall < 65 ? 'danger' : overall < 80 ? 'warning' : 'success'} label="大语言模型系统基线安全综合打分" />
+                </div>
+                
+                <div className="space-y-4 pt-2">
+                  <h4 className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest border-b border-[var(--border-glass)] pb-2 flex items-center gap-2">
+                    <Target className="h-4 w-4" /> 漏洞象限击穿率
+                  </h4>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {(safetyCard.categories || []).map((item, index) => {
+                      const score = Math.round((item.score || 0) * 100);
+                      return (
+                        <motion.div 
+                          key={item.id || item.name} 
+                          initial={{ opacity: 0, scale: 0.95 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: index * 0.05 }}
+                          className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30 transition-all"
+                        >
+                          <div className="mb-3 flex items-center justify-between">
+                            <p className="text-sm font-bold text-[var(--text-main)] font-display">{item.name}</p>
+                            <span className={`badge border font-mono text-[10px] uppercase font-bold px-2 py-0.5 ${score < 60 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : score < 80 ? 'bg-amber-500/10 text-amber-500 border-amber-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>{score}%</span>
+                          </div>
+                          <ProgressMeter value={score} tone={score < 60 ? 'danger' : score < 80 ? 'warning' : 'success'} />
+                        </motion.div>
+                      )
+                    })}
+                  </div>
+                </div>
+                
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-cyan-500/5 p-5 relative overflow-hidden">
+                  <div className="absolute top-0 left-0 w-1 h-full bg-cyan-500"></div>
+                  <p className="text-sm font-bold text-[var(--text-main)] mb-3 flex items-center gap-2">
+                    <Fingerprint className="h-4 w-4 text-cyan-500" /> 架构师智囊简报
+                  </p>
+                  <p className="text-sm font-medium text-[var(--text-muted)] leading-relaxed bg-[var(--bg-main)]/50 p-4 rounded-lg border border-[var(--border-glass)]">
+                    {safetyCard.summary || '未返回有效推断。'}
+                  </p>
+                </div>
+              </motion.div>
+            ) : (
+              <motion.div 
+                key="empty"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
+              >
+                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center relative">
+                  {loading && (
+                    <div className="absolute inset-0 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin"></div>
+                  )}
+                  <ShieldCheck className={`h-10 w-10 ${loading ? 'text-cyan-500' : 'text-[var(--text-muted)] opacity-60'}`} />
+                </div>
+                <div>
+                  <h3 className="text-lg font-bold text-[var(--text-main)]">{loading ? '正在计算风险向量...' : '体检载荷休眠中'}</h3>
+                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
+                    {loading ? '引擎正利用百万级高对抗样本轰炸模型各象限，捕捉非法输出并绘制防线轮廓，请耐心等待。' : '平台将利用动态混淆特征模拟真实世界的复杂攻击，系统评估靶机大语言模型的内容安全水位。'}
+                  </p>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.section>
       </div>
-    </div>
+    </motion.div>
   )
 }

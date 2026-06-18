@@ -76,6 +76,10 @@ python examples/ollama_attack.py
 # 或使用快捷脚本
 .\run_ollama_attack.bat      # Windows
 .\run_ollama_attack.ps1      # PowerShell
+
+# 5. 运行自动化攻击循环测试
+python examples/attack_loop.py
+python examples/advanced_attack_loop.py
 ```
 
 支持的 Ollama 模型:
@@ -188,6 +192,21 @@ python examples/basic_usage.py
 python examples/custom_attack_defense.py
 python examples/minimax_usage.py
 ```
+
+### 自动化攻击测试循环
+
+```bash
+# 基础版本 - 顺序执行攻击测试
+python examples/attack_loop.py
+
+# 高级版本 - 并行执行攻击测试，支持实时监控
+python examples/advanced_attack_loop.py
+
+# 指定模型和攻击类型
+python examples/advanced_attack_loop.py llama3,qwen3:4b tool_chaining,privilege_escalation 2 3
+```
+
+详细的攻击循环使用说明请参考 [攻击测试循环文档](examples/ATTACK_LOOP_README.md)。
 
 ## API 认证
 

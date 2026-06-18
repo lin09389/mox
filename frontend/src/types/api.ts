@@ -1,28 +1,28 @@
 export type AttackType =
-  | 'prompt_injection'
-  | 'jailbreak'
-  | 'gcg'
-  | 'auto_dan'
-  | 'deep_inception'
-  | 'many_shot'
-  | 'role_play'
-  | 'encoding_attack'
-  | 'goat'
-  | 'crescendo'
-  | 'tap'
-  | 'pair'
-  | 'rag_attack'
-  | 'code_attack';
+  | "prompt_injection"
+  | "jailbreak"
+  | "gcg"
+  | "auto_dan"
+  | "deep_inception"
+  | "many_shot"
+  | "role_play"
+  | "encoding_attack"
+  | "goat"
+  | "crescendo"
+  | "tap"
+  | "pair"
+  | "rag_attack"
+  | "code_attack";
 
 export type DefenseType =
-  | 'input_filter'
-  | 'output_filter'
-  | 'system_prompt_hardening'
-  | 'adversarial_training'
-  | 'perplexity_filter'
-  | 'keyword_detection';
+  | "input_filter"
+  | "output_filter"
+  | "system_prompt_hardening"
+  | "adversarial_training"
+  | "perplexity_filter"
+  | "keyword_detection";
 
-export type AttackResult = 'success' | 'failure' | 'partial' | 'error';
+export type AttackResult = "success" | "failure" | "partial" | "error";
 
 export interface AttackPayload {
   attack_type: AttackType;
@@ -65,7 +65,7 @@ export interface DefenseRequest {
 
 export interface ScanRequest {
   text: string;
-  scan_type: 'input' | 'output';
+  scan_type: "input" | "output";
 }
 
 export interface BenchmarkRequest {
@@ -97,12 +97,12 @@ export interface AttackTemplate {
   name: string;
   description: string;
   category: string;
-  severity: 'low' | 'medium' | 'high' | 'critical';
+  severity: "low" | "medium" | "high" | "critical";
 }
 
 export interface TaskStatus {
   task_id: string;
-  status: 'pending' | 'running' | 'completed' | 'failed' | 'cancelled';
+  status: "pending" | "running" | "completed" | "failed" | "cancelled";
   result?: unknown;
   error?: string;
 }
@@ -134,7 +134,7 @@ export interface LoginResponse {
 }
 
 export interface GatewayResult {
-  decision: 'allow' | 'block' | 'sanitize' | 'review';
+  decision: "allow" | "block" | "sanitize" | "review";
   confidence: number;
   reason: string;
   matched_rules: string[];
@@ -147,7 +147,7 @@ export interface LLMEndpoint {
   model: string;
   base_url?: string;
   weight: number;
-  status: 'healthy' | 'degraded' | 'unhealthy';
+  status: "healthy" | "degraded" | "unhealthy";
 }
 
 export interface GatewayStats {

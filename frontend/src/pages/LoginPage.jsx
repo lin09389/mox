@@ -1,192 +1,197 @@
-import { useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import { ArrowRight, Loader, Lock, LogOut, Mail, ShieldCheck } from 'lucide-react'
+import { ArrowRight, Lock, LogOut, Mail, ShieldCheck, Fingerprint } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { clearSession, DEMO_MODE_ENABLED, useAuthSession, persistSession } from '../auth'
-import { authApi } from '../api'
+import { useLogin } from '../hooks/queries'
+import { useForm } from 'react-hook-form'
+import { zodResolver } from '@hookform/resolvers/zod'
+import { z } from 'zod'
+
+const loginSchema = z.object({
+  username: z.string().min(1, '操作员别名不能为空'),
+  password: z.string().min(1, '授权访问口令不能为空'),
+})
+
+import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function LoginPage() {
   const navigate = useNavigate()
   const location = useLocation()
   const { session, isAuthenticated } = useAuthSession()
-  const [form, setForm] = useState({ username: '', password: '' })
-  const [isLoading, setIsLoading] = useState(false)
+  const loginMutation = useLogin()
+
+  const { register, handleSubmit, formState: { errors } } = useForm({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { username: '', password: '' }
+  })
 
   const nextPath = location.state?.from?.pathname || '/'
   const searchParams = new URLSearchParams(location.search)
   const expiredReason = searchParams.get('reason') === 'expired'
 
-  const handleChange = (event) => {
-    const { name, value } = event.target
-    setForm((current) => ({ ...current, [name]: value }))
-  }
-
-  const handleSubmit = async (event) => {
-    event.preventDefault()
-    setIsLoading(true)
-
+  const onSubmit = async (data) => {
     try {
-      const payload = await authApi.login({
-        username: form.username.trim(),
-        password: form.password,
+      const payload = await loginMutation.mutateAsync({
+        username: data.username.trim(),
+        password: data.password,
       })
       persistSession(payload)
-      toast.success('Login successful.')
+      toast.success('安全令牌验证通过，正在挂载系统总线。')
       navigate(nextPath, { replace: true })
     } catch (error) {
-      const message = error.response?.data?.message || error.response?.data?.detail || 'Login failed.'
+      const message = error.response?.data?.message || error.response?.data?.detail || '身份识别与访问管理 (IAM) 拒绝请求。'
       toast.error(message)
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleLogout = () => {
     clearSession()
-    toast.success('Signed out.')
+    toast.success('安全隧道已断开，会话缓存已清理。')
   }
 
   return (
-    <div className="flex min-h-[80vh] items-center justify-center px-4 py-12 sm:px-6 lg:px-8">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
-        className="w-full max-w-md space-y-8"
-      >
-        <div className="text-center">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+      {/* Decorative background elements */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[120px] rounded-[100%] pointer-events-none transform -rotate-45"></div>
+
+      <motion.div variants={itemVariants} className="w-full max-w-md relative z-10">
+        <div className="text-center mb-10">
           <motion.div
-            initial={{ scale: 0.94 }}
-            animate={{ scale: 1 }}
-            transition={{ duration: 0.5, delay: 0.1 }}
-            className="relative mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-graphite-900 shadow-lifted"
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
+            className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] shadow-[0_0_30px_rgba(6,182,212,0.15)] mb-6"
           >
-            <ShieldCheck className="h-8 w-8 text-white" />
+            <ShieldCheck className="h-10 w-10 text-cyan-500" />
             <motion.div
-              className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-neon-500"
-              animate={{ scale: [1, 1.18, 1] }}
+              className="absolute -bottom-1 -right-1 h-5 w-5 rounded-full border-2 border-[var(--bg-main)] bg-cyan-500"
+              animate={{ scale: [1, 1.2, 1], boxShadow: ['0 0 0 0 rgba(6,182,212,0.7)', '0 0 0 10px rgba(6,182,212,0)', '0 0 0 0 rgba(6,182,212,0)'] }}
               transition={{ duration: 2, repeat: Infinity }}
             />
           </motion.div>
-          <h1 className="mt-6 font-display text-3xl font-extrabold tracking-tight text-graphite-900">
-            Sign in to Mox
+          <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--text-main)] mb-3">
+            Mox 身份网关认证
           </h1>
-          <p className="mt-2 text-sm text-graphite-500">Use a real backend account to access the security console.</p>
+          <p className="text-sm font-medium text-[var(--text-muted)]">请输入授权密钥凭据以挂载您的安全评测工作区节点。</p>
         </div>
 
         {(expiredReason || DEMO_MODE_ENABLED) && (
-          <div className="rounded-2xl border border-amber-200/70 bg-amber-50/80 px-4 py-3 text-sm text-amber-800">
-            {expiredReason
-              ? 'Your session expired. Please sign in again.'
-              : 'Demo mode is enabled. Some pages can fall back to sample data when the API is unavailable.'}
-          </div>
+          <motion.div variants={itemVariants} className="mb-8 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm font-medium text-amber-500 flex items-start gap-3 shadow-[inset_0_0_15px_rgba(245,158,11,0.05)]">
+            <Fingerprint className="h-5 w-5 shrink-0 mt-0.5" />
+            <p>
+              {expiredReason
+                ? '本地安全令牌（Token）生存周期已到期，系统强制注销会话。请重新签署身份凭据。'
+                : '检测到前端运行在演示预演（Demo）环境。未联通后端引擎的接口请求将降级由本地沙箱代理拦截并返回静态模拟数据。'}
+            </p>
+          </motion.div>
         )}
 
-        <div className="card mt-8 shadow-card">
+        <motion.div variants={itemVariants} className="card p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-60"></div>
+          
           {isAuthenticated ? (
-            <div className="space-y-6">
+            <div className="space-y-6 text-center py-4">
+              <div className="flex justify-center mb-4">
+                <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center">
+                  <Fingerprint className="w-8 h-8 text-cyan-500" />
+                </div>
+              </div>
               <div>
-                <p className="text-sm font-medium text-graphite-900">You are already signed in.</p>
-                <p className="mt-1 text-sm text-graphite-500">
-                  {session?.user?.username || session?.user?.email || 'Authenticated user'}
+                <p className="text-lg font-bold text-[var(--text-main)] mb-1">隧道已连接</p>
+                <p className="text-sm font-medium text-[var(--text-muted)]">
+                  系统已与操作员 <span className="text-cyan-500 font-mono">{session?.user?.username || session?.user?.email || 'Authenticated User'}</span> 绑定。
                 </p>
               </div>
-              <div className="flex gap-3">
-                <button type="button" className="btn-primary flex-1" onClick={() => navigate('/', { replace: true })}>
-                  Open Console
-                  <ArrowRight className="h-4 w-4" />
+              <div className="flex flex-col gap-3 pt-4">
+                <button type="button" className="btn-primary w-full justify-center py-3.5 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)]" onClick={() => navigate('/', { replace: true })}>
+                  进入控制台主界面
+                  <ArrowRight className="h-4 w-4 ml-2" />
                 </button>
-                <button type="button" className="btn-secondary" onClick={handleLogout}>
-                  <LogOut className="h-4 w-4" />
-                  Sign out
+                <button type="button" className="btn-secondary w-full justify-center py-3.5 bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] text-[var(--text-main)]" onClick={handleLogout}>
+                  <LogOut className="h-4 w-4 mr-2" />
+                  断开挂载并退出系统
                 </button>
               </div>
             </div>
           ) : (
-            <form className="space-y-6" onSubmit={handleSubmit}>
+            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div>
-                <label htmlFor="username" className="label">
-                  Username or email
+                <label htmlFor="username" className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">
+                  操作员别名 / 邮箱标识
                 </label>
-                <div className="relative mt-1">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Mail className="h-5 w-5 text-graphite-400" />
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <Mail className="h-4 w-4 text-[var(--text-muted)]" />
                   </div>
                   <input
                     id="username"
-                    name="username"
                     type="text"
                     autoComplete="username"
-                    required
-                    value={form.username}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="admin"
+                    {...register('username')}
+                    className={`input-field pl-11 py-3 text-base font-mono bg-[var(--bg-main)]/50 focus:bg-transparent ${errors.username ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
+                    placeholder="operator_sys_admin"
                   />
                 </div>
+                {errors.username && <p className="mt-1 text-xs text-rose-500">{errors.username.message}</p>}
               </div>
 
               <div>
-                <label htmlFor="password" className="label">
-                  Password
+                <label htmlFor="password" className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">
+                  授权访问口令
                 </label>
-                <div className="relative mt-1">
-                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                    <Lock className="h-5 w-5 text-graphite-400" />
+                <div className="relative">
+                  <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-4">
+                    <Lock className="h-4 w-4 text-[var(--text-muted)]" />
                   </div>
                   <input
                     id="password"
-                    name="password"
                     type="password"
                     autoComplete="current-password"
-                    required
-                    value={form.password}
-                    onChange={handleChange}
-                    className="input-field pl-10"
-                    placeholder="Enter your password"
+                    {...register('password')}
+                    className={`input-field pl-11 py-3 text-base font-mono tracking-widest bg-[var(--bg-main)]/50 focus:bg-transparent ${errors.password ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
+                    placeholder="••••••••••••"
                   />
                 </div>
+                {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
               </div>
 
               <button
                 type="submit"
-                disabled={isLoading}
-                className="flex w-full justify-center rounded-md border border-transparent bg-graphite-900 px-4 py-2.5 text-sm font-medium text-white shadow-soft transition-all duration-200 hover:bg-graphite-800 disabled:opacity-70"
-                aria-busy={isLoading}
+                disabled={loginMutation.isPending}
+                className="w-full btn-primary justify-center py-4 text-base bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none transition-all mt-4"
               >
-                {isLoading ? (
-                  <Loader className="h-5 w-5 animate-spin" />
+                {loginMutation.isPending ? (
+                  <>
+                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3" />
+                    协商鉴权隧道中...
+                  </>
                 ) : (
                   <>
-                    Sign in <ArrowRight className="ml-2 h-4 w-4" />
+                    签发访问令牌并挂载 (Sign In)
+                    <ArrowRight className="ml-2 h-5 w-5" />
                   </>
                 )}
               </button>
             </form>
           )}
 
-          <div className="mt-6">
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-graphite-200" />
-              </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="bg-white px-2 text-graphite-500">Need an account?</span>
+          {!isAuthenticated && (
+            <div className="mt-8 pt-6 border-t border-[var(--border-glass)]">
+              <div className="text-center">
+                <p className="text-sm font-medium text-[var(--text-muted)] mb-3">系统暂未录入您的数字指纹？</p>
+                <Link
+                  to="/register"
+                  className="inline-flex items-center justify-center gap-2 font-bold text-cyan-500 hover:text-cyan-400 transition-colors bg-cyan-500/10 px-4 py-2 rounded-lg"
+                >
+                  前往申请分配新工作区 <ArrowRight className="h-4 w-4" />
+                </Link>
               </div>
             </div>
-
-            <div className="mt-6 text-center">
-              <Link
-                to="/register"
-                className="flex items-center justify-center gap-1 font-medium text-electric-600 transition-colors hover:text-electric-500"
-              >
-                Create an account <ArrowRight className="h-4 w-4" />
-              </Link>
-            </div>
-          </div>
-        </div>
+          )}
+        </motion.div>
       </motion.div>
-    </div>
+    </motion.div>
   )
 }

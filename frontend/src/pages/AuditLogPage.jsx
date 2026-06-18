@@ -1,7 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
+import { motion } from 'framer-motion'
 import { FileText, Filter, RefreshCw, Search } from 'lucide-react'
-import api from '../api'
-import { MetricCard, PageHeader, PanelHeader, TableMobileFallback } from '../components/ui/AppFrame'
+import { MetricCard, MetricCardSkeleton, PageHeader, PanelHeader, TableMobileFallback, Skeleton } from '../components/ui/AppFrame'
+import { useAuditLogs } from '../hooks/queries'
+import { useQueryClient } from '@tanstack/react-query'
 
 function fallbackLogs() {
   return [
@@ -13,28 +15,17 @@ function fallbackLogs() {
   ]
 }
 
+import { containerVariants, itemVariants } from '../utils/animations'
+
 export default function AuditLogPage() {
-  const [logs, setLogs] = useState([])
-  const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
 
-  const fetchLogs = async () => {
-    setLoading(true)
-    try {
-      const response = await api.get('/api/audit/logs')
-      const items = response.data?.logs || response.data || []
-      setLogs(items)
-    } catch {
-      setLogs(fallbackLogs())
-    } finally {
-      setLoading(false)
-    }
-  }
+  const queryClient = useQueryClient()
+  const { data: logsData, isLoading, isError, isFetching, refetch } = useAuditLogs()
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
+  // Use fallback if api fails in demo mode
+  const logs = useMemo(() => isError ? fallbackLogs() : logsData || [], [isError, logsData])
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -60,94 +51,134 @@ export default function AuditLogPage() {
   }, [logs])
 
   return (
-    <div className="page-shell">
-      <PageHeader
-        eyebrow="AUDIT LOG"
-        title="审计日志中心"
-        description="统一查看接口行为、状态码和响应时延，便于快速定位异常。"
-      />
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+      <motion.div variants={itemVariants}>
+        <PageHeader
+          eyebrow="AUDIT LOG"
+          title="审计日志中心"
+          description="统一监控平台所有的接口行为、状态码和响应时延，便于快速追溯安全事件与异常请求。"
+        />
+      </motion.div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        <MetricCard icon={FileText} label="日志总数" value={stats.total} hint="当前筛选前总量" tone="electric" />
-        <MetricCard icon={RefreshCw} label="平均耗时" value={`${stats.avg}ms`} hint="接口响应中位水平" tone="warning" />
-        <MetricCard icon={Filter} label="异常请求" value={stats.errors} hint="状态码 >= 400" tone="lava" />
-      </div>
+      <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-3">
+        {isLoading ? (
+          Array.from({ length: 3 }).map((_, i) => <MetricCardSkeleton key={i} />)
+        ) : (
+          <>
+            <MetricCard icon={FileText} label="日志捕获总数" value={stats.total} hint="当前记录池总量" tone="electric" />
+            <MetricCard icon={RefreshCw} label="系统平均耗时" value={`${stats.avg}ms`} hint="API 响应延迟中位数" tone="warning" />
+            <MetricCard icon={Filter} label="拦截/异常请求" value={stats.errors} hint="状态码 ≥ 400" tone="lava" />
+          </>
+        )}
+      </motion.div>
 
-      <section className="card">
-        <PanelHeader title="筛选" description="按关键字和状态过滤审计事件。" />
-        <div className="grid gap-3 md:grid-cols-[1fr_220px_auto]">
+      <motion.section variants={itemVariants} className="card p-5">
+        <PanelHeader title="检索过滤" description="按动作关键字、请求资源路径及状态码过滤日志轨迹。" />
+        <div className="grid gap-4 md:grid-cols-[1fr_220px_auto]">
           <label className="relative">
-            <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-graphite-400" />
-            <input className="input-field pl-11" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索动作、资源、用户" />
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+            <input className="input-field pl-10" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索请求动作、REST 资源或操作用户..." />
           </label>
-          <select className="select-field" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
-            <option value="all">全部状态</option>
-            <option value="success">成功</option>
-            <option value="error">异常</option>
-          </select>
-          <button type="button" className="btn-secondary" onClick={fetchLogs}>
-            <RefreshCw className="h-4 w-4" />
-            刷新日志
+          <label className="relative">
+            <Filter className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+            <select className="input-field pl-10 appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
+              <option value="all">全部 HTTP 状态</option>
+              <option value="success">正常访问 (2xx/3xx)</option>
+              <option value="error">异常阻断 (4xx/5xx)</option>
+            </select>
+          </label>
+          <button type="button" className="btn-secondary h-[42px] px-6" onClick={() => refetch()} disabled={isFetching}>
+            <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} />
+            同步日志
           </button>
         </div>
-      </section>
+      </motion.section>
 
-      <section className="table-shell">
-        {!loading && filtered.length > 0 ? (
-          <TableMobileFallback
-            items={filtered}
-            renderTitle={(item) => item.action_label || item.action}
-            renderMeta={(item) => (
-              <>
-                <p>{item.method} {item.resource}</p>
-                <p>用户：{item.username}</p>
-                <p>耗时：{item.duration_ms}ms · 时间：{item.created_at}</p>
-              </>
-            )}
-            renderRight={(item) => (
-              <span className={`badge ${item.response_status >= 400 ? 'badge-danger' : 'badge-success'}`}>
-                {item.response_status}
-              </span>
-            )}
-          />
-        ) : null}
-        <div className="table-container hidden md:block">
-          <table className="table">
-            <thead>
-              <tr>
-                <th>动作</th>
-                <th>资源</th>
-                <th>用户</th>
-                <th>状态码</th>
-                <th>耗时</th>
-                <th>时间</th>
-              </tr>
-            </thead>
-            <tbody>
-              {loading ? (
-                <tr><td colSpan={6}>加载中…</td></tr>
-              ) : filtered.length ? (
-                filtered.map((log) => (
-                  <tr key={log.id}>
-                    <td>{log.action_label || log.action}</td>
-                    <td>{log.method} {log.resource}</td>
-                    <td>{log.username}</td>
-                    <td>
-                      <span className={`badge ${log.response_status >= 400 ? 'badge-danger' : 'badge-success'}`}>
-                        {log.response_status}
-                      </span>
-                    </td>
-                    <td>{log.duration_ms}ms</td>
-                    <td>{log.created_at}</td>
-                  </tr>
-                ))
-              ) : (
-                <tr><td colSpan={6}>暂无匹配日志。</td></tr>
-              )}
-            </tbody>
-          </table>
+      <motion.section variants={itemVariants} className="card overflow-hidden">
+        <div className="border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-5 py-4">
+          <h2 className="text-lg font-bold font-display text-[var(--text-main)]">系统操作流水</h2>
+          <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">
+            当前展示 {filtered.length} 条审计记录。
+          </p>
         </div>
-      </section>
-    </div>
+
+        {!isLoading && filtered.length > 0 && (
+          <div className="md:hidden">
+            <TableMobileFallback
+              items={filtered}
+              renderTitle={(item) => item.action_label || item.action}
+              renderMeta={(item) => (
+                <>
+                  <p className="font-mono text-xs">{item.method} {item.resource}</p>
+                  <p>执行用户：<span className="font-bold">{item.username}</span></p>
+                  <p>延迟：{item.duration_ms}ms · {item.created_at}</p>
+                </>
+              )}
+              renderRight={(item) => (
+                <span className={`badge border font-mono ${item.response_status >= 400 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                  {item.response_status}
+                </span>
+              )}
+            />
+          </div>
+        )}
+
+        <div className="hidden md:block">
+          {isLoading ? (
+            <div className="p-6 space-y-4">
+               {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : filtered.length === 0 ? (
+            <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-center opacity-60">
+              <FileText className="h-12 w-12 text-[var(--text-muted)]" />
+              <p className="text-sm font-bold text-[var(--text-muted)]">无匹配记录。</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-sm text-[var(--text-main)]">
+                <thead className="bg-[var(--bg-glass-strong)] text-[var(--text-muted)] font-bold uppercase tracking-wider text-xs border-b border-[var(--border-glass)]">
+                  <tr>
+                    <th className="px-6 py-4">操作标签</th>
+                    <th className="px-6 py-4">端点路由</th>
+                    <th className="px-6 py-4">身份识别</th>
+                    <th className="px-6 py-4">HTTP状态</th>
+                    <th className="px-6 py-4">网络延迟</th>
+                    <th className="px-6 py-4">记录时间</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border-glass)]">
+                  {filtered.map((log) => (
+                    <motion.tr 
+                      key={log.id}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      className="hover:bg-[var(--bg-glass)] transition-colors"
+                    >
+                      <td className="px-6 py-4 font-bold">{log.action_label || log.action}</td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <span className={`badge text-[10px] uppercase font-bold tracking-widest ${log.method === 'GET' ? 'bg-cyan-500/10 text-cyan-500' : log.method === 'POST' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-amber-500/10 text-amber-500'}`}>{log.method}</span>
+                          <span className="font-mono text-[var(--text-muted)]">{log.resource}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 font-bold text-[var(--text-main)]">{log.username}</td>
+                      <td className="px-6 py-4">
+                        <span className={`badge border font-mono font-bold ${log.response_status >= 400 ? 'bg-rose-500/10 text-rose-500 border-rose-500/20' : 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'}`}>
+                          {log.response_status}
+                        </span>
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[var(--text-muted)]">
+                        {log.duration_ms} ms
+                      </td>
+                      <td className="px-6 py-4 font-mono text-[var(--text-muted)]">{log.created_at}</td>
+                    </motion.tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </motion.section>
+    </motion.div>
   )
 }
