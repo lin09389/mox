@@ -90,6 +90,10 @@ debug_*
 *.pstats
 cProfile_*
 
+# ---- Attack loop / test output ----
+attack_loop_results/
+test_output/
+
 # ---- Environment & secrets ----
 .env
 .env.local
@@ -187,3 +191,6 @@ node_modules/
 scratch/
 local/
 private/
+agent-tools/
+mcps/
+terminals/
