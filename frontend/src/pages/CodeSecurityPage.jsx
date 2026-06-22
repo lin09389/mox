@@ -2,8 +2,10 @@ import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { toast } from 'react-hot-toast'
 import { AlertTriangle, Code2, ShieldAlert, ShieldCheck, Loader2 } from 'lucide-react'
-import api from '../api'
-import { MetricCard, PageHeader, PanelHeader } from '../components/ui/AppFrame'
+import { evaluationApi, isDemoModeEnabled } from '../api'
+import { MetricCard, PanelHeader } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import { HubPanelIntro } from '../context/HubContext'
 
 const CWE_TYPES = [
   { cwe: 'CWE-89', name: 'SQL 注入', severity: 'critical' },
@@ -45,16 +47,16 @@ export default function CodeSecurityPage() {
     setLoading(true)
     setResult(null)
     try {
-      const response = await api.post('/api/code/security', { prompt: codePrompt, model: selectedModel })
-      setResult(response.data)
+      const data = await evaluationApi.codeSecurity({ prompt: codePrompt, model: selectedModel })
+      setResult(data)
       toast.success('代码安全检测完成。')
     } catch {
-      setTimeout(() => {
+      if (isDemoModeEnabled) {
         setResult(demoResult(codePrompt))
-        setLoading(false)
         toast('后端不可用，已展示演示检测结果。', { icon: '⚠️' })
-      }, 1500)
-      return
+      } else {
+        toast.error('代码安全检测失败，请检查后端连接。')
+      }
     }
     setLoading(false)
   }
@@ -64,21 +66,15 @@ export default function CodeSecurityPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="CODE SECURITY"
-          title="代码安全检测中心"
-          description="使用 AI 引擎进行静态代码分析，快速识别常见 CWE 漏洞与注入风险。"
-        />
-      </motion.div>
+      <HubPanelIntro description="使用 AI 引擎进行静态代码分析，快速识别常见 CWE 漏洞与注入风险。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="检测配置" description="输入代码片段或需求描述后开始扫描。" />
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">检测引擎模型</label>
-              <input className="input-field font-mono" value={selectedModel} onChange={(event) => setSelectedModel(event.target.value)} />
+              <ModelSelect value={selectedModel} onChange={setSelectedModel} />
             </div>
             
             <div className="space-y-2">

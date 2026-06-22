@@ -216,17 +216,42 @@ export function InfoCallout({ tone = 'electric', title, description, cta, icon: 
   )
 }
 
-export function TableMobileFallback({ items, renderTitle, renderMeta, renderRight }) {
+export function TableMobileFallback({
+  items,
+  renderTitle,
+  renderMeta,
+  renderRight,
+  getCardClassName,
+  getItemId,
+  onItemActivate,
+}) {
   return (
     <div className="space-y-3 md:hidden">
       {items.map((item) => (
-        <div key={item.id} className="card p-4">
+        <div
+          key={item.id}
+          id={getItemId?.(item)}
+          role={onItemActivate ? 'button' : undefined}
+          tabIndex={onItemActivate ? 0 : undefined}
+          onClick={onItemActivate ? () => onItemActivate(item) : undefined}
+          onKeyDown={
+            onItemActivate
+              ? (event) => {
+                  if (event.key === 'Enter' || event.key === ' ') {
+                    event.preventDefault()
+                    onItemActivate(item)
+                  }
+                }
+              : undefined
+          }
+          className={`card p-4 ${onItemActivate ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/50' : ''} ${getCardClassName?.(item) || ''}`}
+        >
           <div className="flex items-start justify-between gap-4">
-            <div className="space-y-2">
+            <div className="space-y-2 min-w-0 flex-1">
               <p className="text-sm font-bold text-[var(--text-main)]">{renderTitle(item)}</p>
               <div className="space-y-1 text-xs font-medium text-[var(--text-muted)]">{renderMeta(item)}</div>
             </div>
-            {renderRight(item)}
+            {renderRight?.(item)}
           </div>
         </div>
       ))}

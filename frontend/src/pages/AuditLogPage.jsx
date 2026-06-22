@@ -1,31 +1,40 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FileText, Filter, RefreshCw, Search } from 'lucide-react'
-import { MetricCard, MetricCardSkeleton, PageHeader, PanelHeader, TableMobileFallback, Skeleton } from '../components/ui/AppFrame'
+import { MetricCard, MetricCardSkeleton, PanelHeader, TableMobileFallback, Skeleton } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
 import { useAuditLogs } from '../hooks/queries'
-import { useQueryClient } from '@tanstack/react-query'
-
-function fallbackLogs() {
-  return [
-    { id: 1, action: 'attack_run', action_label: '攻击测试', resource: '/api/attack', method: 'POST', username: 'admin', response_status: 200, duration_ms: 1250, created_at: '2026-03-31 10:30:00' },
-    { id: 2, action: 'defense_detect', action_label: '防御检测', resource: '/api/defense', method: 'POST', username: 'analyst', response_status: 200, duration_ms: 450, created_at: '2026-03-31 10:29:30' },
-    { id: 3, action: 'benchmark_run', action_label: '基准评测', resource: '/api/benchmark', method: 'POST', username: 'admin', response_status: 202, duration_ms: 220, created_at: '2026-03-31 10:28:00' },
-    { id: 4, action: 'model_list', action_label: '模型查询', resource: '/api/models', method: 'GET', username: 'reviewer', response_status: 200, duration_ms: 88, created_at: '2026-03-31 10:27:15' },
-    { id: 5, action: 'attack_run', action_label: '攻击测试', resource: '/api/attack', method: 'POST', username: 'intern', response_status: 400, duration_ms: 310, created_at: '2026-03-31 10:26:00' },
-  ]
-}
+import { isDemoModeEnabled } from '../api'
+import { AUDIT_ACTION_OPTIONS } from '../constants/auditActions'
 
 import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function AuditLogPage() {
+  const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
+  const [actionFilter, setActionFilter] = useState(() => searchParams.get('action') || 'all')
 
-  const queryClient = useQueryClient()
-  const { data: logsData, isLoading, isError, isFetching, refetch } = useAuditLogs()
+  useEffect(() => {
+    const actionFromUrl = searchParams.get('action') || 'all'
+    setActionFilter(actionFromUrl)
+  }, [searchParams])
 
-  // Use fallback if api fails in demo mode
-  const logs = useMemo(() => isError ? fallbackLogs() : logsData || [], [isError, logsData])
+  const { data: logsData, isLoading, isError, isFetching, refetch } = useAuditLogs({ action: actionFilter })
+
+  const logs = useMemo(() => logsData || [], [logsData])
+
+  const handleActionFilterChange = (value) => {
+    setActionFilter(value)
+    const next = new URLSearchParams(searchParams)
+    if (value === 'all') {
+      next.delete('action')
+    } else {
+      next.set('action', value)
+    }
+    setSearchParams(next, { replace: true })
+  }
 
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase()
@@ -52,13 +61,7 @@ export default function AuditLogPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="AUDIT LOG"
-          title="审计日志中心"
-          description="统一监控平台所有的接口行为、状态码和响应时延，便于快速追溯安全事件与异常请求。"
-        />
-      </motion.div>
+      <HubPanelIntro description="统一监控平台接口行为、状态码和响应时延，便于追溯安全事件与异常请求。" />
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-3">
         {isLoading ? (
@@ -73,11 +76,25 @@ export default function AuditLogPage() {
       </motion.div>
 
       <motion.section variants={itemVariants} className="card p-5">
-        <PanelHeader title="检索过滤" description="按动作关键字、请求资源路径及状态码过滤日志轨迹。" />
-        <div className="grid gap-4 md:grid-cols-[1fr_220px_auto]">
+        <PanelHeader title="检索过滤" description="按操作类型、动作关键字、请求资源路径及状态码过滤日志轨迹。" />
+        <div className="grid gap-4 md:grid-cols-[1fr_200px_200px_auto]">
           <label className="relative">
             <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
             <input className="input-field pl-10" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="搜索请求动作、REST 资源或操作用户..." />
+          </label>
+          <label className="relative">
+            <Filter className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
+            <select
+              className="input-field pl-10 appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]"
+              value={actionFilter}
+              onChange={(event) => handleActionFilterChange(event.target.value)}
+            >
+              {AUDIT_ACTION_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </label>
           <label className="relative">
             <Filter className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
@@ -98,7 +115,8 @@ export default function AuditLogPage() {
         <div className="border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-5 py-4">
           <h2 className="text-lg font-bold font-display text-[var(--text-main)]">系统操作流水</h2>
           <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">
-            当前展示 {filtered.length} 条审计记录。
+            当前展示 {filtered.length} 条审计记录
+            {actionFilter !== 'all' ? `（操作类型：${AUDIT_ACTION_OPTIONS.find((item) => item.value === actionFilter)?.label || actionFilter}）` : ''}。
           </p>
         </div>
 
@@ -127,6 +145,15 @@ export default function AuditLogPage() {
           {isLoading ? (
             <div className="p-6 space-y-4">
                {Array.from({ length: 5 }).map((_, i) => <Skeleton key={i} className="h-12 w-full" />)}
+            </div>
+          ) : isError ? (
+            <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-center">
+              <FileText className="h-12 w-12 text-rose-400" />
+              <p className="text-sm font-bold text-rose-500">审计日志加载失败</p>
+              <p className="text-xs text-[var(--text-muted)]">
+                {isDemoModeEnabled ? '演示模式下请确认后端已启动。' : '请检查 API 连接与认证状态。'}
+              </p>
+              <button type="button" className="btn-secondary mt-2" onClick={() => refetch()}>重试</button>
             </div>
           ) : filtered.length === 0 ? (
             <div className="flex min-h-[300px] flex-col items-center justify-center gap-3 text-center opacity-60">

@@ -3,92 +3,28 @@ import { AnimatePresence, motion } from 'framer-motion'
 import { useEffect, useMemo, useState } from 'react'
 import clsx from 'clsx'
 import {
-  Activity,
-  BarChart3,
-  BookOpen,
   ChevronRight,
-  Clock3,
-  Code2,
   CreditCard,
-  FileText,
-  History,
-  LayoutDashboard,
   LogIn,
   LogOut,
   Menu,
-  Database,
-  RefreshCw,
-  Scale,
-  Shield,
-  ShieldAlert,
-  ShieldCheck,
-  Sparkles,
-  Sword,
-  Target,
   User,
-  Wand2,
   X,
-  Zap,
   Sun,
   Moon,
   ChevronDown,
 } from 'lucide-react'
-import { getApiStatus } from '../api'
+import { NAV_GROUPS } from '../constants/copy'
 import { StatusPill } from './ui/AppFrame'
-import { useAutoRefresh } from '../hooks/useAutoRefresh'
+import { useApiStatus } from '../hooks/useApiStatus'
 import { useTheme } from '../hooks/useTheme'
 import { useAuthSession, clearSession } from '../auth'
 import { pageVariants } from '../utils/animations'
 import { TaskTray } from './ui/TaskTray'
+import DemoBanner from './ui/DemoBanner'
 
-const PRIMARY_GROUPS = [
-  {
-    title: '总览',
-    items: [{ path: '/', label: '安全总览', short: '总览', icon: LayoutDashboard }],
-  },
-  {
-    title: '攻防',
-    items: [
-      { path: '/attack', label: '攻击测试', short: '攻击', icon: Sword },
-      { path: '/defense', label: '防御检测', short: '防御', icon: ShieldCheck },
-      { path: '/benchmark', label: '基准评测', short: '评测', icon: BarChart3 },
-      { path: '/history', label: '历史记录', short: '历史', icon: History },
-    ],
-  },
-]
-
-const SECONDARY_GROUPS = [
-  {
-    title: '攻击渗透矩阵',
-    items: [
-      { path: '/attack/advanced', label: '高级攻击', icon: Zap },
-      { path: '/attack/novel', label: '新型攻击', icon: Wand2 },
-      { path: '/attack/agent', label: 'Agent 攻击', icon: Sparkles },
-      { path: '/attack/multimodal', label: '多模态攻击', icon: Target },
-      { path: '/attack/loop', label: '攻击循环', icon: RefreshCw },
-    ],
-  },
-  {
-    title: '标准评估测试',
-    items: [
-      { path: '/safety-card', label: '安全卡片', icon: Shield },
-      { path: '/owasp', label: 'OWASP 测试', icon: ShieldAlert },
-      { path: '/redteam', label: '红队演练', icon: Target },
-    ]
-  },
-  {
-    title: '治理与报告',
-    items: [
-      { path: '/code-security', label: '代码安全', icon: Code2 },
-      { path: '/bias', label: '偏见检测', icon: Scale },
-      { path: '/templates', label: '模板中心', icon: BookOpen },
-      { path: '/datasets', label: '数据集管理', icon: Database },
-      { path: '/reports', label: '评估报告', icon: FileText },
-      { path: '/tasks', label: '任务中心', icon: Clock3 },
-      { path: '/audit', label: '审计日志', icon: Activity },
-    ],
-  },
-]
+const PRIMARY_GROUPS = NAV_GROUPS
+const SECONDARY_GROUPS = []
 
 function NavAccordion({ group }) {
   const location = useLocation()
@@ -167,13 +103,7 @@ export default function Layout({ children }) {
     return () => clearTimeout(t)
   }, [location.pathname])
 
-  const syncApiStatus = () => setApiStatus(getApiStatus())
-
-  useEffect(() => {
-    syncApiStatus()
-  }, [])
-
-  useAutoRefresh(syncApiStatus, 30000, !isAuthPage)
+  const { isConnected, isDegraded } = useApiStatus(30000, !isAuthPage)
 
   if (isAuthPage) {
     return (
@@ -233,12 +163,11 @@ export default function Layout({ children }) {
             </div>
 
             <div className="hidden items-center gap-4 lg:flex">
-              <div className="rounded-full border border-[var(--border-glass)] bg-[var(--bg-glass)] px-4 py-2 shadow-fine backdrop-blur-md flex flex-col justify-center">
-                <div className="flex items-center gap-2 text-[10px] uppercase font-bold text-[var(--text-muted)] tracking-wider">
-                  <span className="status-dot status-dot-online" />
-                  System Nominal
-                </div>
-              </div>
+              <StatusPill
+                online={isConnected}
+                onlineLabel={isDegraded ? 'API 降级' : 'API 已连接'}
+                offlineLabel="API 离线"
+              />
               <button
                 type="button"
                 onClick={toggleTheme}
@@ -282,8 +211,9 @@ export default function Layout({ children }) {
             </button>
           </div>
 
-          <div className="mt-4 hidden items-center justify-between gap-4 lg:flex border-t border-[var(--border-glass)] pt-4">
-            <div className="flex min-w-0 flex-wrap items-center gap-4">
+          {SECONDARY_GROUPS.length > 0 && (
+            <div className="mt-4 hidden items-center justify-between gap-4 lg:flex border-t border-[var(--border-glass)] pt-4">
+              <div className="flex min-w-0 flex-wrap items-center gap-4">
               {SECONDARY_GROUPS.map((group) => (
                 <div key={group.title} className="flex items-center gap-3">
                   <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-[var(--text-muted)] opacity-70">
@@ -310,8 +240,11 @@ export default function Layout({ children }) {
               ))}
             </div>
           </div>
+          )}
         </div>
       </header>
+
+      <DemoBanner enabled={!isAuthPage} />
 
       <AnimatePresence>
         {drawerOpen && (
@@ -342,9 +275,11 @@ export default function Layout({ children }) {
               <div className="space-y-6">
                 <div className="card p-4">
                   <div className="flex items-center justify-between mb-4">
-                    <div className="flex items-center gap-2 text-xs font-semibold text-[var(--text-muted)]">
-                      <span className="status-dot status-dot-online" /> System Online
-                    </div>
+                    <StatusPill
+                      online={isConnected}
+                      onlineLabel={isDegraded ? 'API 降级' : 'API 已连接'}
+                      offlineLabel="API 离线"
+                    />
                     <button
                       type="button"
                       onClick={toggleTheme}
@@ -405,10 +340,9 @@ export default function Layout({ children }) {
           </p>
           <div className="flex items-center gap-4">
             <span className="flex items-center gap-2">
-              <span className="status-dot status-dot-online" /> 所有服务运行正常
+              <span className={`status-dot ${isConnected ? 'status-dot-online' : 'status-dot-demo'}`} />
+              {isConnected ? '服务运行正常' : '演示 / 离线模式'}
             </span>
-            <a href="#" className="hover:text-[var(--text-main)] transition-colors">使用条款</a>
-            <a href="#" className="hover:text-[var(--text-main)] transition-colors">隐私政策</a>
           </div>
         </div>
       </footer>

@@ -2,9 +2,11 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AlertTriangle, CheckCircle2, FileText, ShieldCheck, Fingerprint, Loader2, Target, Clock3 } from 'lucide-react'
-import api from '../api'
+import { v2Api, isDemoModeEnabled } from '../api'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import { HubPanelIntro } from '../context/HubContext'
 import { PingButton } from '../components/ui/PingButton'
 
 const SAFETY_CATEGORIES = [
@@ -44,8 +46,8 @@ export default function SafetyCardPage() {
   useEffect(() => {
     const loadRecent = async () => {
       try {
-        const response = await api.get('/api/v2/safety-cards/recent')
-        setRecentCards(response.data || [])
+        const data = await v2Api.safetyCardsRecent()
+        setRecentCards(data || [])
       } catch {
         setRecentCards([])
       }
@@ -57,16 +59,16 @@ export default function SafetyCardPage() {
     setLoading(true)
     setSafetyCard(null)
     try {
-      const response = await api.post('/api/v2/safety-cards/generate', { model_name: modelName })
-      setSafetyCard(response.data)
+      const data = await v2Api.safetyCardsGenerate({ model_name: modelName })
+      setSafetyCard(data)
       toast.success('大模型安全评估镜像已生成。')
     } catch {
-      setTimeout(() => {
+      if (isDemoModeEnabled) {
         setSafetyCard(demoCard(modelName))
-        setLoading(false)
         toast('引擎脱机，进入离线沙箱推演模式。', { icon: '⚠️' })
-      }, 1500)
-      return
+      } else {
+        toast.error('安全卡片生成失败，请检查后端连接。')
+      }
     }
     setLoading(false)
   }
@@ -75,29 +77,17 @@ export default function SafetyCardPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="SAFETY POSTURE"
-          title="模型安全体检中心"
-          description="自动化扫描并萃取大模型的合规缺陷，生成多维度的风险态势画像，精准定位防御短板。"
-        />
-      </motion.div>
+      <HubPanelIntro description="自动化扫描大模型合规缺陷，生成多维度风险态势画像。" />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6 border-[var(--border-glass)]">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6 border-[var(--border-glass)]">
           <PanelHeader title="评测靶机配置" description="指定待检阅的模型引擎，触发全量弱点扫描。" />
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">目标靶机标识 (Model Namespace)</label>
               <div className="flex items-center gap-2">
-                <div className="relative flex-1">
-                  <Target className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-[var(--text-muted)] pointer-events-none" />
-                  <input 
-                    className="input-field font-mono pl-11 py-3 text-lg" 
-                    value={modelName} 
-                    onChange={(event) => setModelName(event.target.value)} 
-                    placeholder="e.g. llama3-70b-instruct"
-                  />
+                <div className="flex-1">
+                  <ModelSelect value={modelName} onChange={setModelName} />
                 </div>
                 <PingButton targetModel={modelName} />
               </div>

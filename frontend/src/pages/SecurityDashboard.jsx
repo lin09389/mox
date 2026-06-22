@@ -1,21 +1,27 @@
-import { useMemo } from 'react'
+import { lazy, Suspense, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import { Link } from 'react-router-dom'
 import {
   Activity,
   ArrowRight,
   BarChart3,
+  ChevronDown,
+  ChevronUp,
   Clock3,
   Radar,
   ShieldAlert,
   ShieldCheck,
   Sparkles,
   TrendingUp,
-  AlertTriangle,
-  Database
 } from 'lucide-react'
-import { useDashboardStats, useRecentAttacks, useDefenseLogs } from '../hooks/queries'
-import { HeroStat, InfoCallout, InsightList, MetricCard, MetricCardSkeleton, PageHeader, PanelHeader, QuickLink, Skeleton } from '../components/ui/AppFrame'
+import { useDashboardStats, useRecentAttacks, useDefenseLogs, useMonitoringVisualization } from '../hooks/queries'
+import { useApiStatus } from '../hooks/useApiStatus'
+import { isDemoModeEnabled } from '../api'
+import { HeroStat, InfoCallout, InsightList, MetricCard, MetricCardSkeleton, PanelHeader, QuickLink, Skeleton } from '../components/ui/AppFrame'
+
+const ThreatMap3D = lazy(() => import('../components/ui/ThreatMap3D'))
+import ThreatRadarChart from '../components/ui/ThreatRadarChart'
+import ThreatAreaChart from '../components/ui/ThreatAreaChart'
 
 function normalizeStats(stats) {
   return {
@@ -41,9 +47,13 @@ export default function SecurityDashboard() {
   const { data: rawStats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useDashboardStats()
   const { data: recentAttacks, isLoading: attacksLoading } = useRecentAttacks()
   const { data: defenseLogs, isLoading: logsLoading } = useDefenseLogs()
+  const { data: visualization, isLoading: vizLoading } = useMonitoringVisualization()
+  const { isConnected } = useApiStatus()
 
   const stats = useMemo(() => normalizeStats(rawStats), [rawStats])
   const [now] = useState(() => Date.now())
+  const [topologyOpen, setTopologyOpen] = useState(false)
+  const [chartsOpen, setChartsOpen] = useState(false)
   const lastUpdate = new Date(statsUpdatedAt || now)
 
   const overview = useMemo(() => {
@@ -113,93 +123,125 @@ export default function SecurityDashboard() {
       animate="show"
       className="page-shell"
     >
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="SECURITY OVERVIEW"
-          title="专业监控台"
-          description="把当前请求规模、拦截表现、攻击成功率和近期高风险活动放在同一视野中，便于快速判断是否需要进入专项页面。"
-          badge={
-            <div className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] px-3 py-1.5">
-              <Clock3 className="h-3.5 w-3.5" />
-              {statsLoading ? '正在连接...' : `最近更新 ${lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })}`}
-            </div>
-          }
-        />
+      <motion.div variants={itemVariants} className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="space-y-2 max-w-2xl">
+          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">系统总览与监控舱</h1>
+          <p className="text-sm font-medium text-[var(--text-muted)]">
+            宏观掌控攻击、防御与模型流转链路，快速识别风险信号与下一步演练方向。
+          </p>
+        </div>
+        <div className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] px-3 py-1.5 shrink-0">
+          <Clock3 className="h-3.5 w-3.5" />
+          {statsLoading ? '正在连接…' : `最新同步 ${lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+        </div>
       </motion.div>
 
-      <motion.section variants={itemVariants} className="hero-panel mb-2">
-        <div className="relative z-10 grid gap-6 xl:grid-cols-[1.3fr_0.9fr]">
-          <div className="space-y-5">
-            <span className="badge badge-info bg-cyan-500/10 border-cyan-500/20 text-cyan-500">
-              <Radar className="h-3.5 w-3.5" />
-              30 秒自动刷新监控数据
-            </span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--text-main)] sm:text-4xl leading-tight">
-              先看风险信号，再进入具体模块处理。
-            </h2>
-            <p className="max-w-2xl text-sm font-medium text-[var(--text-muted)] sm:text-base leading-relaxed">
-              这版首页把随机图表替换成更稳定的监控信号视图。你可以先判断风险热度，再决定是去攻击页复测、防御页排查，还是到历史页做回归分析。
-            </p>
-            <div className="flex flex-wrap gap-4 pt-2">
-              <Link to="/attack" className="btn-primary">
-                进入攻击测试
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link to="/history" className="btn-secondary">
-                查看历史记录
-              </Link>
+      <motion.section variants={itemVariants} className="mb-6 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
+        <div className="relative card overflow-hidden flex flex-col shadow-2xl ring-1 ring-cyan-500/10">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-4 py-3">
+            <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
+              <Radar className="h-5 w-5 text-cyan-400" />
+              全球资产与实时威胁拓扑
+            </h3>
+            <div className="flex items-center gap-2">
+              <span className="badge badge-info bg-cyan-500/20 border-cyan-500/30 text-cyan-400 text-xs">
+                {isConnected && !isDemoModeEnabled ? '实时数据' : '演示 / 离线'}
+              </span>
+              <button
+                type="button"
+                className="btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
+                onClick={() => setTopologyOpen((open) => !open)}
+                aria-expanded={topologyOpen}
+              >
+                {topologyOpen ? (
+                  <>
+                    <ChevronUp className="h-3.5 w-3.5" />
+                    收起
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="h-3.5 w-3.5" />
+                    展开 3D
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-3 xl:grid-cols-1 justify-center">
-            {statsLoading ? (
-              <>
-                 <Skeleton className="h-[120px] w-full" />
-                 <div className="hidden xl:grid grid-cols-2 gap-4">
-                   <Skeleton className="h-[120px] w-full" />
-                   <Skeleton className="h-[120px] w-full" />
-                 </div>
-              </>
-            ) : (
-              <>
-                <HeroStat
-                  label="实时拦截"
-                  value={stats.blockedRequests.toLocaleString()}
-                  hint="当前累计被防线拦截的请求数"
-                  tone="danger"
+          {topologyOpen ? (
+            <div className="min-h-[420px] flex-1 w-full">
+              <Suspense fallback={<Skeleton className="h-[420px] w-full rounded-none" />}>
+                <ThreatMap3D
+                  nodes={visualization?.topology?.nodes}
+                  links={visualization?.topology?.links}
+                  isLoading={vizLoading}
                 />
-                <div className="hidden xl:grid grid-cols-2 gap-4">
-                  <HeroStat
-                    label="风险热度"
-                    value={`${Math.round(stats.attackSuccessRate * 100)}%`}
-                    hint="越高越需要回归"
-                    tone="warning"
-                  />
-                  <HeroStat
-                    label="防御韧性"
-                    value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
-                    hint="策略当前有效性"
-                    tone="success"
-                  />
-                </div>
-                {/* Mobile/Tablet Fallback for Hero Stats */}
-                <div className="xl:hidden sm:contents hidden">
-                  <HeroStat
-                    label="风险热度"
-                    value={`${Math.round(stats.attackSuccessRate * 100)}%`}
-                    hint="攻击成功率越高越危险"
-                    tone="warning"
-                  />
-                  <HeroStat
-                    label="防御韧性"
-                    value={`${Math.round(stats.defenseSuccessRate * 100)}%`}
-                    hint="防护策略当前有效性"
-                    tone="success"
-                  />
-                </div>
-              </>
-            )}
+              </Suspense>
+            </div>
+          ) : (
+            <div className="flex min-h-[140px] flex-col justify-center gap-3 px-5 py-4 text-sm text-[var(--text-muted)]">
+              <p>3D 威胁拓扑默认折叠，以减少首屏信息密度与 GPU 占用。</p>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className="badge badge-neutral">节点 {visualization?.topology?.nodes?.length ?? 0}</span>
+                <span className="badge badge-neutral">链路 {visualization?.topology?.links?.length ?? 0}</span>
+                <span className="badge badge-neutral">拦截 {stats.blockedRequests.toLocaleString()}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Dynamic HUD Charts — collapsed by default on mobile */}
+        <div className="card overflow-hidden flex flex-col">
+          <div className="flex items-center justify-between gap-3 border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-4 py-3">
+            <h3 className="text-base font-bold text-[var(--text-main)] flex items-center gap-2">
+              <BarChart3 className="h-5 w-5 text-cyan-400" />
+              趋势与雷达
+            </h3>
+            <button
+              type="button"
+              className="btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold lg:hidden"
+              onClick={() => setChartsOpen((open) => !open)}
+              aria-expanded={chartsOpen}
+            >
+              {chartsOpen ? (
+                <>
+                  <ChevronUp className="h-3.5 w-3.5" />
+                  收起
+                </>
+              ) : (
+                <>
+                  <ChevronDown className="h-3.5 w-3.5" />
+                  展开图表
+                </>
+              )}
+            </button>
           </div>
+
+          <div className={`flex flex-col gap-6 p-4 ${chartsOpen ? 'block' : 'hidden lg:flex'}`}>
+            <div className="card p-5 h-[260px] flex flex-col">
+              <PanelHeader title="24h 攻击与拦截趋势" description="红队与防御机制的对抗烈度" icon={TrendingUp} />
+              <div className="flex-1 mt-2">
+                <ThreatAreaChart series={visualization?.trends?.series} isLoading={vizLoading} />
+              </div>
+            </div>
+
+            <div className="card p-5 flex-1 flex flex-col">
+              <PanelHeader title="安全漏洞雷达" description="当前系统对各类型攻击的暴露面" icon={ShieldAlert} />
+              <div className="flex-1 mt-2">
+                <ThreatRadarChart items={visualization?.radar?.items} isLoading={vizLoading} />
+              </div>
+            </div>
+          </div>
+
+          {!chartsOpen && (
+            <div className="flex min-h-[100px] flex-col justify-center gap-2 px-5 py-4 text-sm text-[var(--text-muted)] lg:hidden">
+              <p>趋势与雷达图默认折叠，减少移动端首屏滚动。</p>
+              <div className="flex flex-wrap gap-2 text-xs font-bold">
+                <span className="badge badge-neutral">趋势点 {visualization?.trends?.series?.length ?? 0}</span>
+                <span className="badge badge-neutral">雷达维 {visualization?.radar?.items?.length ?? 0}</span>
+              </div>
+            </div>
+          )}
         </div>
       </motion.section>
 
@@ -250,8 +292,8 @@ export default function SecurityDashboard() {
               <Link to="/defense" className="block">
                 <QuickLink label="防御检测页" description="确认输入过滤和输出审查是否漏检。" />
               </Link>
-              <Link to="/history" className="block">
-                <QuickLink label="历史记录页" description="查看近期问题是否持续出现。" />
+              <Link to="/governance?tab=reports" className="block">
+                <QuickLink label="评估报告页" description="查看归档报告与风险指标趋势。" />
               </Link>
             </div>
           }
@@ -357,10 +399,10 @@ export default function SecurityDashboard() {
           description="把常用路径放在首页，减少多层导航查找。"
         />
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4 mt-4">
-          <Link to="/owasp" className="block"><QuickLink label="OWASP 测试" description="用标准化风险类目做专项验证。" /></Link>
-          <Link to="/redteam" className="block"><QuickLink label="红队演练" description="按更接近真实攻击链的方式复测。" /></Link>
-          <Link to="/benchmark" className="block"><QuickLink label="基准评测" description="对比不同模型或数据集表现。" /></Link>
-          <Link to="/reports" className="block"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
+          <Link to="/testing?tab=owasp" className="block"><QuickLink label="OWASP 测试" description="用标准化风险类目做专项验证。" /></Link>
+          <Link to="/testing?tab=redteam" className="block"><QuickLink label="红队演练" description="按更接近真实攻击链的方式复测。" /></Link>
+          <Link to="/evaluation?tab=benchmark" className="block"><QuickLink label="基准评测" description="对比不同模型或数据集表现。" /></Link>
+          <Link to="/governance?tab=reports" className="block"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
         </div>
       </motion.section>
     </motion.div>

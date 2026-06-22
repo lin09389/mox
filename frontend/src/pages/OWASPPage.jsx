@@ -1,8 +1,12 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, Play, Shield, ShieldAlert, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { runOWASPTests } from '../api/security'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import RunCompleteBanner from '../components/ui/RunCompleteBanner'
 
 const CATEGORIES = [
   { id: 'LLM01', name: '提示词注入', description: '通过恶意输入绕过系统策略。', severity: 'critical' },
@@ -27,6 +31,7 @@ import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function OWASPPage() {
   const [results, setResults] = useState([])
+  const [reportId, setReportId] = useState(null)
   const [running, setRunning] = useState(false)
   const [model, setModel] = useState('qwen3:4b')
 
@@ -38,9 +43,17 @@ export default function OWASPPage() {
 
   const handleRun = async () => {
     setRunning(true)
+    setResults([])
+    setReportId(null)
     try {
-      const data = await runOWASPTests(model)
+      const { results: data, reportId: savedReportId } = await runOWASPTests(model)
       setResults(data)
+      setReportId(savedReportId)
+      if (data.length > 0) {
+        toast.success(savedReportId ? 'OWASP 测试已完成，报告已入库。' : 'OWASP 测试已完成。')
+      }
+    } catch {
+      toast.error('OWASP 测试失败，请检查后端连接与模型配置。')
     } finally {
       setRunning(false)
     }
@@ -48,21 +61,15 @@ export default function OWASPPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="OWASP SUITE"
-          title="OWASP LLM Top 10 专项测试"
-          description="使用标准化类目快速判断模型在关键风险域的通过率，结果可直接用于治理复盘。"
-        />
-      </motion.div>
+      <HubPanelIntro description="使用 OWASP LLM Top 10 标准类目评估模型在关键风险域的通过率。" />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="测试配置" description="选择目标模型并运行完整套件。" />
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
-              <input value={model} onChange={(event) => setModel(event.target.value)} className="input-field font-mono" />
+              <ModelSelect value={model} onChange={setModel} />
             </div>
             
             <button 
@@ -101,6 +108,8 @@ export default function OWASPPage() {
                 exit={{ opacity: 0, y: -15 }}
                 className="space-y-6"
               >
+                <RunCompleteBanner reportId={reportId} title="评估报告已保存" />
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <MetricCard icon={Shield} label="总测试项" value={results.length} hint="OWASP Top 10" tone="electric" />
                   <MetricCard icon={CheckCircle2} label="通过项" value={passCount} hint={`${passRate}%`} tone="neon" />

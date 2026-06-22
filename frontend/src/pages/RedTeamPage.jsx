@@ -1,9 +1,13 @@
 import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { AlertTriangle, CheckCircle2, Play, Shield, Skull, Target, Loader2 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { runRedTeam } from '../api/security'
 import { useLocalStorage } from '../hooks/useLocalStorage'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import RunCompleteBanner from '../components/ui/RunCompleteBanner'
 import { PingButton } from '../components/ui/PingButton'
 
 const TECHNIQUES = [
@@ -28,6 +32,7 @@ import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function RedTeamPage() {
   const [results, setResults] = useState([])
+  const [reportId, setReportId] = useState(null)
   const [running, setRunning] = useState(false)
   const [targetModel, setTargetModel] = useLocalStorage('mox_redteam_model', 'qwen3:4b')
   const [selected, setSelected] = useLocalStorage('mox_redteam_techniques', TECHNIQUES.map((item) => item.id))
@@ -48,12 +53,20 @@ export default function RedTeamPage() {
 
   const handleRun = async () => {
     setRunning(true)
+    setResults([])
+    setReportId(null)
     try {
-      const data = await runRedTeam(targetModel, selected, {
+      const { results: data, reportId: savedReportId } = await runRedTeam(targetModel, selected, {
         hybrid_mode: hybridMode,
         dimensions: selectedDimensions
       })
       setResults(data)
+      setReportId(savedReportId)
+      if (data.length > 0) {
+        toast.success(savedReportId ? '红队演练已完成，报告已入库。' : '红队演练已完成。')
+      }
+    } catch {
+      toast.error('红队演练失败，请检查后端连接与模型配置。')
     } finally {
       setRunning(false)
     }
@@ -67,22 +80,18 @@ export default function RedTeamPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="RED TEAM"
-          title="红队演练中心"
-          description="按攻击技术组合进行红队压力测试，快速定位高风险能力缺口。"
-        />
-      </motion.div>
+      <HubPanelIntro description="按攻击技术组合进行红队压力测试，快速定位高风险能力缺口。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="演练配置" description="选择模型与技术组合，执行一轮红队演练。" />
           <div className="space-y-6">
             <div className="space-y-2">
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">目标模型</label>
               <div className="flex items-center gap-2">
-                <input className="input-field font-mono flex-1" value={targetModel} onChange={(event) => setTargetModel(event.target.value)} />
+                <div className="flex-1">
+                  <ModelSelect value={targetModel} onChange={setTargetModel} />
+                </div>
                 <PingButton targetModel={targetModel} />
               </div>
             </div>
@@ -172,6 +181,8 @@ export default function RedTeamPage() {
                 exit={{ opacity: 0, y: -15 }}
                 className="space-y-6"
               >
+                <RunCompleteBanner reportId={reportId} title="演练报告已保存" />
+
                 <div className="grid gap-4 sm:grid-cols-3">
                   <MetricCard icon={Target} label="技术总数" value={results.length} hint="本轮执行项" tone="electric" />
                   <MetricCard icon={Skull} label="攻击成功" value={successCount} hint={`${successRate}%`} tone="lava" />

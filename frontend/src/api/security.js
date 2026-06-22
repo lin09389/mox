@@ -6,6 +6,7 @@ export {
   getDefenseLogs,
   getModels,
   getMonitoringData,
+  getMonitoringVisualization,
   getAnomalies,
   runOWASPTests,
   runRedTeam,

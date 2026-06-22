@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
 import { Check, CreditCard, Crown, Shield, Sparkles, X, Zap } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PageHeader } from '../components/ui/AppFrame'
+
 
 const plans = [
   {
@@ -48,6 +48,10 @@ export default function PricingPage() {
   const [showCheckout, setShowCheckout] = useState(false)
 
   const handleSubscribe = (plan) => {
+    if (plan.id === 'pro') {
+      toast('付费订阅功能规划中，当前版本可免费使用全部核心能力。', { icon: 'ℹ️' })
+      return
+    }
     if (plan.id === 'enterprise') {
       toast.success('企业旗舰版意向已收到，专职架构师将在 24 小时内与您联络。')
       return
@@ -67,15 +71,17 @@ export default function PricingPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="SUBSCRIPTION PLANS"
-          title="系统算力与配额订阅"
-          description="从轻量级的概念验证到企业级安全治理，为各类红蓝对抗场景提供充足的计算资源与专家支持。"
-        />
+      <motion.div variants={itemVariants} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
+        计费与订阅功能正在规划中。当前开源版本可免费使用攻击、防御、评估等核心能力。
+      </motion.div>
+      <motion.div variants={itemVariants} className="mb-4 space-y-2 max-w-2xl">
+        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">系统算力与配额订阅</h1>
+        <p className="text-sm font-medium text-[var(--text-muted)]">
+          从轻量级验证到企业级治理，为红蓝对抗场景提供可扩展的算力与专家支持方案。
+        </p>
       </motion.div>
 
-      <motion.section variants={itemVariants} className="card p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)] mb-8">
+      <motion.section variants={itemVariants} className="card p-6 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)] mb-8">
         <div className="relative z-10 grid gap-8 lg:grid-cols-[1.3fr_0.7fr]">
           <div className="space-y-5">
             <span className="badge border text-[10px] uppercase font-bold tracking-widest bg-cyan-500/10 text-cyan-500 border-cyan-500/20 px-3 py-1">透明与可扩展的算力矩阵</span>

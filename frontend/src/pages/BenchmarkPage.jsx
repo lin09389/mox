@@ -13,8 +13,12 @@ import {
   TrendingUp,
   XCircle,
 } from 'lucide-react'
-import { benchmarkApi } from '../api'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { benchmarkApi, isDemoModeEnabled } from '../api'
+import { HubPanelIntro } from '../context/HubContext'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import RunCompleteBanner from '../components/ui/RunCompleteBanner'
+import { useTaskStore } from '../store/useTaskStore'
 
 const DATASETS = [
   { value: 'advbench', label: 'AdvBench', desc: '对抗样本覆盖广，适合基础防线回归。', count: 150 },
@@ -34,6 +38,42 @@ const ATTACK_TYPES = [
   { value: 'prompt_injection', label: '提示词注入', desc: '通过覆盖或绕过指令测试模型边界。' },
   { value: 'jailbreak', label: '越狱攻击', desc: '模拟角色扮演与边界突破攻击。' },
 ]
+
+function normalizeBenchmarkResponse(data, form) {
+  if (!data || data._demo_mode || data.total !== undefined) {
+    return data
+  }
+
+  const total = data.total_cases ?? 0
+  const success = data.successful_attacks ?? 0
+  const fail = data.failed_attacks ?? Math.max(0, total - success)
+  const rate = total ? Math.round((success / total) * 100) : 0
+  const detailed = Array.isArray(data.detailed_results) ? data.detailed_results : []
+  const avgIterations = detailed.length
+    ? Math.round(detailed.reduce((sum, item) => sum + (item.iterations || 0), 0) / detailed.length)
+    : 0
+
+  return {
+    dataset: DATASETS.find((item) => item.value === data.dataset)?.label || data.dataset,
+    attackType: ATTACK_TYPES.find((item) => item.value === data.attack_type)?.label || data.attack_type,
+    model: MODELS.find((item) => item.value === data.model)?.label || form.model,
+    total,
+    success,
+    fail,
+    successRate: `${rate}%`,
+    avgIterations,
+    duration: '—',
+    details: [
+      {
+        attack: ATTACK_TYPES.find((item) => item.value === data.attack_type)?.label || data.attack_type,
+        success,
+        fail,
+      },
+    ],
+    reportId: data.report_id ?? null,
+    _demo_mode: false,
+  }
+}
 
 function buildDemoResult(form) {
   const total = form.max_cases
@@ -66,6 +106,11 @@ export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false)
   const [result, setResult] = useState(null)
   const [progress, setProgress] = useState(0)
+  const registerLocalTask = useTaskStore((state) => state.registerLocalTask)
+  const updateLocalTask = useTaskStore((state) => state.updateLocalTask)
+  const finishLocalTask = useTaskStore((state) => state.finishLocalTask)
+  const removeLocalTask = useTaskStore((state) => state.removeLocalTask)
+
   const [form, setForm] = useState({
     dataset: 'advbench',
     attack_type: 'prompt_injection',
@@ -88,26 +133,48 @@ export default function BenchmarkPage() {
     setProgress(0)
     setResult(null)
 
+    const localTaskId = `bench-${Date.now().toString(36)}`
+    registerLocalTask({
+      id: localTaskId,
+      name: `基准评测 (${form.model})`,
+      source: 'benchmark',
+    })
+
     const ticks = [15, 35, 55, 75, 92]
     let index = 0
     const timer = window.setInterval(() => {
       if (index < ticks.length) {
-        setProgress(ticks[index])
+        const next = ticks[index]
+        setProgress(next)
+        updateLocalTask(localTaskId, { progress: next })
         index += 1
       }
     }, 360)
 
     try {
       const data = await benchmarkApi.run(form)
+      const normalized = normalizeBenchmarkResponse(data, form)
       setProgress(100)
-      setResult(data)
-      toast.success('基准评测已完成。')
+      setResult(normalized)
+      finishLocalTask(localTaskId, {
+        progress: 100,
+        status: 'completed',
+        report_id: normalized?.reportId ?? null,
+      })
+      toast.success(normalized?.reportId ? '基准评测已完成，报告已入库。' : '基准评测已完成。')
     } catch {
+      window.clearInterval(timer)
+      if (!isDemoModeEnabled) {
+        removeLocalTask(localTaskId)
+        setLoading(false)
+        toast.error('基准评测失败，请检查后端连接。')
+        return
+      }
       setTimeout(() => {
         setProgress(100)
         setResult(buildDemoResult(form))
+        finishLocalTask(localTaskId, { progress: 100, status: 'completed' })
         setLoading(false)
-        window.clearInterval(timer)
         toast('后端不可用，已展示演示评测结果。', { icon: '⚠️' })
       }, 1800)
       return
@@ -118,16 +185,10 @@ export default function BenchmarkPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="BENCHMARK LAB"
-          title="基准评测中心"
-          description="使用业界标准数据集对目标大模型执行高频打分与自动化对抗评测。"
-        />
-      </motion.div>
+      <HubPanelIntro description="使用标准数据集对目标模型执行自动化对抗评测与打分。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="评测基准配置" description="组装评测矩阵 (数据集 × 攻击类型 × 目标模型)。" />
           <div className="space-y-6">
             <div className="space-y-3">
@@ -174,17 +235,10 @@ export default function BenchmarkPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
-                <select
-                  className="input-field appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]"
+                <ModelSelect
                   value={form.model}
-                  onChange={(event) => setForm((current) => ({ ...current, model: event.target.value }))}
-                >
-                  {MODELS.map((model) => (
-                    <option key={model.value} value={model.value}>
-                      {model.label} · {model.provider}
-                    </option>
-                  ))}
-                </select>
+                  onChange={(model) => setForm((current) => ({ ...current, model }))}
+                />
               </div>
             </div>
 
@@ -246,6 +300,7 @@ export default function BenchmarkPage() {
                     <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地环境评估展示</span>
                   </div>
                 ) : null}
+                <RunCompleteBanner reportId={result.reportId} title="评测报告已保存" />
                 <div className="grid gap-3 sm:grid-cols-2">
                   <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 flex flex-col justify-center">
                     <p className="text-[10px] font-bold uppercase tracking-widest text-[var(--text-muted)] mb-1">测试数据集</p>

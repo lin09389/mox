@@ -2,9 +2,11 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert, Loader2 } from 'lucide-react'
-import api from '../api'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
-import { useForm } from 'react-hook-form'
+import { isDemoModeEnabled, v2Api } from '../api'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import { HubPanelIntro } from '../context/HubContext'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
@@ -61,12 +63,11 @@ export default function MultimodalAttackPage() {
 
   const runAttackMutation = useMutation({
     mutationFn: async (payloadData) => {
-      const response = await api.post('/api/v2/attacks/multimodal', payloadData)
-      return response.data
+      return v2Api.multimodalAttack(payloadData)
     }
   })
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(multimodalSchema),
     defaultValues: {
       attackType: 'image_injection',
@@ -111,6 +112,10 @@ export default function MultimodalAttackPage() {
       setResult(responseData)
       toast.success('多模态对抗样本生成完成。')
     } catch {
+      if (!isDemoModeEnabled) {
+        toast.error('多模态攻击测试失败，请检查后端连接。')
+        return
+      }
       setTimeout(() => {
         setResult(buildDemoResult({ attack_type: data.attackType }))
         toast('后端不可用，已展示沙箱推演结果。', { icon: '⚠️' })
@@ -120,16 +125,10 @@ export default function MultimodalAttackPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="MULTIMODAL LAB"
-          title="多模态对抗样本靶场"
-          description="构建图文声多模态特征层面的对抗性扰动，评估视觉/听觉大模型的模态对齐边界。"
-        />
-      </motion.div>
+      <HubPanelIntro description="构建图文声多模态对抗扰动，评估视觉/听觉大模型的模态对齐边界。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="对抗载荷编排" description="选择多模态挂载形式并注入对抗特征。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -176,7 +175,13 @@ export default function MultimodalAttackPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">靶标模型</label>
-                <input className={`input-field font-mono ${errors.modelName ? 'border-rose-500/50' : ''}`} {...register('modelName')} />
+                <Controller
+                  name="modelName"
+                  control={control}
+                  render={({ field }) => (
+                    <ModelSelect value={field.value} onChange={field.onChange} className={errors.modelName ? '[&_select]:border-rose-500/50' : ''} />
+                  )}
+                />
                 {errors.modelName && <p className="text-xs text-rose-500">{errors.modelName.message}</p>}
               </div>
             </div>

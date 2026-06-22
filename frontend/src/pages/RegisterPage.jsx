@@ -5,6 +5,7 @@ import toast from 'react-hot-toast'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useRegister } from '../hooks/queries'
 
 const registerSchema = z.object({
   username: z.string().min(3, '操作员别名至少3个字符'),
@@ -19,6 +20,7 @@ import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
+  const registerMutation = useRegister()
 
   const { register, handleSubmit, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(registerSchema),
@@ -26,16 +28,24 @@ export default function RegisterPage() {
   })
 
   const onSubmit = async (data) => {
-    // Fake api call
-    await new Promise((resolve) => window.setTimeout(resolve, 1500))
-    toast.success('注册成功，工作区已初始化，请登录。')
-    navigate('/login')
+    try {
+      await registerMutation.mutateAsync({
+        username: data.username,
+        email: data.email,
+        password: data.password,
+      })
+      toast.success('注册成功，工作区已初始化，请登录。')
+      navigate('/login')
+    } catch (error) {
+      const detail = error?.response?.data?.detail || error?.response?.data?.message
+      toast.error(detail || '注册失败，请稍后重试。')
+    }
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell min-h-[calc(100vh-7rem)] justify-center py-10">
-      <section className="grid gap-8 lg:grid-cols-[1.1fr_480px] lg:items-center max-w-6xl mx-auto w-full">
-        <motion.div variants={itemVariants} className="space-y-8 pr-4">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell min-h-[calc(100dvh-4rem)] justify-center py-6 pb-8 sm:min-h-[calc(100vh-7rem)] sm:py-10">
+      <section className="grid gap-6 lg:gap-8 lg:grid-cols-[1.1fr_480px] lg:items-center max-w-6xl mx-auto w-full">
+        <motion.div variants={itemVariants} className="hidden lg:block space-y-8 pr-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500">
             <Shield className="h-3.5 w-3.5" />
             全新工作区准入
@@ -68,26 +78,30 @@ export default function RegisterPage() {
 
         <motion.section
           variants={itemVariants}
-          className="card p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.5)] mx-auto w-full max-w-[480px] relative overflow-hidden"
+          className="card p-5 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.5)] mx-auto w-full max-w-[480px] relative overflow-hidden"
         >
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-blue-500 opacity-80"></div>
           
-          <div className="mb-8 flex items-center gap-4">
+          <div className="mb-6 sm:mb-8 flex items-center gap-4">
             <div className="rounded-xl bg-cyan-500/10 border border-cyan-500/30 p-3 text-cyan-500 shadow-[inset_0_0_15px_rgba(6,182,212,0.2)]">
               <UserPlus className="h-6 w-6" />
             </div>
             <div>
-              <h2 className="text-2xl font-bold font-display text-[var(--text-main)]">新账户注册</h2>
-              <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">即刻接入红蓝对抗演练平台。</p>
+              <h2 className="text-xl sm:text-2xl font-bold font-display text-[var(--text-main)]">新账户注册</h2>
+              <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">接入红蓝对抗演练平台。</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+          <p className="mb-4 text-sm text-[var(--text-muted)] lg:hidden">
+            创建账户后即可使用攻击、防御与评估模块。
+          </p>
+
+          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4 sm:space-y-5">
             <div>
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2" htmlFor="username">操作员别名</label>
               <div className="relative">
                 <User className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input id="username" {...register('username')} className={`input-field pl-11 py-3 ${errors.username ? 'border-rose-500/50' : ''}`} placeholder="mox_operator_01" />
+                <input id="username" autoComplete="username" {...register('username')} className={`input-field pl-11 py-3.5 text-base min-h-[48px] ${errors.username ? 'border-rose-500/50' : ''}`} placeholder="mox_operator_01" />
               </div>
               {errors.username && <p className="mt-1 text-xs text-rose-500">{errors.username.message}</p>}
             </div>
@@ -96,7 +110,7 @@ export default function RegisterPage() {
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2" htmlFor="register-email">通讯邮箱地址</label>
               <div className="relative">
                 <Mail className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input id="register-email" type="email" {...register('email')} className={`input-field pl-11 py-3 ${errors.email ? 'border-rose-500/50' : ''}`} placeholder="sysadmin@example.com" />
+                <input id="register-email" type="email" autoComplete="email" {...register('email')} className={`input-field pl-11 py-3.5 text-base min-h-[48px] ${errors.email ? 'border-rose-500/50' : ''}`} placeholder="sysadmin@example.com" />
               </div>
               {errors.email && <p className="mt-1 text-xs text-rose-500">{errors.email.message}</p>}
             </div>
@@ -105,7 +119,7 @@ export default function RegisterPage() {
               <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2" htmlFor="register-password">安全验证口令</label>
               <div className="relative">
                 <Lock className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--text-muted)]" />
-                <input id="register-password" type="password" {...register('password')} className={`input-field pl-11 py-3 ${errors.password ? 'border-rose-500/50' : ''}`} placeholder="包含数字及字母组合的强口令" />
+                <input id="register-password" type="password" autoComplete="new-password" {...register('password')} className={`input-field pl-11 py-3.5 text-base min-h-[48px] ${errors.password ? 'border-rose-500/50' : ''}`} placeholder="包含数字及字母组合的强口令" />
               </div>
               {errors.password && <p className="mt-1 text-xs text-rose-500">{errors.password.message}</p>}
             </div>
@@ -123,8 +137,8 @@ export default function RegisterPage() {
               </div>
             </label>
 
-            <button type="submit" disabled={isSubmitting} className="btn-primary mt-8 w-full justify-center py-4 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold text-base shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none">
-              {isSubmitting ? (
+            <button type="submit" disabled={isSubmitting || registerMutation.isPending} className="btn-primary mt-6 sm:mt-8 w-full justify-center py-3.5 sm:py-4 min-h-[48px] bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold text-base shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none">
+              {(isSubmitting || registerMutation.isPending) ? (
                 <>
                   <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-3" />
                   正在配置工作区资源...

@@ -51,18 +51,18 @@ export default function LoginPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex min-h-[calc(100vh-5rem)] items-center justify-center px-4 py-12 sm:px-6 lg:px-8 relative overflow-hidden">
+    <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-6 pb-8 sm:min-h-[calc(100vh-5rem)] sm:px-6 sm:py-12 lg:px-8 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[120px] rounded-[100%] pointer-events-none transform -rotate-45"></div>
 
       <motion.div variants={itemVariants} className="w-full max-w-md relative z-10">
-        <div className="text-center mb-10">
+        <div className="text-center mb-6 sm:mb-10">
           <motion.div
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ duration: 0.5, delay: 0.1, ease: [0.22, 1, 0.36, 1] }}
-            className="relative mx-auto flex h-20 w-20 items-center justify-center rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] shadow-[0_0_30px_rgba(6,182,212,0.15)] mb-6"
+            className="relative mx-auto flex h-16 w-16 sm:h-20 sm:w-20 items-center justify-center rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] shadow-[0_0_30px_rgba(6,182,212,0.15)] mb-4 sm:mb-6"
           >
             <ShieldCheck className="h-10 w-10 text-cyan-500" />
             <motion.div
@@ -71,10 +71,10 @@ export default function LoginPage() {
               transition={{ duration: 2, repeat: Infinity }}
             />
           </motion.div>
-          <h1 className="font-display text-4xl font-bold tracking-tight text-[var(--text-main)] mb-3">
+          <h1 className="font-display text-2xl sm:text-4xl font-bold tracking-tight text-[var(--text-main)] mb-2 sm:mb-3">
             Mox 身份网关认证
           </h1>
-          <p className="text-sm font-medium text-[var(--text-muted)]">请输入授权密钥凭据以挂载您的安全评测工作区节点。</p>
+          <p className="text-sm font-medium text-[var(--text-muted)] px-2">请输入凭据以挂载安全评测工作区。</p>
         </div>
 
         {(expiredReason || DEMO_MODE_ENABLED) && (
@@ -83,12 +83,12 @@ export default function LoginPage() {
             <p>
               {expiredReason
                 ? '本地安全令牌（Token）生存周期已到期，系统强制注销会话。请重新签署身份凭据。'
-                : '检测到前端运行在演示预演（Demo）环境。未联通后端引擎的接口请求将降级由本地沙箱代理拦截并返回静态模拟数据。'}
+                : '检测到前端运行在演示预演（Demo）环境。可直接访问控制台，未联通后端的请求将返回本地模拟数据。'}
             </p>
           </motion.div>
         )}
 
-        <motion.div variants={itemVariants} className="card p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
+        <motion.div variants={itemVariants} className="card p-5 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-60"></div>
           
           {isAuthenticated ? (
@@ -116,7 +116,7 @@ export default function LoginPage() {
               </div>
             </div>
           ) : (
-            <form className="space-y-6" onSubmit={handleSubmit(onSubmit)}>
+            <form className="space-y-5 sm:space-y-6" onSubmit={handleSubmit(onSubmit)}>
               <div>
                 <label htmlFor="username" className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest block mb-2">
                   操作员别名 / 邮箱标识
@@ -130,7 +130,7 @@ export default function LoginPage() {
                     type="text"
                     autoComplete="username"
                     {...register('username')}
-                    className={`input-field pl-11 py-3 text-base font-mono bg-[var(--bg-main)]/50 focus:bg-transparent ${errors.username ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
+                    className={`input-field pl-11 py-3.5 text-base font-mono bg-[var(--bg-main)]/50 focus:bg-transparent min-h-[48px] ${errors.username ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
                     placeholder="operator_sys_admin"
                   />
                 </div>
@@ -150,7 +150,7 @@ export default function LoginPage() {
                     type="password"
                     autoComplete="current-password"
                     {...register('password')}
-                    className={`input-field pl-11 py-3 text-base font-mono tracking-widest bg-[var(--bg-main)]/50 focus:bg-transparent ${errors.password ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
+                    className={`input-field pl-11 py-3.5 text-base font-mono tracking-widest bg-[var(--bg-main)]/50 focus:bg-transparent min-h-[48px] ${errors.password ? 'border-rose-500/50 focus:border-rose-500/50' : ''}`}
                     placeholder="••••••••••••"
                   />
                 </div>
@@ -160,7 +160,7 @@ export default function LoginPage() {
               <button
                 type="submit"
                 disabled={loginMutation.isPending}
-                className="w-full btn-primary justify-center py-4 text-base bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none transition-all mt-4"
+                className="w-full btn-primary justify-center py-3.5 sm:py-4 text-base min-h-[48px] bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white font-bold shadow-[0_0_20px_rgba(6,182,212,0.3)] disabled:opacity-70 disabled:shadow-none transition-all mt-2 sm:mt-4"
               >
                 {loginMutation.isPending ? (
                   <>

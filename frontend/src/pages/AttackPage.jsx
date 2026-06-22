@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
-import { BarChart3, ShieldAlert, Sparkles, TerminalSquare, AlertTriangle } from 'lucide-react'
+import { BarChart3, ChevronDown, ChevronUp, ShieldAlert, Sparkles, TerminalSquare, AlertTriangle } from 'lucide-react'
 import { AttackForm, AttackResult } from '../components/attack'
 import { isDemoModeEnabled } from '../api'
+import { useApiStatus } from '../hooks/useApiStatus'
 import { useLocalStorage } from '../hooks/useCommon'
 import { useAttackTemplatesQuery, useModels, useRunAttack } from '../hooks/queries'
-import { HeroStat, InfoCallout, PageHeader, QuickLink, StatusPill } from '../components/ui/AppFrame'
+import { HeroStat, InfoCallout, QuickLink, StatusPill } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -51,6 +53,7 @@ import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function AttackPage() {
   const [result, setResult] = useState(null)
+  const [heroOpen, setHeroOpen] = useState(false)
   
   // React Query Hooks
   const { data: modelsData } = useModels()
@@ -91,8 +94,7 @@ export default function AttackPage() {
     ]
   }, [modelsData])
 
-  // Assuming apiConnected is true if models were loaded or we rely on mutation error handling
-  const apiConnected = true
+  const { isConnected: apiConnected } = useApiStatus()
 
   const quickFacts = useMemo(
     () => [
@@ -138,22 +140,37 @@ export default function AttackPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="ATTACK LAB"
-          title="大模型攻击实验室"
-          description="执行自动化对抗攻击场景、比简各模型的安全防线强度，并在同一工作台内获取并分析测试结果。"
-          badge={<StatusPill online={apiConnected} onlineLabel="Live API 正常" offlineLabel="演示模式运行中" />}
-        />
-      </motion.div>
+      <HubPanelIntro
+        description="执行自动化对抗攻击场景，在同一工作台内配置、运行并分析测试结果。"
+        badge={<StatusPill online={apiConnected} onlineLabel="Live API 正常" offlineLabel="演示模式运行中" />}
+      />
 
       <motion.section variants={itemVariants} className="hero-panel mb-4">
-        <div className="relative z-10 grid gap-6 lg:grid-cols-[1.3fr_0.9fr]">
+        <button
+          type="button"
+          className="relative z-10 flex w-full items-center justify-between gap-3 text-left lg:hidden"
+          onClick={() => setHeroOpen((open) => !open)}
+          aria-expanded={heroOpen}
+        >
+          <div className="min-w-0">
+            <p className="text-xs font-bold uppercase tracking-widest text-cyan-500">攻击实验室</p>
+            <p className="mt-1 truncate text-sm font-bold text-[var(--text-main)]">
+              {watchAllFields.model || '未选模型'} · {watchAllFields.max_iterations || 10} 轮迭代
+            </p>
+          </div>
+          {heroOpen ? (
+            <ChevronUp className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />
+          ) : (
+            <ChevronDown className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />
+          )}
+        </button>
+
+        <div className={`relative z-10 grid gap-6 lg:grid-cols-[1.3fr_0.9fr] ${heroOpen ? 'mt-4' : 'hidden lg:grid'}`}>
           <div className="space-y-4">
             <span className="badge badge-info bg-cyan-500/10 border-cyan-500/20 text-cyan-500">
               <Sparkles className="h-3.5 w-3.5" /> 状态已自动保存至本地缓存
             </span>
-            <h2 className="font-display text-3xl font-bold tracking-tight text-[var(--text-main)] leading-snug">
+            <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-main)] leading-snug sm:text-3xl">
               将每次测试视为真实的网络攻防演练，而不仅仅是提交一次表单。
             </h2>
             <p className="max-w-2xl text-sm font-medium text-[var(--text-muted)] sm:text-base leading-relaxed">

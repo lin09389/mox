@@ -28,6 +28,9 @@ export default defineConfig({
     rollupOptions: {
       output: {
         manualChunks(id) {
+          if (id.includes('node_modules/three') || id.includes('react-force-graph-3d')) {
+            return 'three-viz'
+          }
           if (id.includes('node_modules/recharts')) {
             return 'charts'
           }

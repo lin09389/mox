@@ -43,9 +43,14 @@ import {
   PolarRadiusAxis,
   Cell,
 } from 'recharts'
-import { api, attackLoopApi, getModels } from '../api'
+import { attackLoopApi } from '../api'
 import { useAttackLoopStream } from '../hooks/useAttackLoopStream'
-import { PageHeader, StatusPill } from '../components/ui/AppFrame'
+import { useModels } from '../hooks/queries'
+import { StatusPill } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
+import ModelSelect from '../components/ui/ModelSelect'
+import RunCompleteBanner from '../components/ui/RunCompleteBanner'
+import { useTaskStore } from '../store/useTaskStore'
 
 const FALLBACK_ATTACK_TYPES = [
   { value: 'tool_chaining', name: '工具链攻击', category: 'Agent攻击', description: '组合多个工具实现危险操作' },
@@ -60,15 +65,6 @@ const FALLBACK_ATTACK_TYPES = [
   { value: 'cognitive_overload', name: '认知过载攻击', category: '新型攻击', description: '通过复杂任务混淆模型' },
   { value: 'context_overflow', name: '上下文溢出攻击', category: '新型攻击', description: '利用上下文窗口限制' },
   { value: 'role_confusion', name: '角色混淆攻击', category: '新型攻击', description: '混淆模型角色定位' },
-]
-
-const FALLBACK_MODELS = [
-  'llama3',
-  'llama3.1',
-  'qwen3:4b',
-  'gemma3:4b',
-  'mistral',
-  'phi3',
 ]
 
 const DEFAULT_PROMPTS = [
@@ -101,10 +97,9 @@ const ChartTooltip = ({ active, payload, label }) => {
 
 export default function AttackLoopPage() {
   const [attackTypes, setAttackTypes] = useState(FALLBACK_ATTACK_TYPES)
-  const [availableModels, setAvailableModels] = useState(FALLBACK_MODELS)
   const [typesLoading, setTypesLoading] = useState(true)
-  const [modelsLoading, setModelsLoading] = useState(true)
   const [typesError, setTypesError] = useState(null)
+  const { data: apiModels = [], isLoading: modelsLoading } = useModels()
 
   const [config, setConfig] = useState({
     models: ['llama3'],
@@ -126,13 +121,18 @@ export default function AttackLoopPage() {
   const [taskId, setTaskId] = useState(null)
   const [progress, setProgress] = useState(null)
   const [results, setResults] = useState(null)
+  const [reportId, setReportId] = useState(null)
   const [error, setError] = useState(null)
 
   const [showAdvanced, setShowAdvanced] = useState(false)
   const [newPrompt, setNewPrompt] = useState('')
-  const [newModel, setNewModel] = useState('')
+  const [pickerModel, setPickerModel] = useState('llama3')
   const [activeTab, setActiveTab] = useState('config')
   const [chartMetric, setChartMetric] = useState('success_rate')
+  const registerLocalTask = useTaskStore((state) => state.registerLocalTask)
+  const updateLocalTask = useTaskStore((state) => state.updateLocalTask)
+  const finishLocalTask = useTaskStore((state) => state.finishLocalTask)
+  const removeLocalTask = useTaskStore((state) => state.removeLocalTask)
 
   useEffect(() => {
     let cancelled = false
@@ -140,10 +140,30 @@ export default function AttackLoopPage() {
       try {
         const data = await attackLoopApi.getTypes()
         if (cancelled) return
-        if (data && Array.isArray(data)) setAttackTypes(data)
-        else if (data && typeof data === 'object' && !Array.isArray(data)) {
+        if (data?.attack_types && Array.isArray(data.attack_types)) {
+          setAttackTypes(data.attack_types.map((t) => ({
+            value: t.value || t.key,
+            name: t.name,
+            category: t.category,
+            description: t.description,
+          })))
+        } else if (Array.isArray(data)) {
+          setAttackTypes(data.map((t) => ({
+            value: t.value || t.key,
+            name: t.name,
+            category: t.category,
+            description: t.description,
+          })))
+        } else if (data && typeof data === 'object') {
           const flat = Object.values(data).flat()
-          if (flat.length > 0) setAttackTypes(flat)
+          if (flat.length > 0) {
+            setAttackTypes(flat.map((t) => ({
+              value: t.value || t.key,
+              name: t.name,
+              category: t.category,
+              description: t.description,
+            })))
+          }
         }
       } catch { } finally { if (!cancelled) setTypesLoading(false) }
     }
@@ -151,21 +171,7 @@ export default function AttackLoopPage() {
     return () => { cancelled = true }
   }, [])
 
-  useEffect(() => {
-    let cancelled = false
-    async function fetchModels() {
-      try {
-        const models = await getModels()
-        if (cancelled) return
-        if (Array.isArray(models) && models.length > 0) {
-          const names = models.map(m => (typeof m === 'string' ? m : m.id || m.name)).filter(Boolean)
-          if (names.length > 0) setAvailableModels(names)
-        }
-      } catch { } finally { if (!cancelled) setModelsLoading(false) }
-    }
-    fetchModels()
-    return () => { cancelled = true }
-  }, [])
+
 
   const attackTypesByCategory = useMemo(() => {
     const groups = {}
@@ -177,18 +183,48 @@ export default function AttackLoopPage() {
     return groups
   }, [attackTypes])
 
-  const handleWsProgress = useCallback((data) => setProgress(data), [])
-  const handleWsCompleted = useCallback((resultData) => {
+  const handleWsProgress = useCallback((data) => {
+    setProgress(data)
+    if (data?.report_id) setReportId(data.report_id)
+  }, [])
+  const handleWsCompleted = useCallback((payload) => {
+    const resultData = payload?.results ?? payload
+    const savedReportId = payload?.report_id ?? null
     setIsRunning(false)
     setResults(resultData)
+    if (savedReportId) setReportId(savedReportId)
     setActiveTab('results')
-    toast.success('攻击循环测试完成！')
-  }, [])
+    if (taskId) {
+      finishLocalTask(taskId, {
+        progress: 100,
+        status: 'completed',
+        report_id: savedReportId,
+      })
+    }
+    if (!savedReportId && taskId) {
+      attackLoopApi.getProgress(taskId).then((data) => {
+        if (data?.report_id) {
+          setReportId(data.report_id)
+          finishLocalTask(taskId, { progress: 100, status: 'completed', report_id: data.report_id })
+        }
+      }).catch(() => {})
+    }
+    toast.success(savedReportId ? '攻击循环完成，报告已入库。' : '攻击循环测试完成！')
+  }, [taskId, finishLocalTask])
   const handleWsFailed = useCallback((errMsg) => {
     setIsRunning(false)
     setError(errMsg)
+    if (taskId) removeLocalTask(taskId)
     toast.error('攻击循环测试失败')
-  }, [])
+  }, [taskId, removeLocalTask])
+
+  useEffect(() => {
+    if (!taskId || !progress) return
+    const pct = progress.total
+      ? Math.round((Number(progress.completed || 0) / Number(progress.total)) * 100)
+      : Number(progress.progress ?? 0)
+    updateLocalTask(taskId, { progress: Number.isFinite(pct) ? pct : 0 })
+  }, [taskId, progress, updateLocalTask])
 
   const { connectionMode } = useAttackLoopStream(taskId, {
     enabled: isRunning && !isPaused,
@@ -199,23 +235,28 @@ export default function AttackLoopPage() {
 
   const handleStart = useCallback(async () => {
     try {
-      setError(null); setResults(null); setProgress(null)
-      const response = await api.post('/api/v1/attack-loop/start', config)
-      setTaskId(response.data.task_id)
+      setError(null); setResults(null); setProgress(null); setReportId(null)
+      const data = await attackLoopApi.start(config)
+      setTaskId(data.task_id)
       setIsRunning(true)
       setIsPaused(false)
       setActiveTab('progress')
+      registerLocalTask({
+        id: data.task_id,
+        name: `攻击循环 (${data.task_id})`,
+        source: 'attack_loop',
+      })
       toast.success('攻击循环测试已启动')
     } catch (err) {
       setError(err.message)
       toast.error('启动失败: ' + err.message)
     }
-  }, [config])
+  }, [config, registerLocalTask])
 
   const handlePause = useCallback(async () => {
     if (!taskId) return
     try {
-      await api.post(`/api/v1/attack-loop/pause/${taskId}`)
+      await attackLoopApi.pause(taskId)
       setIsPaused(true); toast.success('测试已暂停')
     } catch (err) { toast.error('暂停失败: ' + err.message) }
   }, [taskId])
@@ -223,7 +264,7 @@ export default function AttackLoopPage() {
   const handleResume = useCallback(async () => {
     if (!taskId) return
     try {
-      await api.post(`/api/v1/attack-loop/resume/${taskId}`)
+      await attackLoopApi.resume(taskId)
       setIsPaused(false); toast.success('测试已恢复')
     } catch (err) { toast.error('恢复失败: ' + err.message) }
   }, [taskId])
@@ -231,16 +272,16 @@ export default function AttackLoopPage() {
   const handleStop = useCallback(async () => {
     if (!taskId) return
     try {
-      await api.post(`/api/v1/attack-loop/stop/${taskId}`)
-      setIsRunning(false); setIsPaused(false); toast.success('测试已停止')
+      await attackLoopApi.stop(taskId)
+      setIsRunning(false); setIsPaused(false); removeLocalTask(taskId); toast.success('测试已停止')
     } catch (err) { toast.error('停止失败: ' + err.message) }
-  }, [taskId])
+  }, [taskId, removeLocalTask])
 
   const handleDownload = useCallback(async (format) => {
     if (!taskId) return
     try {
-      const response = await api.get(`/api/v1/attack-loop/download/${taskId}?format=${format}`, { responseType: 'blob' })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const blob = await attackLoopApi.download(taskId, format)
+      const url = window.URL.createObjectURL(new Blob([blob]))
       const link = document.createElement('a')
       link.href = url
       link.setAttribute('download', `attack_loop_${taskId}.${format}`)
@@ -252,8 +293,17 @@ export default function AttackLoopPage() {
     } catch (err) { toast.error('下载失败: ' + err.message) }
   }, [taskId])
 
-  const addModel = () => { if (newModel && !config.models.includes(newModel)) { setConfig(prev => ({ ...prev, models: [...prev.models, newModel] })); setNewModel('') } }
+  const addPickerModel = () => {
+    const model = pickerModel.trim()
+    if (model && !config.models.includes(model)) {
+      setConfig((prev) => ({ ...prev, models: [...prev.models, model] }))
+    }
+  }
   const removeModel = (model) => { setConfig(prev => ({ ...prev, models: prev.models.filter(m => m !== model) })) }
+  const quickAddModels = useMemo(() => {
+    const merged = [...new Set([...apiModels, pickerModel, 'llama3', 'qwen3:4b', 'gemma3:4b'].filter(Boolean))]
+    return merged.filter((m) => !config.models.includes(m)).sort((a, b) => a.localeCompare(b))
+  }, [apiModels, pickerModel, config.models])
   const toggleAttackType = (type) => { setConfig(prev => ({ ...prev, attack_types: prev.attack_types.includes(type) ? prev.attack_types.filter(t => t !== type) : [...prev.attack_types, type] })) }
   const addPrompt = () => { if (newPrompt && !config.prompts.includes(newPrompt)) { setConfig(prev => ({ ...prev, prompts: [...prev.prompts, newPrompt] })); setNewPrompt('') } }
   const removePrompt = (prompt) => { setConfig(prev => ({ ...prev, prompts: prev.prompts.filter(p => p !== prompt) })) }
@@ -275,13 +325,10 @@ export default function AttackLoopPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants} className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
-        <PageHeader
-          eyebrow="AUTOMATED PENTEST"
-          title="自动化攻击编排"
-          description="配置并发测试任务，组合模型、攻击类型与诱导提示词，实现无人值守的安全漏洞挖掘。"
-        />
-        <div className="flex items-center gap-3 self-start md:self-end">
+      <HubPanelIntro
+        description="配置并发测试任务，组合模型、攻击类型与诱导提示词，实现无人值守的安全漏洞挖掘。"
+        action={(
+        <div className="flex items-center gap-3">
           {isRunning && (
             <span className="flex items-center gap-2 rounded-full border border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] px-3 py-1.5 text-xs font-bold text-[var(--text-main)] shadow-sm backdrop-blur-md">
               {connectionMode === 'ws' ? <><Wifi className="h-3.5 w-3.5 text-emerald-500" /> 实时链路</> : connectionMode === 'polling' ? <><WifiOff className="h-3.5 w-3.5 text-amber-500" /> 轮询降级</> : <><Loader2 className="h-3.5 w-3.5 animate-spin text-cyan-500" /> 握手中</>}
@@ -308,7 +355,8 @@ export default function AttackLoopPage() {
             </button>
           )}
         </div>
-      </motion.div>
+        )}
+      />
 
       <motion.div variants={itemVariants} className="flex flex-wrap w-fit gap-2 p-1.5 rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass-strong)] shadow-sm backdrop-blur-md">
         {[
@@ -337,13 +385,29 @@ export default function AttackLoopPage() {
                     </span>
                   ))}
                 </div>
-                <div className="flex gap-3">
-                  <input type="text" value={newModel} onChange={e => setNewModel(e.target.value)} placeholder="添加自定义模型名" onKeyDown={e => e.key === 'Enter' && addModel()} className="input-field max-w-sm" />
-                  <button onClick={addModel} className="btn-secondary"><Plus className="h-4 w-4" /> 添加</button>
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-end max-w-lg">
+                  <div className="flex-1">
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-muted)]">选择模型</label>
+                    <ModelSelect value={pickerModel} onChange={setPickerModel} />
+                  </div>
+                  <button type="button" onClick={addPickerModel} disabled={!pickerModel.trim()} className="btn-secondary shrink-0 disabled:opacity-50">
+                    <Plus className="h-4 w-4" /> 添加到池
+                  </button>
                 </div>
                 <div className="flex flex-wrap gap-2 pt-2">
-                  {modelsLoading ? <span className="text-xs font-medium text-[var(--text-muted)] flex items-center gap-1.5"><Loader2 className="h-3.5 w-3.5 animate-spin" /> 检测本地模型...</span> : availableModels.filter(m => !config.models.includes(m)).map(model => (
-                    <button key={model} onClick={() => setConfig(prev => ({ ...prev, models: [...prev.models, model] }))} className="badge badge-neutral hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-colors">+ {model}</button>
+                  {modelsLoading ? (
+                    <span className="text-xs font-medium text-[var(--text-muted)] flex items-center gap-1.5">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> 检测本地模型…
+                    </span>
+                  ) : quickAddModels.map((model) => (
+                    <button
+                      key={model}
+                      type="button"
+                      onClick={() => setConfig((prev) => ({ ...prev, models: [...prev.models, model] }))}
+                      className="badge badge-neutral hover:border-cyan-500/50 hover:bg-cyan-500/5 transition-colors"
+                    >
+                      + {model}
+                    </button>
                   ))}
                 </div>
               </div>
@@ -568,6 +632,7 @@ export default function AttackLoopPage() {
           <motion.div key="results" initial={{ opacity: 0, y: 15 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -15 }} className="space-y-6">
             {results ? (
               <>
+                <RunCompleteBanner reportId={reportId} title="攻击循环报告已保存" />
                 <div className="card p-6">
                   <h3 className="mb-5 flex items-center gap-3 text-lg font-bold font-display text-[var(--text-main)]">
                     <div className="p-1.5 bg-cyan-500/10 rounded-lg"><BarChart3 className="h-5 w-5 text-cyan-500" /></div> 全局安全评级
