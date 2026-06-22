@@ -36,8 +36,8 @@ class AttackTypeMetrics:
     avg_iterations: float = 0.0
 
 
-class AttackEvaluator:
-    """攻击效果评估器"""
+class BasicAttackEvaluator:
+    """基础攻击效果评估器 — 聚合 AttackOutcome 指标与报告"""
 
     def __init__(self):
         self.results: List[AttackOutcome] = []
@@ -277,7 +277,7 @@ class BenchmarkRunner:
     """基准测试运行器"""
 
     def __init__(self):
-        self.attack_evaluator = AttackEvaluator()
+        self.attack_evaluator = BasicAttackEvaluator()
         self.defense_evaluator = DefenseEvaluator()
         self.robustness_evaluator = RobustnessEvaluator()
 
@@ -316,3 +316,7 @@ class BenchmarkRunner:
             "robustness_score": self.robustness_evaluator.get_robustness_score(),
             "timestamp": datetime.now().isoformat(),
         }
+
+
+# Deprecated alias (use BasicAttackEvaluator; remove in v0.7.0)
+AttackEvaluator = BasicAttackEvaluator

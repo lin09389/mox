@@ -18,7 +18,6 @@ from mox.core import BaseLLM, Message
 from mox.attacks import (
     PromptInjectionAttack,
     JailbreakAttack,
-    MultiTurnAttack,
 )
 
 

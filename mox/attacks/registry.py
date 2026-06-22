@@ -205,6 +205,9 @@ def _create_default_registry() -> AttackRegistry:
     # 注册基础攻击
     _register_basic_attacks(registry)
 
+    # 注册 LLM 驱动攻击
+    _register_llm_driven_attacks(registry)
+
     # 注册新型攻击
     _register_novel_attacks(registry)
 
@@ -273,6 +276,50 @@ def _register_basic_attacks(registry: AttackRegistry):
         category=AttackCategory.BASIC,
         attack_class=AutoDANAttack,
         description="自动DAN攻击",
+    )
+
+
+def _register_llm_driven_attacks(registry: AttackRegistry):
+    """注册 LLM 驱动的自动红队攻击"""
+    from .llm_driven import TAPAttack, CrescendoAttack, TAPConfig
+
+    registry.register(
+        name="tap",
+        factory=lambda llm, iter: TAPAttack(
+            target_llm=llm, config=TAPConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=TAPAttack,
+        config_class=TAPConfig,
+        description="Tree of Attacks 自动越狱",
+        requires_llm=True,
+        aliases=["tree_of_attacks"],
+    )
+
+    registry.register(
+        name="pair",
+        factory=lambda llm, iter: TAPAttack(
+            target_llm=llm,
+            config=TAPConfig(max_iterations=iter, use_refinement=True),
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=TAPAttack,
+        config_class=TAPConfig,
+        description="PAIR 提示自动迭代精炼攻击",
+        requires_llm=True,
+        aliases=["prompt_automatic_iterative_refinement"],
+    )
+
+    registry.register(
+        name="crescendo",
+        factory=lambda llm, iter: CrescendoAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=CrescendoAttack,
+        description="Crescendo 渐进式多轮越狱",
+        requires_llm=True,
+        aliases=["crescendo_jailbreak"],
     )
 
 

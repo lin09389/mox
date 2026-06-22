@@ -72,6 +72,16 @@ from .agent_attacks import (
     AuthorityEscalationAttack,
     ChainOfThoughtInjectionAttack,
     TOOL_TEMPLATES,
+    AdvancedAgentAttackType,
+    ToolDefinition,
+    DEFAULT_TOOLS,
+    ToolChainingAttack,
+    IndirectToolInjection,
+    PrivilegeEscalationAttack,
+    ToolConfusionAttack,
+    DataExfiltrationAttack,
+    MultiAgentAttack,
+    CompositeAgentAttack,
 )
 from .code_security import (
     CodeSecurityAttacker,
@@ -101,6 +111,9 @@ from .advanced_attacks import (
     KnowledgeExtractionAttack,
     KnowledgeDistillationAttack,  # 向后兼容别名
     EvasionAttack,
+    PAIRAttack,
+    DeepInceptionAttack,
+    CrescendoAttack as AdvancedCrescendoAttack,
 )
 
 # 知识提取攻击 - 使用明确的别名避免冲突
@@ -127,11 +140,6 @@ from .meta_adversarial import (
     MetaAdversarialAttack,
     RecursiveMetaAttack,
 )
-from .advanced_attacks_v2 import (
-    PAIRAttack,
-    DeepInceptionAttack,
-    CrescendoAttack as AdvancedCrescendoAttack,
-)
 from .novel_attacks import (
     NovelAttackConfig,
     TokenLevelAttack,
@@ -140,6 +148,23 @@ from .novel_attacks import (
     DistractAndAttack,
     ControlCharInjectionAttack,
     CascadingAttack,
+    ManyShotJailbreakAttack,
+    ManyShotJailbreak,
+    SkeletonKeyAttack,
+    DeceptiveAlignmentAttack,
+    CognitiveOverloadAttack,
+    ContextOverflowAttack,
+    RoleConfusionAttack,
+    CompositeNovelAttack,
+    IndirectPromptInjection,
+    AdaptiveAttackEnsemble,
+    ManyShotExample,
+    MANY_SHOT_EXAMPLES,
+    HARMFUL_MANY_SHOT_EXAMPLES,
+    SKELETON_KEY_TEMPLATES,
+    DECEPTIVE_ALIGNMENT_TEMPLATES,
+    COGNITIVE_OVERLOAD_TEMPLATES,
+    ROLE_CONFUSION_TEMPLATES,
 )
 
 # 新增：统一攻击框架
@@ -161,47 +186,6 @@ from mox.attacks.chain import (
     LLMTargetModel,
     RAGTargetModel,
     MultimodalTargetModel,
-)
-
-# 新增：最新攻击技术 (2024-2025)
-from .novel_attacks_v2 import (
-    ManyShotJailbreak,
-    SkeletonKeyAttack as SkeletonKeyAttackV2,
-    IndirectPromptInjection,
-    AdaptiveAttackEnsemble,
-    ManyShotExample as ManyShotExampleV2,
-)
-
-# 最新攻击技术 (2025)
-from .novel_attacks_v3 import (
-    ManyShotJailbreakAttack,
-    SkeletonKeyAttack,
-    DeceptiveAlignmentAttack,
-    CognitiveOverloadAttack,
-    ContextOverflowAttack,
-    RoleConfusionAttack,
-    CompositeNovelAttack,
-    ManyShotExample,
-    MANY_SHOT_EXAMPLES,
-    HARMFUL_MANY_SHOT_EXAMPLES,
-    SKELETON_KEY_TEMPLATES,
-    DECEPTIVE_ALIGNMENT_TEMPLATES,
-    COGNITIVE_OVERLOAD_TEMPLATES,
-    ROLE_CONFUSION_TEMPLATES,
-)
-
-# 高级 Agent 攻击 (2025)
-from .agent_attacks_v2 import (
-    AdvancedAgentAttackType,
-    ToolDefinition,
-    DEFAULT_TOOLS,
-    ToolChainingAttack,
-    IndirectToolInjection,
-    PrivilegeEscalationAttack as PrivilegeEscalationAttackV2,
-    ToolConfusionAttack,
-    DataExfiltrationAttack,
-    MultiAgentAttack,
-    CompositeAgentAttack,
 )
 
 # 统一攻击注册表
@@ -354,12 +338,10 @@ __all__ = [
     "LLMTargetModel",
     "RAGTargetModel",
     "MultimodalTargetModel",
-    # 最新攻击技术 (2024-2025)
+    # 最新攻击技术
     "ManyShotJailbreak",
-    "SkeletonKeyAttackV2",
     "IndirectPromptInjection",
     "AdaptiveAttackEnsemble",
-    "ManyShotExampleV2",
     # 最新攻击技术 (2025)
     "ManyShotJailbreakAttack",
     "SkeletonKeyAttack",
@@ -381,7 +363,7 @@ __all__ = [
     "DEFAULT_TOOLS",
     "ToolChainingAttack",
     "IndirectToolInjection",
-    "PrivilegeEscalationAttackV2",
+    "PrivilegeEscalationAttack",
     "ToolConfusionAttack",
     "DataExfiltrationAttack",
     "MultiAgentAttack",

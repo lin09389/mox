@@ -1,4 +1,17 @@
-"""Gradio Web 界面"""
+"""Gradio Web 界面
+
+.. deprecated:: 0.4.0
+    Gradio UI 已弃用，请使用 React 前端 (``frontend/``)。
+    运行方式: ``cd frontend && npm run dev`` 或 ``docker compose up frontend``。
+"""
+
+import warnings
+
+warnings.warn(
+    "mox.ui (Gradio) is deprecated; use the React frontend at frontend/ instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import gradio as gr
 from typing import Dict, Any
@@ -17,7 +30,7 @@ from mox.attacks import (
     AutoDANAttack,
     AttackConfig,
 )
-from mox.attacks.advanced_attacks_v2 import (
+from mox.attacks.advanced_attacks import (
     PAIRAttack,
     DeepInceptionAttack,
 )

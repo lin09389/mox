@@ -20,7 +20,7 @@ import sys
 from typing import Any
 
 from mox.core import LLMFactory, AttackPayload, AttackType
-from mox.attacks.agent_attacks_v2 import (
+from mox.attacks.agent_attacks import (
     ToolChainingAttack,
     IndirectToolInjection,
     PrivilegeEscalationAttack,
@@ -28,7 +28,7 @@ from mox.attacks.agent_attacks_v2 import (
     DataExfiltrationAttack,
     MultiAgentAttack,
 )
-from mox.attacks.novel_attacks_v3 import (
+from mox.attacks.novel_attacks import (
     ManyShotJailbreakAttack,
     SkeletonKeyAttack,
     DeceptiveAlignmentAttack,

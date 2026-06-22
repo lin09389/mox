@@ -342,6 +342,19 @@ User question: {target}"""
         return 1.0 if any(p in response.lower() for p in patterns) else 0.0
 
 
+from mox.attacks.agent_attacks_advanced import (
+    AdvancedAgentAttackType,
+    ToolDefinition,
+    DEFAULT_TOOLS,
+    ToolChainingAttack,
+    IndirectToolInjection,
+    PrivilegeEscalationAttack,
+    ToolConfusionAttack,
+    DataExfiltrationAttack,
+    MultiAgentAttack,
+    CompositeAgentAttack,
+)
+
 __all__ = [
     "AgentAttackType",
     "AgentAttackConfig",
@@ -351,4 +364,14 @@ __all__ = [
     "AuthorityEscalationAttack",
     "ChainOfThoughtInjectionAttack",
     "TOOL_TEMPLATES",
+    "AdvancedAgentAttackType",
+    "ToolDefinition",
+    "DEFAULT_TOOLS",
+    "ToolChainingAttack",
+    "IndirectToolInjection",
+    "PrivilegeEscalationAttack",
+    "ToolConfusionAttack",
+    "DataExfiltrationAttack",
+    "MultiAgentAttack",
+    "CompositeAgentAttack",
 ]
