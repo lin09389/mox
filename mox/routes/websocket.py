@@ -145,7 +145,14 @@ async def websocket_endpoint(websocket: WebSocket):
 @router.websocket("/ws/attack/{task_id}")
 async def websocket_attack(websocket: WebSocket, task_id: str):
     """WebSocket攻击任务跟踪"""
-    await manager.connect(websocket)
+    connected = await manager.connect(websocket)
+    if not connected:
+        return
+
+    if task_id not in manager.task_listeners:
+        manager.task_listeners[task_id] = set()
+    manager.task_listeners[task_id].add(websocket)
+
     try:
         await manager.send_personal_message(
             {"type": "connected", "task_id": task_id, "status": "listening"}, websocket
