@@ -4,6 +4,7 @@ from pydantic import BaseModel, Field
 
 from mox.core import BaseLLM, LLMFactory, AttackType
 from mox.core.auth import get_optional_active_user, User
+from mox.core.history_store import persist_attack_outcome, persist_defense_scan
 
 router = APIRouter(prefix="/api/v2", tags=["API v2"])
 
@@ -170,7 +171,7 @@ async def run_agent_attack(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.attacks.agent_attacks_v2 import (
+        from mox.attacks.agent_attacks import (
             ToolChainingAttack,
             IndirectToolInjection,
             PrivilegeEscalationAttack,
@@ -213,6 +214,12 @@ async def run_agent_attack(
 
         #
         outcome = await attack.generate_attack(payload)
+        record_id = await persist_attack_outcome(
+            f"agent_{request.attack_type}",
+            request.model_name,
+            outcome,
+            source="api_v2_agent",
+        )
 
         return {
             "result": outcome.result.value
@@ -225,6 +232,7 @@ async def run_agent_attack(
             "metadata": outcome.metadata,
             "model_used": request.model_name,
             "ollama_mode": request.use_ollama,
+            "record_id": record_id,
         }
 
     except Exception as e:
@@ -242,10 +250,9 @@ async def run_multimodal_attack(
     try:
         from mox.attacks.multimodal_attacks import (
             ImageInjectionAttack,
-            AudioInjectionAttack,
-            CrossModalAttack,
-            FigStepAttack,
-            MultimodalJailbreakAttack,
+            VisualPromptAttack,
+            TextImageHybridAttack,
+            MultimodalAttackEnsemble,
         )
         from mox.attacks.base import AttackConfig
         from mox.core import AttackPayload
@@ -261,10 +268,14 @@ async def run_multimodal_attack(
         #
         attack_map = {
             "image_injection": ImageInjectionAttack,
-            "audio_injection": AudioInjectionAttack,
-            "cross_modal": CrossModalAttack,
-            "figstep": FigStepAttack,
-            "multimodal_jailbreak": MultimodalJailbreakAttack,
+            "visual_prompt": VisualPromptAttack,
+            "text_image_hybrid": TextImageHybridAttack,
+            "multimodal_ensemble": MultimodalAttackEnsemble,
+            # legacy aliases
+            "audio_injection": ImageInjectionAttack,
+            "cross_modal": TextImageHybridAttack,
+            "figstep": VisualPromptAttack,
+            "multimodal_jailbreak": VisualPromptAttack,
         }
 
         attack_class = attack_map.get(request.attack_type, ImageInjectionAttack)
@@ -279,6 +290,12 @@ async def run_multimodal_attack(
 
         #
         outcome = await attack.generate_attack(payload)
+        record_id = await persist_attack_outcome(
+            f"multimodal_{request.attack_type}",
+            request.model_name,
+            outcome,
+            source="api_v2_multimodal",
+        )
 
         return {
             "result": outcome.result.value
@@ -290,6 +307,7 @@ async def run_multimodal_attack(
             "detected_patterns": outcome.metadata.get("detected_patterns", []),
             "model_used": request.model_name,
             "ollama_mode": request.use_ollama,
+            "record_id": record_id,
         }
 
     except Exception as e:
@@ -305,7 +323,7 @@ async def run_novel_attack(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.attacks.novel_attacks_v3 import (
+        from mox.attacks.novel_attacks import (
             ManyShotJailbreakAttack,
             SkeletonKeyAttack,
             DeceptiveAlignmentAttack,
@@ -343,6 +361,12 @@ async def run_novel_attack(
         )
 
         outcome = await attack.generate_attack(payload)
+        record_id = await persist_attack_outcome(
+            request.attack_type,
+            request.model_name,
+            outcome,
+            source="api_v2_novel",
+        )
 
         return {
             "result": outcome.result.value
@@ -354,6 +378,7 @@ async def run_novel_attack(
             "iterations": outcome.iterations,
             "model_used": request.model_name,
             "ollama_mode": request.use_ollama,
+            "record_id": record_id,
         }
 
     except Exception as e:
@@ -373,6 +398,14 @@ async def run_semantic_firewall(
 
         firewall = SemanticFirewall()
         result = await firewall.analyze(request.text, request.context)
+        record_id = await persist_defense_scan(
+            "semantic_firewall",
+            request.text,
+            is_malicious=result.is_malicious,
+            confidence=result.confidence,
+            detected_patterns=result.detected_patterns,
+            source="api_v2_semantic_firewall",
+        )
 
         return {
             "is_malicious": result.is_malicious,
@@ -383,6 +416,7 @@ async def run_semantic_firewall(
             "intent": result.metadata.get("intent", "unknown"),
             "risk_score": result.metadata.get("risk_score", 0.0),
             "detected_patterns": result.detected_patterns,
+            "record_id": record_id,
         }
 
     except Exception as e:
@@ -398,16 +432,33 @@ async def run_output_validator(
         from mox.defense.output_validator import OutputValidator
 
         validator = OutputValidator()
-        result = await validator.validate(request.text)
+        validation = await validator.validate(request.text)
+        defense = validation.to_defense_result()
+        record_id = await persist_defense_scan(
+            "output_validator",
+            request.text,
+            output_text=validation.sanitized_output,
+            is_malicious=defense.is_malicious,
+            confidence=defense.confidence,
+            detected_patterns=defense.detected_patterns,
+            source="api_v2_output_validator",
+        )
 
         return {
-            "is_valid": result.is_valid,
-            "has_pii": result.metadata.get("has_pii", False),
-            "has_sensitive": result.metadata.get("has_sensitive", False),
-            "pii_types": result.metadata.get("pii_types", []),
-            "sensitive_types": result.metadata.get("sensitive_types", []),
-            "sanitized_text": result.sanitized_output,
-            "warnings": result.warnings,
+            "is_valid": validation.is_valid,
+            "is_malicious": defense.is_malicious,
+            "confidence": defense.confidence,
+            "detected_patterns": defense.detected_patterns,
+            "has_pii": validation.metadata.get("has_pii", False),
+            "has_sensitive": validation.metadata.get("has_sensitive", False),
+            "pii_types": validation.metadata.get("pii_types", []),
+            "sensitive_types": validation.metadata.get("sensitive_types", []),
+            "sanitized_text": validation.sanitized_output,
+            "sanitized_input": defense.sanitized_input,
+            "warnings": validation.warnings,
+            "risk_score": validation.risk_score,
+            "recommendations": validation.recommendations,
+            "record_id": record_id,
         }
 
     except Exception as e:
@@ -514,7 +565,7 @@ async def get_benchmark_cases(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.evaluation.benchmarks_v2 import (
+        from mox.evaluation.benchmarks import (
             HARMBENCH_V2_CASES,
             AGENTBENCH_CASES,
             MM_SAFETY_BENCH_CASES,

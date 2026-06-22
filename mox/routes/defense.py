@@ -1,11 +1,14 @@
 """防御相关路由"""
 
+import time
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 
 from mox.defense import InputFilter, OutputFilter
-from mox.core.database import Database
+from mox.core.database import get_database
+from mox.core.history_store import persist_defense_scan
+from mox.core.prometheus_metrics import record_defense
 from mox.core.auth import get_current_active_user, User
 
 router = APIRouter(prefix="/defense", tags=["Defense"])
@@ -25,20 +28,6 @@ class DefenseRequest(BaseModel):
 
 
 # ============ 依赖 ============
-
-_db: Optional[Database] = None
-
-
-def get_db() -> Database:
-    """获取数据库实例（懒加载）"""
-    global _db
-    if _db is None:
-        _db = Database()
-    return _db
-
-
-# ============ 辅助函数 ============
-
 
 def _analyze_detection_patterns(detected_patterns: List[str]) -> Dict[str, Any]:
     """分析检测到的模式"""
@@ -148,6 +137,7 @@ async def scan_input(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """扫描输入/输出内容"""
+    start = time.perf_counter()
     try:
         if request.scan_type == "input":
             input_filter = InputFilter()
@@ -178,6 +168,22 @@ async def scan_input(
 
         pattern_analysis = _analyze_detection_patterns(result.detected_patterns)
 
+        record_defense(
+            defense_type=defense_type,
+            scan_type=request.scan_type,
+            detected=result.is_malicious,
+            duration_seconds=time.perf_counter() - start,
+        )
+        record_id = await persist_defense_scan(
+            defense_type,
+            request.text,
+            output_text=result.sanitized_input if request.scan_type == "input" else request.text,
+            is_malicious=result.is_malicious,
+            confidence=result.confidence,
+            detected_patterns=result.detected_patterns,
+            source="scan",
+        )
+
         return {
             "success": True,
             "scan_info": {
@@ -204,9 +210,16 @@ async def scan_input(
                 "word_count": len(request.text.split()),
                 "pattern_count": len(result.detected_patterns),
             },
+            "record_id": record_id,
         }
 
     except Exception:
+        record_defense(
+            defense_type="unknown",
+            scan_type=request.scan_type,
+            detected=False,
+            duration_seconds=time.perf_counter() - start,
+        )
         raise HTTPException(status_code=500, detail="Defense scan failed")
 
 
@@ -225,11 +238,22 @@ async def sanitize_input(
         else:
             sanitized = request.text
 
+        record_id = await persist_defense_scan(
+            "input_filter",
+            request.text,
+            output_text=sanitized,
+            is_malicious=result.is_malicious,
+            confidence=result.confidence,
+            detected_patterns=result.detected_patterns,
+            source="sanitize",
+        )
+
         return {
             "original": request.text,
             "sanitized": sanitized,
             "was_malicious": result.is_malicious,
             "detected_patterns": result.detected_patterns,
+            "record_id": record_id,
         }
 
     except Exception:
@@ -243,16 +267,21 @@ async def get_defense_history(
 ) -> Dict[str, Any]:
     """获取防御历史"""
     try:
-        records = await get_db().get_defense_records(limit=limit)
+        records = await get_database().get_defense_records(limit=limit)
         return {
             "records": [
                 {
                     "id": r.id,
                     "defense_type": r.defense_type,
                     "input_text": r.input_text,
+                    "input": r.input_text,
+                    "text": r.input_text,
                     "output_text": r.output_text,
                     "is_malicious": r.is_malicious,
                     "confidence": r.confidence,
+                    "model_name": r.model_name,
+                    "record_meta": r.record_meta or {},
+                    "report_id": (r.record_meta or {}).get("report_id"),
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                 }
                 for r in records
@@ -273,11 +302,20 @@ async def detect_injection(
 
         detector = PromptInjectionDetector()
         result = await detector.detect(request.text)
+        record_id = await persist_defense_scan(
+            "injection_detector",
+            request.text,
+            is_malicious=result.is_malicious,
+            confidence=result.confidence,
+            detected_patterns=result.detected_patterns,
+            source="injection_detect",
+        )
 
         return {
             "is_malicious": result.is_malicious,
             "confidence": result.confidence,
             "detected_patterns": result.detected_patterns,
+            "record_id": record_id,
         }
     except Exception:
         return {"is_malicious": False, "confidence": 0, "error": "Injection detection failed"}

@@ -156,7 +156,7 @@ class AuditLogger:
         self._db = None
 
     def _get_db(self):
-        from mox.core.database_ext import get_extended_database
+        from mox.core.database import get_extended_database
 
         if self._db is None:
             self._db = get_extended_database()

@@ -8,7 +8,7 @@ from enum import Enum
 import croniter
 
 from mox.core.logging import get_logger
-from mox.core.database_ext import get_extended_database
+from mox.core.database import get_extended_database
 
 logger = get_logger("scheduler")
 

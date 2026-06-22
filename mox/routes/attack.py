@@ -1,5 +1,6 @@
 """攻击相关路由"""
 
+import time
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 
@@ -12,8 +13,9 @@ from mox.core import (
     AttackPayload,
     settings,
 )
-from mox.core.database import Database
+from mox.core.database import get_database
 from mox.core.auth import get_current_active_user, User
+from mox.core.history_store import persist_advanced_attack_batch, persist_attack_outcome
 from mox.attacks import (
     PromptInjectionAttack,
     JailbreakAttack,
@@ -21,6 +23,7 @@ from mox.attacks import (
     AutoDANAttack,
     AttackConfig,
 )
+from mox.core.prometheus_metrics import record_attack
 
 router = APIRouter(prefix="/attack", tags=["Attack"])
 
@@ -82,20 +85,6 @@ def get_llm(model: str) -> BaseLLM:
         else:
             _llm_cache[model] = LLMFactory.create_from_model_name(model)
     return _llm_cache[model]
-
-
-_db: Optional[Database] = None
-
-
-def get_db() -> Database:
-    """获取数据库实例（懒加载）"""
-    global _db
-    if _db is None:
-        _db = Database()
-    return _db
-
-
-# ============ 辅助函数 ============
 
 
 def _analyze_attack_result(
@@ -294,6 +283,7 @@ async def run_attack(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """执行攻击测试"""
+    start = time.perf_counter()
     try:
         llm = get_llm(request.model)
 
@@ -423,6 +413,19 @@ async def run_attack(
             outcome.result.value, outcome.success_score, outcome.model_response
         )
 
+        record_attack(
+            attack_type=request.attack_type,
+            model=request.model,
+            result=outcome.result.value,
+            duration_seconds=time.perf_counter() - start,
+        )
+        record_id = await persist_attack_outcome(
+            request.attack_type,
+            request.model,
+            outcome,
+            source="run_attack",
+        )
+
         return {
             "success": True,
             "attack_info": {
@@ -446,9 +449,16 @@ async def run_attack(
             "recommendations": _generate_attack_recommendations(
                 request.attack_type, outcome.result.value, outcome.success_score
             ),
+            "record_id": record_id,
         }
 
     except Exception:
+        record_attack(
+            attack_type=request.attack_type,
+            model=request.model,
+            result="error",
+            duration_seconds=time.perf_counter() - start,
+        )
         raise HTTPException(status_code=500, detail="Attack execution failed")
 
 
@@ -488,6 +498,12 @@ async def run_batch_attacks(
             )
 
             outcome = await attack.generate_attack(payload)
+            record_id = await persist_attack_outcome(
+                attack_req.attack_type,
+                attack_req.model,
+                outcome,
+                source="batch_attack",
+            )
 
             return {
                 "id": f"{task_id}_{index}",
@@ -500,6 +516,7 @@ async def run_batch_attacks(
                 if len(outcome.model_response) > 500
                 else outcome.model_response,
                 "timestamp": outcome.timestamp.isoformat(),
+                "record_id": record_id,
             }
         except Exception as e:
             return {
@@ -589,6 +606,12 @@ async def stream_attack(
             result_analysis = _analyze_attack_result(
                 outcome.result.value, outcome.success_score, outcome.model_response
             )
+            record_id = await persist_attack_outcome(
+                request.attack_type,
+                request.model,
+                outcome,
+                source="stream_attack",
+            )
 
             result_data = {
                 "event": "complete",
@@ -600,6 +623,7 @@ async def stream_attack(
                 else outcome.model_response,
                 "analysis": result_analysis,
                 "timestamp": outcome.timestamp.isoformat(),
+                "record_id": record_id,
             }
 
             yield f"data: {json.dumps(result_data)}\n\n"
@@ -647,8 +671,15 @@ async def run_advanced_attack(
             results = await executor.attack_all(request.target, request.max_templates)
 
         report = executor.generate_report(results)
+        record_id = await persist_advanced_attack_batch(
+            "advanced_attack",
+            request.model,
+            request.target,
+            results,
+            source="advanced_attack",
+        )
 
-        return {"success": True, "report": report}
+        return {"success": True, "report": report, "record_id": record_id}
     except Exception:
         return {"success": False, "error": "Advanced attack execution failed"}
 
@@ -665,8 +696,15 @@ async def test_token_smuggling(
         llm = get_llm(request.model)
         executor = TokenSmugglingExecutor(llm)
         results = await executor.test_all_encodings(request.target)
+        record_id = await persist_advanced_attack_batch(
+            "token_smuggling",
+            request.model,
+            request.target,
+            results,
+            source="token_smuggling",
+        )
 
-        return {"success": True, "results": results}
+        return {"success": True, "results": results, "record_id": record_id}
     except Exception:
         return {"success": False, "error": "Token smuggling test failed"}
 
@@ -678,7 +716,7 @@ async def get_attack_history(
 ) -> Dict[str, Any]:
     """获取攻击历史"""
     try:
-        records = await get_db().get_attack_records(limit=limit)
+        records = await get_database().get_attack_records(limit=limit)
         return {
             "records": [
                 {
@@ -686,11 +724,14 @@ async def get_attack_history(
                     "attack_type": r.attack_type,
                     "original_prompt": r.original_prompt,
                     "adversarial_prompt": r.adversarial_prompt,
+                    "prompt": r.adversarial_prompt or r.original_prompt,
                     "model_response": r.model_response,
                     "result": r.result,
                     "success_score": r.success_score,
                     "iterations": r.iterations,
                     "model_name": r.model_name,
+                    "record_meta": r.record_meta or {},
+                    "report_id": (r.record_meta or {}).get("report_id"),
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                 }
                 for r in records

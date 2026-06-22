@@ -23,6 +23,12 @@ class LoginRequest(BaseModel):
     password: str
 
 
+class RegisterRequest(BaseModel):
+    username: str
+    email: str
+    password: str
+
+
 class LoginResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
@@ -35,6 +41,46 @@ class TokenRefreshRequest(BaseModel):
 
 
 # ============ 路由端点 ============
+
+
+@router.post("/register")
+async def register(request: RegisterRequest):
+    """注册新用户（持久化至统一数据库，重启后仍可用）。"""
+    from mox.core.database import get_extended_database
+    from mox.core.user_store import persist_user_account
+
+    if auth_manager.get_user(request.username):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
+    existing = await get_extended_database().get_user_account(request.username)
+    if existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username already registered",
+        )
+
+    user = User(
+        username=request.username,
+        email=request.email,
+        scopes=["read", "attack", "defense", "eval"],
+    )
+    auth_manager.create_user(user, request.password)
+    try:
+        await persist_user_account(user, auth_manager._password_hashes[user.username])
+    except ValueError as exc:
+        auth_manager.users_db.pop(user.username, None)
+        auth_manager._password_hashes.pop(user.username, None)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(exc),
+        ) from exc
+    return {
+        "message": "registered",
+        "username": user.username,
+        "email": user.email,
+    }
 
 
 @router.post("/login", response_model=LoginResponse)
