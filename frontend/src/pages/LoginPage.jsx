@@ -14,7 +14,7 @@ const loginSchema = z.object({
 })
 
 import { WorkspacePageShell } from '../components/workspace'
-import { itemVariants } from '../utils/animations'
+import { authCardVariants, itemVariants } from '../utils/animations'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -53,9 +53,8 @@ export default function LoginPage() {
 
   return (
     <WorkspacePageShell theme="auth" className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-6 pb-8 sm:min-h-[calc(100vh-5rem)] sm:px-6 sm:py-12 lg:px-8 relative overflow-hidden">
-      {/* Decorative background elements */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[120px] rounded-[100%] pointer-events-none transform -rotate-45"></div>
+      <div className="ws-auth-orb top-1/4 left-1/4 w-[500px] h-[500px]" aria-hidden />
+      <div className="ws-auth-orb bottom-1/4 right-1/4 w-[400px] h-[400px]" aria-hidden />
 
       <motion.div variants={itemVariants} className="w-full max-w-md relative z-10">
         <div className="text-center mb-6 sm:mb-10">
@@ -89,8 +88,12 @@ export default function LoginPage() {
           </motion.div>
         )}
 
-        <motion.div variants={itemVariants} className="card p-5 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[0_20px_50px_rgba(0,0,0,0.3)] relative overflow-hidden">
-          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyan-500 to-transparent opacity-60"></div>
+        <motion.div
+          variants={authCardVariants}
+          initial="initial"
+          animate="animate"
+          className="ws-auth-card card p-5 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] relative overflow-hidden"
+        >
           
           {isAuthenticated ? (
             <div className="space-y-6 text-center py-4">

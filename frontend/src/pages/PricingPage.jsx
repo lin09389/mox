@@ -95,16 +95,16 @@ export default function PricingPage() {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">架构保障</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">架构保障</p>
               <p className="text-sm font-bold text-[var(--text-main)]">金融级安全沙盒隔离</p>
             </div>
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">算力调度</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">算力调度</p>
               <p className="text-sm font-bold text-[var(--text-main)]">全球分布式边缘推理</p>
             </div>
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">合规标准</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">合规标准</p>
               <p className="text-sm font-bold text-[var(--text-main)]">满足 ISO 27001 与 SOC2</p>
             </div>
           </div>
@@ -126,7 +126,7 @@ export default function PricingPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 + index * 0.1, ease: [0.22, 1, 0.36, 1], duration: 0.5 }}
-              className={`relative rounded-[24px] border p-8 transition-all duration-300 flex flex-col ${toneStyles[plan.tone]}`}
+              className={`ws-pricing-tier ${plan.popular ? 'ws-pricing-tier--featured' : ''} relative border p-8 flex flex-col ${toneStyles[plan.tone]}`}
             >
               {plan.popular && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 badge border text-[10px] uppercase font-bold tracking-widest bg-cyan-500 text-[var(--bg-main)] border-cyan-400 px-4 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.5)]">

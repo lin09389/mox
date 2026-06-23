@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { ProgressMeter } from '../ui/AppFrame'
 import { useHubContext } from '../../context/HubContext'
-import { containerVariants } from '../../utils/animations'
+import { containerVariants, hoverCardVariants, tapEffect, wsTypeCardVariants } from '../../utils/animations'
 import { WORKSPACE_THEME_META } from './themeMeta'
 
 export function WorkspacePageShell({ theme: themeProp, children, className = '', showGrid = true }) {
@@ -85,11 +85,15 @@ export function WorkspaceTypeCard({
   className = '',
   type = 'button',
 }) {
-  const Tag = type === 'button' ? 'button' : type === 'label' ? 'label' : 'div'
+  const Tag = type === 'button' ? motion.button : type === 'label' ? motion.label : motion.div
   return (
     <Tag
       type={type === 'button' ? 'button' : undefined}
       onClick={onClick}
+      variants={wsTypeCardVariants}
+      initial="rest"
+      whileHover={active ? undefined : 'hover'}
+      whileTap={type === 'button' ? 'tap' : undefined}
       className={`ws-type-card ${active ? 'ws-type-card--active' : ''} ${
         active && danger ? 'ws-type-card--danger' : ''
       } ${className}`}
@@ -121,9 +125,10 @@ export function WorkspaceRunButton({
   className = '',
 }) {
   return (
-    <button
+    <motion.button
       type="submit"
       disabled={disabled || loading}
+      whileTap={disabled || loading ? undefined : tapEffect}
       className={`ws-run-btn btn-primary w-full justify-center py-3 text-base font-bold ${className}`}
     >
       {loading ? (
@@ -137,7 +142,7 @@ export function WorkspaceRunButton({
           {children}
         </>
       )}
-    </button>
+    </motion.button>
   )
 }
 
@@ -204,13 +209,19 @@ export function WorkspaceLabHero({ eyebrow, title, subtitle, stats = [] }) {
         {stats.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {stats.map((item) => (
-              <div key={item.label} className="ws-lab-stat">
+              <motion.div
+                key={item.label}
+                variants={hoverCardVariants}
+                initial="rest"
+                whileHover="hover"
+                className="ws-lab-stat"
+              >
                 <p className="ws-lab-stat-label">{item.label}</p>
                 <p className={`ws-lab-stat-value ws-lab-stat-value--${item.tone || 'neutral'}`}>
                   {item.value}
                 </p>
                 {item.hint ? <p className="ws-lab-stat-hint">{item.hint}</p> : null}
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : null}

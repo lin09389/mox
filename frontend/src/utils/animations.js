@@ -29,8 +29,8 @@ export const containerVariants = {
 export const itemVariants = {
   hidden: {
     opacity: 0,
-    y: 16,
-    scale: 0.99,
+    y: 14,
+    scale: 0.985,
   },
   show: {
     opacity: 1,
@@ -38,17 +38,17 @@ export const itemVariants = {
     scale: 1,
     transition: {
       type: 'spring',
-      stiffness: 300,
-      damping: 28,
-      mass: 0.8,
+      stiffness: 340,
+      damping: 26,
+      mass: 0.75,
     },
   },
   exit: {
     opacity: 0,
-    y: -8,
+    y: -6,
     scale: 0.99,
     transition: {
-      duration: 0.18,
+      duration: 0.16,
       ease: EASE_OUT_QUART,
     },
   },
@@ -125,14 +125,26 @@ export const hoverCardVariants = {
     y: 0,
   },
   hover: {
-    scale: 1.012,
-    y: -3,
+    scale: 1.015,
+    y: -4,
     transition: {
       type: 'spring',
-      stiffness: 420,
-      damping: 28,
+      stiffness: 460,
+      damping: 26,
+      mass: 0.7,
     },
   },
+}
+
+// 6b. Workspace 类型卡片悬停
+export const wsTypeCardVariants = {
+  rest: { scale: 1, y: 0 },
+  hover: {
+    scale: 1.01,
+    y: -2,
+    transition: { type: 'spring', stiffness: 500, damping: 28 },
+  },
+  tap: { scale: 0.985, y: 0 },
 }
 
 // 7. 微交互：点击反馈 (Micro-interaction: Tap)
@@ -164,24 +176,26 @@ export const drawerVariants = {
 export const authCardVariants = {
   initial: {
     opacity: 0,
-    scale: 0.96,
-    y: 12,
+    scale: 0.94,
+    y: 16,
   },
   animate: {
     opacity: 1,
     scale: 1,
     y: 0,
     transition: {
-      duration: 0.42,
-      ease: EASE_OUT_EXPO,
+      type: 'spring',
+      stiffness: 280,
+      damping: 24,
+      mass: 0.85,
     },
   },
   exit: {
     opacity: 0,
-    scale: 0.98,
-    y: -8,
+    scale: 0.97,
+    y: -6,
     transition: {
-      duration: 0.24,
+      duration: 0.22,
       ease: EASE_OUT_EXPO,
     },
   },

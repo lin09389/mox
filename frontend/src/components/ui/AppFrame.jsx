@@ -85,19 +85,28 @@ export function MetricCard({ icon: Icon, label, value, hint, trend, trendLabel, 
     graphite: 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)] border-[var(--border-glass-strong)]',
   }
 
+  const accentVar = {
+    electric: 'var(--color-electric-500)',
+    lava: 'var(--color-lava-500)',
+    neon: 'var(--color-neon-500)',
+    amber: 'var(--color-amber-500)',
+    graphite: 'var(--accent-primary)',
+  }
+
   return (
     <motion.section 
       variants={hoverCardVariants}
       initial="rest"
       whileHover="hover"
-      className="card card-hover flex flex-col justify-between h-[160px]"
+      style={{ '--metric-accent': accentVar[tone] || accentVar.electric }}
+      className="metric-card-premium card card-hover flex flex-col justify-between h-[160px]"
     >
       <div className="flex items-start justify-between gap-3">
         <div>
-          <p className="text-xs font-bold uppercase tracking-[0.1em] text-[var(--text-muted)]">{label}</p>
-          <p className="font-mono text-3xl font-bold tracking-tight text-[var(--text-main)] mt-2">{value}</p>
+          <p className="text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-muted)]">{label}</p>
+          <p className="metric-value font-mono text-3xl font-bold tracking-tight text-[var(--text-main)] mt-2">{value}</p>
         </div>
-        <div className={`rounded-xl border p-3 ${styles[tone]}`}>
+        <div className={`metric-icon-wrap rounded-xl border p-3 ${styles[tone]}`}>
           {Icon && <Icon className="h-6 w-6" />}
         </div>
       </div>

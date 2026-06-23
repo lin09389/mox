@@ -100,6 +100,12 @@
   --duration-normal: 280ms;
   --duration-slow: 480ms;
 
+  /* Glass depth tokens */
+  --glass-specular: rgba(255, 255, 255, 0.55);
+  --glass-inner-glow: rgba(255, 255, 255, 0.08);
+  --focus-ring: rgba(6, 182, 212, 0.22);
+  --focus-ring-offset: 3px;
+
   font-family: "Inter", system-ui, sans-serif;
   line-height: 1.6;
   font-weight: 400;
@@ -124,6 +130,9 @@
   --text-muted: #a8b4c4;
   --accent-primary: #22d3ee;
   --accent-glow: rgba(34, 211, 238, 0.4);
+  --glass-specular: rgba(255, 255, 255, 0.09);
+  --glass-inner-glow: rgba(255, 255, 255, 0.04);
+  --focus-ring: rgba(34, 211, 238, 0.28);
 
   --shadow-fine: 0 1px 2px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
   --shadow-soft: 0 8px 30px rgba(0, 0, 0, 0.4);
@@ -355,11 +364,79 @@ h6,
   pointer-events: none;
 }
 
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(
+    165deg,
+    var(--glass-specular) 0%,
+    transparent 38%,
+    transparent 72%,
+    var(--glass-inner-glow) 100%
+  );
+  opacity: 0.65;
+  pointer-events: none;
+  transition: opacity var(--duration-normal) var(--ease-out-expo);
+}
+
 .card-hover:hover {
-  transform: translateY(-4px) scale(1.005);
-  box-shadow: var(--shadow-lifted);
+  transform: translateY(-5px) scale(1.008);
+  box-shadow: var(--shadow-lifted), 0 0 0 1px color-mix(in srgb, var(--accent-primary) 8%, transparent);
   background: var(--bg-glass-strong);
   border-color: var(--border-glass-strong);
+}
+
+.card-hover:hover::after {
+  opacity: 0.9;
+}
+
+/* Premium metric cards (dashboard) */
+.metric-card-premium {
+  position: relative;
+  overflow: hidden;
+}
+
+.metric-card-premium::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--metric-accent, var(--accent-primary)), transparent);
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.metric-card-premium .metric-icon-wrap {
+  position: relative;
+  transition: transform var(--duration-normal) var(--ease-spring), box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.metric-card-premium:hover .metric-icon-wrap {
+  transform: scale(1.06);
+  box-shadow: 0 0 20px color-mix(in srgb, var(--metric-accent, var(--accent-primary)) 25%, transparent);
+}
+
+.metric-card-premium .metric-value {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.03em;
+}
+
+/* Global focus ring */
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: var(--focus-ring-offset);
+}
+
+button:focus:not(:focus-visible),
+a:focus:not(:focus-visible),
+input:focus:not(:focus-visible),
+select:focus:not(:focus-visible),
+textarea:focus:not(:focus-visible) {
+  outline: none;
 }
 
 /* Sticky header glass */
@@ -551,9 +628,29 @@ h6,
   box-shadow: 0 4px 14px rgba(255, 255, 255, 0.15);
 }
 
+.btn-primary::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.22) 0%, transparent 48%);
+  opacity: 0;
+  transition: opacity var(--duration-fast) var(--ease-out-expo);
+  pointer-events: none;
+}
+
 .btn-primary:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+  transform: translateY(-3px);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, 0.22);
+}
+
+.btn-primary:hover:not(:disabled)::before {
+  opacity: 1;
+}
+
+.btn-primary:active:not(:disabled) {
+  transform: translateY(-1px);
+  transition-duration: 80ms;
 }
 
 .dark .btn-primary:hover:not(:disabled) {
@@ -1492,6 +1589,18 @@ h6,
   }
 
   .ws-type-card--active {
+    transform: none;
+  }
+
+  .ws-shell-glow,
+  .ws-auth-orb {
+    animation: none;
+  }
+
+  .ws-hub-tab--active,
+  .ws-type-card:hover,
+  .ws-pricing-tier:hover,
+  .ws-stat-mini:hover {
     transform: none;
   }
 }
