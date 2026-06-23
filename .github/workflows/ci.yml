@@ -150,7 +150,10 @@ jobs:
     name: Build Docker Image
     runs-on: ubuntu-latest
     needs: [lint, security, test, frontend]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: >-
+      github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      && secrets.DOCKERHUB_USERNAME != ''
     steps:
       - uses: actions/checkout@v4
 
@@ -187,7 +190,10 @@ jobs:
     name: Deploy to Server
     runs-on: ubuntu-latest
     needs: [build]
-    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    if: >-
+      github.event_name == 'push'
+      && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+      && secrets.DEPLOY_HOST != ''
     environment:
       name: production
       url: https://mox.example.com
