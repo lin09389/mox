@@ -19,7 +19,7 @@ import { StatusPill } from './ui/AppFrame'
 import { useApiStatus } from '../hooks/useApiStatus'
 import { useTheme } from '../hooks/useTheme'
 import { useAuthSession, clearSession } from '../auth'
-import { pageVariants } from '../utils/animations'
+import { authCardVariants, drawerVariants, pageVariants } from '../utils/animations'
 import { TaskTray } from './ui/TaskTray'
 import DemoBanner from './ui/DemoBanner'
 
@@ -112,10 +112,10 @@ export default function Layout({ children }) {
           <AnimatePresence mode="wait">
             <motion.div
               key={location.pathname}
-              initial={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-              animate={{ opacity: 1, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
-              transition={{ duration: 0.4, ease: [0.22, 1, 0.36, 1] }}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={authCardVariants}
               className="w-full max-w-md"
             >
               {children}
@@ -128,12 +128,12 @@ export default function Layout({ children }) {
 
   return (
     <div className="app-shell relative">
-      <header className="sticky top-0 z-50 card rounded-none border-t-0 border-l-0 border-r-0 border-b shadow-sm">
+      <header className="header-glass sticky top-0 z-50 rounded-none">
         <div className="app-container py-3">
           <div className="flex items-center justify-between gap-4">
             <div className="flex min-w-0 items-center gap-6">
               <NavLink to="/" className="group flex items-center gap-3">
-                <div className="relative flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-slate-800 to-slate-950 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 shadow-lifted">
+                <div className="logo-mark relative flex h-12 w-12 items-center justify-center rounded-[18px] bg-gradient-to-br from-slate-800 to-slate-950 dark:from-white dark:to-slate-200 text-white dark:text-slate-900 shadow-lifted">
                   <span className="font-display text-2xl font-bold tracking-tight">M</span>
                   <span className="absolute -right-2 -top-2 rounded-full bg-cyan-500 shadow-[0_0_10px_rgba(6,182,212,0.6)] px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-white">
                     SOC
@@ -256,11 +256,11 @@ export default function Layout({ children }) {
           >
             <div className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm" onClick={() => setDrawerOpen(false)} />
             <motion.aside
-              className="absolute right-0 top-0 h-full w-[min(92vw,380px)] border-l border-[var(--border-glass)] bg-[var(--bg-main)] p-6 shadow-card overflow-y-auto"
-              initial={{ x: '100%' }}
-              animate={{ x: 0 }}
-              exit={{ x: '100%' }}
-              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
+              className="absolute right-0 top-0 h-full w-[min(92vw,380px)] border-l border-[var(--border-glass)] bg-[var(--bg-glass-strong)] backdrop-blur-xl p-6 shadow-card overflow-y-auto"
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={drawerVariants}
             >
               <div className="flex items-center justify-between mb-8">
                 <div>

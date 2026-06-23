@@ -1,15 +1,25 @@
 import { Suspense, useCallback, useMemo, useRef } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronRight, Loader } from 'lucide-react'
 import { HubContext } from '../context/HubContext'
+import { tabPanelVariants } from '../utils/animations'
 
 function TabLoader() {
   return (
-    <div className="flex min-h-[40vh] items-center justify-center gap-3 text-sm text-[var(--text-muted)]">
-      <Loader className="h-5 w-5 animate-spin text-cyan-500" />
-      模块加载中...
-    </div>
+    <motion.div
+      initial={{ opacity: 0, y: 6 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.28, ease: [0.16, 1, 0.3, 1] }}
+      className="flex min-h-[40vh] flex-col items-center justify-center gap-4"
+    >
+      <div className="relative flex h-12 w-12 items-center justify-center">
+        <span className="absolute inset-0 rounded-full border border-cyan-500/20" />
+        <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-cyan-500" />
+        <Loader className="h-5 w-5 text-cyan-500" />
+      </div>
+      <p className="text-sm font-medium text-[var(--text-muted)]">模块加载中...</p>
+    </motion.div>
   )
 }
 
@@ -172,19 +182,28 @@ export default function HubShell({
         </div>
       </div>
 
-      <div
-        className="relative flex-1 overflow-hidden"
-        role="tabpanel"
-        id={`hub-panel-${layoutId}-${activeTab}`}
-        aria-labelledby={`hub-tab-${layoutId}-${activeTab}`}
-      >
-        {Panel ? (
-          <HubContext.Provider value={hubValue}>
-            <Suspense fallback={<TabLoader />}>
-              <Panel />
-            </Suspense>
-          </HubContext.Provider>
-        ) : null}
+      <div className="relative flex-1 overflow-hidden">
+        <AnimatePresence mode="wait">
+          {Panel ? (
+            <motion.div
+              key={activeTab}
+              role="tabpanel"
+              id={`hub-panel-${layoutId}-${activeTab}`}
+              aria-labelledby={`hub-tab-${layoutId}-${activeTab}`}
+              initial="initial"
+              animate="animate"
+              exit="exit"
+              variants={tabPanelVariants}
+              className="h-full"
+            >
+              <HubContext.Provider value={hubValue}>
+                <Suspense fallback={<TabLoader />}>
+                  <Panel />
+                </Suspense>
+              </HubContext.Provider>
+            </motion.div>
+          ) : null}
+        </AnimatePresence>
       </div>
     </div>
   )

@@ -1,6 +1,6 @@
 import { AlertTriangle, ArrowRight, Signal, Sparkles } from 'lucide-react'
 import { motion } from 'framer-motion'
-import { hoverCardVariants, tapEffect } from '../../utils/animations'
+import { headerVariants, hoverCardVariants, tapEffect } from '../../utils/animations'
 
 export function PageHeader({
   eyebrow = 'CONTROL CENTER',
@@ -10,7 +10,12 @@ export function PageHeader({
   badge,
 }) {
   return (
-    <header className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4">
+    <motion.header
+      initial="hidden"
+      animate="show"
+      variants={headerVariants}
+      className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-4"
+    >
       <div className="space-y-2">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[var(--bg-glass)] border border-[var(--border-glass)] text-xs font-bold text-[var(--accent-primary)] uppercase tracking-widest mb-1">
           {eyebrow}
@@ -21,12 +26,17 @@ export function PageHeader({
         {description ? <p className="text-[var(--text-muted)] mt-2 font-medium max-w-xl">{description}</p> : null}
       </div>
       {(badge || actions) && (
-        <div className="flex flex-wrap items-center justify-start gap-3 md:justify-end">
+        <motion.div
+          initial={{ opacity: 0, x: 12 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ delay: 0.12, duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
+          className="flex flex-wrap items-center justify-start gap-3 md:justify-end"
+        >
           {badge}
           {actions}
-        </div>
+        </motion.div>
       )}
-    </header>
+    </motion.header>
   )
 }
 
@@ -157,7 +167,7 @@ export function ProgressMeter({ value = 0, tone = 'electric', label }) {
       ) : null}
       <div className="h-2 overflow-hidden rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)]">
         <div
-          className={`h-full rounded-full bg-gradient-to-r ${tones[tone]} transition-all duration-700 ease-out`}
+          className={`progress-bar-fill h-full rounded-full bg-gradient-to-r ${tones[tone]} transition-[width] duration-700 ease-[cubic-bezier(0.16,1,0.3,1)]`}
           style={{ width: `${Math.max(0, Math.min(100, value))}%` }}
         />
       </div>
@@ -289,7 +299,7 @@ export function QuickLink({ label, description }) {
 export function Skeleton({ className = '' }) {
   return (
     <div
-      className={`animate-pulse rounded-md bg-[var(--border-glass-strong)] ${className}`}
+      className={`skeleton-shimmer rounded-md ${className}`}
     />
   )
 }

@@ -1,7 +1,10 @@
 /**
  * Centralized Animation Configuration
- * 统一定义整站的 Framer Motion 动效变量，确保“极简科幻”体验的高度一致。
+ * 统一定义整站的 Framer Motion 动效变量，确保"极简科幻"体验的高度一致。
  */
+
+const EASE_OUT_EXPO = [0.16, 1, 0.3, 1]
+const EASE_OUT_QUART = [0.25, 1, 0.5, 1]
 
 // 1. 页面级容器，处理子元素的依次出场 (Staggered Children)
 export const containerVariants = {
@@ -9,14 +12,14 @@ export const containerVariants = {
   show: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.1,
-      delayChildren: 0.05,
+      staggerChildren: 0.08,
+      delayChildren: 0.04,
     },
   },
   exit: {
     opacity: 0,
     transition: {
-      staggerChildren: 0.05,
+      staggerChildren: 0.04,
       staggerDirection: -1,
     },
   },
@@ -26,30 +29,27 @@ export const containerVariants = {
 export const itemVariants = {
   hidden: {
     opacity: 0,
-    y: 20,
-    scale: 0.98,
-    filter: 'blur(8px)',
+    y: 16,
+    scale: 0.99,
   },
   show: {
     opacity: 1,
     y: 0,
     scale: 1,
-    filter: 'blur(0px)',
     transition: {
       type: 'spring',
-      stiffness: 260,
-      damping: 20,
-      mass: 1,
+      stiffness: 300,
+      damping: 28,
+      mass: 0.8,
     },
   },
   exit: {
     opacity: 0,
-    y: -10,
-    scale: 0.98,
-    filter: 'blur(4px)',
+    y: -8,
+    scale: 0.99,
     transition: {
-      duration: 0.2,
-      ease: 'easeIn',
+      duration: 0.18,
+      ease: EASE_OUT_QUART,
     },
   },
 }
@@ -58,49 +58,131 @@ export const itemVariants = {
 export const pageVariants = {
   initial: {
     opacity: 0,
-    y: 15,
-    filter: 'blur(8px)',
+    y: 12,
   },
   animate: {
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
     transition: {
-      duration: 0.4,
-      ease: [0.22, 1, 0.36, 1], // 精调的自定义贝塞尔曲线，显得十分高级
+      duration: 0.38,
+      ease: EASE_OUT_EXPO,
     },
   },
   exit: {
     opacity: 0,
-    y: -15,
-    filter: 'blur(8px)',
+    y: -8,
     transition: {
-      duration: 0.3,
-      ease: [0.22, 1, 0.36, 1],
+      duration: 0.22,
+      ease: EASE_OUT_EXPO,
     },
   },
 }
 
-// 4. 微交互：悬停状态 (Micro-interaction: Hover Cards)
+// 4. Hub 标签页内容切换
+export const tabPanelVariants = {
+  initial: {
+    opacity: 0,
+    y: 10,
+  },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.32,
+      ease: EASE_OUT_EXPO,
+    },
+  },
+  exit: {
+    opacity: 0,
+    y: -6,
+    transition: {
+      duration: 0.18,
+      ease: EASE_OUT_EXPO,
+    },
+  },
+}
+
+// 5. 页面标题入场
+export const headerVariants = {
+  hidden: {
+    opacity: 0,
+    y: 14,
+  },
+  show: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.42,
+      ease: EASE_OUT_EXPO,
+    },
+  },
+}
+
+// 6. 微交互：悬停状态 (Micro-interaction: Hover Cards)
 export const hoverCardVariants = {
   rest: {
     scale: 1,
     y: 0,
-    boxShadow: '0 0 0 rgba(0,0,0,0)',
   },
   hover: {
-    scale: 1.015,
-    y: -4,
-    boxShadow: '0 10px 30px -10px rgba(6, 182, 212, 0.15)', // 青色微弱发光
+    scale: 1.012,
+    y: -3,
     transition: {
       type: 'spring',
-      stiffness: 400,
-      damping: 25,
+      stiffness: 420,
+      damping: 28,
     },
   },
 }
 
-// 5. 微交互：点击反馈 (Micro-interaction: Tap)
+// 7. 微交互：点击反馈 (Micro-interaction: Tap)
 export const tapEffect = {
   scale: 0.98,
+}
+
+// 8. 抽屉侧滑弹簧
+export const drawerVariants = {
+  initial: { x: '100%' },
+  animate: {
+    x: 0,
+    transition: {
+      type: 'spring',
+      stiffness: 380,
+      damping: 32,
+    },
+  },
+  exit: {
+    x: '100%',
+    transition: {
+      duration: 0.28,
+      ease: EASE_OUT_EXPO,
+    },
+  },
+}
+
+// 9. 认证页卡片入场
+export const authCardVariants = {
+  initial: {
+    opacity: 0,
+    scale: 0.96,
+    y: 12,
+  },
+  animate: {
+    opacity: 1,
+    scale: 1,
+    y: 0,
+    transition: {
+      duration: 0.42,
+      ease: EASE_OUT_EXPO,
+    },
+  },
+  exit: {
+    opacity: 0,
+    scale: 0.98,
+    y: -8,
+    transition: {
+      duration: 0.24,
+      ease: EASE_OUT_EXPO,
+    },
+  },
 }
