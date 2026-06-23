@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { AnimatePresence, motion } from 'framer-motion'
 import { ChevronRight, Loader } from 'lucide-react'
 import { HubContext } from '../context/HubContext'
+import { WORKSPACE_THEME_META } from './workspace/themeMeta'
 import { tabPanelVariants } from '../utils/animations'
 
 function TabLoader() {
@@ -35,7 +36,7 @@ export default function HubShell({
   tabStorageKey,
   tabs = [],
 }) {
-  const isThemedHub = ['attack', 'testing', 'evaluation', 'governance'].includes(theme)
+  const isThemedHub = Boolean(theme && theme !== 'default' && WORKSPACE_THEME_META[theme])
   const [searchParams, setSearchParams] = useSearchParams()
   const tabRefs = useRef([])
 

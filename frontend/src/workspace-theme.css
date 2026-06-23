@@ -333,6 +333,8 @@
   background: var(--bg-glass-strong);
 }
 .ws-run-btn {
+  position: relative;
+  overflow: hidden;
   background: linear-gradient(135deg, var(--ws-accent), color-mix(in srgb, var(--ws-accent) 68%, #0f172a));
   color: white;
   border-color: transparent;

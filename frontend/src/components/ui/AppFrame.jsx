@@ -99,7 +99,7 @@ export function MetricCard({ icon: Icon, label, value, hint, trend, trendLabel, 
       initial="rest"
       whileHover="hover"
       style={{ '--metric-accent': accentVar[tone] || accentVar.electric }}
-      className="metric-card-premium card card-hover flex flex-col justify-between h-[160px]"
+      className="metric-card-premium card flex flex-col justify-between h-[160px]"
     >
       <div className="flex items-start justify-between gap-3">
         <div>

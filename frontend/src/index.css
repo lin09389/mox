@@ -1224,17 +1224,20 @@ textarea:focus:not(:focus-visible) {
 }
 
 .attack-type-card:hover {
-  border-color: color-mix(in srgb, var(--attack-accent) 35%, var(--border-glass));
+  border-color: color-mix(in srgb, var(--attack-accent) 38%, var(--border-glass));
   background: var(--bg-glass-strong);
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-soft), 0 0 20px color-mix(in srgb, var(--attack-glow) 25%, transparent);
 }
 
 .attack-type-card--active {
-  border-color: color-mix(in srgb, var(--attack-accent) 50%, transparent);
+  border-color: color-mix(in srgb, var(--attack-accent) 52%, transparent);
   background: var(--attack-accent-soft);
   box-shadow:
-    inset 0 0 24px color-mix(in srgb, var(--attack-accent) 12%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--attack-accent) 15%, transparent);
-  transform: scale(1.01);
+    inset 0 0 28px color-mix(in srgb, var(--attack-accent) 14%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--attack-accent) 18%, transparent),
+    0 4px 20px color-mix(in srgb, var(--attack-glow) 30%, transparent);
+  transform: translateY(-1px) scale(1.012);
 }
 
 .attack-type-card--danger.attack-type-card--active {
@@ -1317,18 +1320,35 @@ textarea:focus:not(:focus-visible) {
 }
 
 .attack-run-btn {
-  background: linear-gradient(135deg, var(--attack-accent), color-mix(in srgb, var(--attack-accent) 70%, #0e7490));
+  position: relative;
+  overflow: hidden;
+  background: linear-gradient(135deg, var(--attack-accent), color-mix(in srgb, var(--attack-accent) 68%, #0e7490));
   color: white;
   border-color: transparent;
-  box-shadow: 0 4px 24px var(--attack-glow);
+  box-shadow: 0 4px 28px var(--attack-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition:
     transform var(--duration-normal) var(--ease-spring),
     box-shadow var(--duration-normal) var(--ease-out-expo);
 }
 
+.attack-run-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.25) 0%, transparent 50%);
+  opacity: 0.7;
+  pointer-events: none;
+}
+
 .attack-run-btn:hover:not(:disabled) {
-  transform: translateY(-2px);
-  box-shadow: 0 8px 32px var(--attack-glow);
+  transform: translateY(-3px);
+  box-shadow: 0 10px 36px var(--attack-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
+}
+
+.attack-run-btn:active:not(:disabled) {
+  transform: translateY(-1px);
+  transition-duration: 80ms;
 }
 
 .attack-run-btn:disabled {
@@ -1403,8 +1423,23 @@ textarea:focus:not(:focus-visible) {
 .attack-risk-gauge {
   padding: 1.25rem;
   border-radius: 1rem;
-  border: 1px solid var(--border-glass-strong);
+  border: 1px solid color-mix(in srgb, var(--attack-accent) 15%, var(--border-glass-strong));
   background: var(--bg-glass);
+  box-shadow: inset 0 0 40px color-mix(in srgb, var(--attack-accent) 4%, transparent);
+  position: relative;
+  overflow: hidden;
+}
+
+.attack-risk-gauge::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--attack-accent), transparent);
+  opacity: 0.35;
+  pointer-events: none;
 }
 
 .attack-risk-gauge-label {
@@ -1438,6 +1473,8 @@ textarea:focus:not(:focus-visible) {
   );
   mask: radial-gradient(farthest-side, transparent calc(100% - 6px), black calc(100% - 5px));
   -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 6px), black calc(100% - 5px));
+  filter: drop-shadow(0 0 8px color-mix(in srgb, var(--ring-color, var(--attack-accent)) 35%, transparent));
+  transition: filter var(--duration-normal) var(--ease-out-expo);
 }
 
 .attack-risk-ring--danger {
@@ -1470,6 +1507,12 @@ textarea:focus:not(:focus-visible) {
   border-radius: 0.875rem;
   border: 1px solid var(--border-glass);
   background: var(--bg-glass-strong);
+  transition: border-color var(--duration-normal) var(--ease-out-expo), box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+
+.attack-lab-stat:hover {
+  border-color: color-mix(in srgb, var(--attack-accent) 22%, var(--border-glass));
+  box-shadow: inset 0 0 20px color-mix(in srgb, var(--attack-accent) 5%, transparent);
 }
 
 .attack-lab-stat-label {
@@ -1577,7 +1620,8 @@ textarea:focus:not(:focus-visible) {
     animation: none;
   }
 
-  .attack-type-card--active {
+  .attack-type-card--active,
+  .attack-type-card:hover {
     transform: none;
   }
 

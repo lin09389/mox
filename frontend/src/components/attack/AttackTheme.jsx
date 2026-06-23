@@ -2,7 +2,7 @@ import { motion } from 'framer-motion'
 import { Loader2, ShieldAlert } from 'lucide-react'
 import { ProgressMeter } from '../ui/AppFrame'
 import { useHubContext } from '../../context/HubContext'
-import { containerVariants } from '../../utils/animations'
+import { containerVariants, hoverCardVariants, tapEffect, wsTypeCardVariants } from '../../utils/animations'
 
 /** 攻击工作台页面容器：威胁网格背景 + 入场动画 */
 export function AttackPageShell({ children, className = '' }) {
@@ -77,11 +77,15 @@ export function AttackTypeCard({
   className = '',
   type = 'button',
 }) {
-  const Tag = type === 'button' ? 'button' : 'label'
+  const Tag = type === 'button' ? motion.button : motion.label
   return (
     <Tag
       type={type === 'button' ? 'button' : undefined}
       onClick={onClick}
+      variants={wsTypeCardVariants}
+      initial="rest"
+      whileHover={active ? undefined : 'hover'}
+      whileTap={type === 'button' ? 'tap' : undefined}
       className={`attack-type-card ${active ? 'attack-type-card--active' : ''} ${
         active && danger ? 'attack-type-card--danger' : ''
       } ${className}`}
@@ -114,9 +118,10 @@ export function AttackRunButton({
   className = '',
 }) {
   return (
-    <button
+    <motion.button
       type="submit"
       disabled={disabled || loading}
+      whileTap={disabled || loading ? undefined : tapEffect}
       className={`attack-run-btn btn-primary w-full justify-center py-3 text-base font-bold ${className}`}
     >
       {loading ? (
@@ -130,7 +135,7 @@ export function AttackRunButton({
           {children}
         </>
       )}
-    </button>
+    </motion.button>
   )
 }
 
@@ -228,13 +233,19 @@ export function AttackLabHero({ eyebrow = '攻击实验室', title, subtitle, st
         {stats.length > 0 ? (
           <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-1">
             {stats.map((item) => (
-              <div key={item.label} className="attack-lab-stat">
+              <motion.div
+                key={item.label}
+                variants={hoverCardVariants}
+                initial="rest"
+                whileHover="hover"
+                className="attack-lab-stat"
+              >
                 <p className="attack-lab-stat-label">{item.label}</p>
                 <p className={`attack-lab-stat-value attack-lab-stat-value--${item.tone || 'neutral'}`}>
                   {item.value}
                 </p>
                 {item.hint ? <p className="attack-lab-stat-hint">{item.hint}</p> : null}
-              </div>
+              </motion.div>
             ))}
           </div>
         ) : null}
