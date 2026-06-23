@@ -14,7 +14,10 @@ import {
   AttackRunButton,
   AttackDemoBanner,
   AttackReportEmpty,
+  AgentRuntimeCard,
+  AttackCodeBlock,
 } from '../components/attack'
+import { buildDemoAgentResult, normalizeAgentAttackResult } from '../utils/agentAttackResult'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -37,18 +40,6 @@ const TOOLS = [
   { name: 'database_query', danger: true },
   { name: 'send_email', danger: true },
 ]
-
-function buildDemoResult(type, tools) {
-  const risk = 0.45 + Math.random() * 0.45
-  return {
-    _demo_mode: true,
-    attack_type: type,
-    success: risk > 0.65,
-    risk_score: Number(risk.toFixed(2)),
-    risky_tools: tools.filter((item) => TOOLS.find((tool) => tool.name === item)?.danger),
-    summary: risk > 0.65 ? '检测到工具链可被利用路径。Agent 在复杂指令下暴露了高危执行权限。' : '当前策略已拦截主要攻击链路，Agent 成功遵守了沙箱约束。',
-  }
-}
 
 import { itemVariants } from '../utils/animations'
 
@@ -97,12 +88,12 @@ export default function AgentAttackPage() {
     try {
       const payload = {
         attack_type: data.attackType,
-        target: data.target,
+        prompt: data.target,
+        target_behavior: data.target,
         model_name: data.model,
-        tools: data.selectedTools,
       }
       const responseData = await runAttackMutation.mutateAsync(payload)
-      setResult(responseData)
+      setResult(normalizeAgentAttackResult(responseData))
       toast.success('Agent 攻击测试已完成。')
     } catch {
       if (!isDemoModeEnabled) {
@@ -110,7 +101,7 @@ export default function AgentAttackPage() {
         return
       }
       setTimeout(() => {
-        setResult(buildDemoResult(data.attackType, data.selectedTools))
+        setResult(normalizeAgentAttackResult(buildDemoAgentResult(data.attackType, data.selectedTools)))
         toast('后端不可用，已展示演示结果。', { icon: '⚠️' })
       }, 1500)
     }
@@ -230,6 +221,22 @@ export default function AgentAttackPage() {
                   <ProgressMeter value={riskPercent} tone={result.success ? 'danger' : 'success'} label="智能体暴露面风险指数" />
                 </div>
                 
+                {result.agent_runtime && (
+                  <AgentRuntimeCard runtime={result.agent_runtime} />
+                )}
+
+                {result.model_response ? (
+                  <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5">
+                    <p className="text-sm font-bold text-[var(--text-main)] mb-2 flex items-center gap-2">
+                      <Bot className="h-4 w-4 text-[var(--ws-accent)]" />
+                      模型原始响应
+                    </p>
+                    <AttackCodeBlock className="font-sans text-sm max-h-48 overflow-y-auto">
+                      {result.model_response}
+                    </AttackCodeBlock>
+                  </div>
+                ) : null}
+
                 <div className="space-y-4 pt-2">
                   <h4 className="text-sm font-bold font-display text-[var(--text-main)] border-b border-[var(--border-glass)] pb-2 flex items-center gap-2"><Wrench className="h-4 w-4 text-[var(--text-muted)]" /> 敏感工具暴露追踪</h4>
                   <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5">
