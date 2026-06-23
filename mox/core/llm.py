@@ -1,7 +1,7 @@
 """大模型接口抽象层"""
 
 from abc import ABC, abstractmethod
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Union
 from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from enum import Enum
@@ -42,11 +42,37 @@ class ModelProvider(Enum):
 
 @dataclass
 class Message:
-    role: str
-    content: str
+    """支持纯文本或多模态 content parts（OpenAI vision 格式）"""
 
-    def to_dict(self) -> Dict[str, str]:
+    role: str
+    content: Union[str, List[Dict[str, Any]]]
+
+    def to_dict(self) -> Dict[str, Any]:
         return {"role": self.role, "content": self.content}
+
+    @classmethod
+    def text(cls, role: str, text: str) -> "Message":
+        return cls(role=role, content=text)
+
+    @classmethod
+    def with_image(
+        cls,
+        role: str,
+        text: str,
+        image_url: str,
+        detail: str = "auto",
+    ) -> "Message":
+        return cls(
+            role=role,
+            content=[
+                {"type": "text", "text": text},
+                {"type": "image_url", "image_url": {"url": image_url, "detail": detail}},
+            ],
+        )
+
+    @property
+    def is_multimodal(self) -> bool:
+        return isinstance(self.content, list)
 
 
 @dataclass

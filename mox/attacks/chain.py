@@ -13,7 +13,7 @@ from dataclasses import dataclass, field
 import asyncio
 
 from mox.core import BaseLLM, AttackPayload, AttackOutcome, AttackResult
-from mox.attacks.base import BaseAttack
+from mox.attacks.base import BaseAttack, AttackConfig
 
 
 @dataclass
@@ -104,6 +104,61 @@ class AttackChain:
             iterations=d["iterations"],
             success_score=d["success_score"],
             metadata=d["metadata"],
+        )
+
+
+class RegistryAttackChainAttack(BaseAttack):
+    """注册表攻击链 — 顺序组合 encoding → jailbreak → tap 等"""
+
+    DEFAULT_TYPES = ["encoding", "jailbreak", "tap"]
+
+    def __init__(
+        self,
+        target_llm: BaseLLM,
+        config: Optional[AttackConfig] = None,
+        chain_types: Optional[List[str]] = None,
+    ):
+        super().__init__(target_llm, config or AttackConfig())
+        self.chain_types = chain_types or self.DEFAULT_TYPES
+        self._chain = AttackChain("registry_chain")
+
+    def _build_chain(self) -> None:
+        if self._chain.attacks:
+            return
+        from mox.attacks.registry import create_attack_instance
+
+        per = max(2, self.config.max_iterations // max(len(self.chain_types), 1))
+        for attack_type in self.chain_types:
+            self._chain.add_attack(
+                create_attack_instance(attack_type, self.target_llm, max_iterations=per)
+            )
+
+    async def generate_attack(self, payload: AttackPayload) -> AttackOutcome:
+        self._build_chain()
+        chain_result = await self._chain.execute(payload)
+        if not chain_result.results:
+            return AttackOutcome(
+                result=AttackResult.FAILURE,
+                original_prompt=payload.prompt,
+                success_score=0.0,
+                adversarial_prompt=payload.prompt,
+                response="",
+                iterations=1,
+                metadata={"chain": self._chain.name},
+            )
+        best = max(chain_result.results, key=lambda o: o.success_score)
+        return AttackOutcome(
+            result=AttackResult.SUCCESS if chain_result.overall_success else AttackResult.FAILURE,
+            original_prompt=payload.prompt,
+            success_score=best.success_score,
+            adversarial_prompt=best.adversarial_prompt or payload.prompt,
+            response=best.response or "",
+            iterations=chain_result.total_iterations,
+            metadata={
+                "chain": self._chain.name,
+                "chain_types": self.chain_types,
+                "chain_results": len(chain_result.results),
+            },
         )
 
 
