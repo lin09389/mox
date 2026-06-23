@@ -2,13 +2,13 @@ import { useEffect, useMemo, useState } from 'react'
 import { motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { BarChart3, ChevronDown, ChevronUp, ShieldAlert, Sparkles, TerminalSquare, AlertTriangle } from 'lucide-react'
-import { AttackForm, AttackResult } from '../components/attack'
+import { AttackForm, AttackResult, AttackPageShell, AttackPanelIntro, AttackLabHero } from '../components/attack'
 import { isDemoModeEnabled } from '../api'
 import { useApiStatus } from '../hooks/useApiStatus'
 import { useLocalStorage } from '../hooks/useCommon'
 import { useAttackTemplatesQuery, useModels, useRunAttack } from '../hooks/queries'
-import { HeroStat, InfoCallout, QuickLink, StatusPill } from '../components/ui/AppFrame'
-import { HubPanelIntro } from '../context/HubContext'
+import { InfoCallout, QuickLink, StatusPill } from '../components/ui/AppFrame'
+
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -49,7 +49,7 @@ const attackSchema = z.object({
   target_behavior: z.string().min(5, '目标行为描述至少需要 5 个字符'),
 })
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { itemVariants } from '../utils/animations'
 
 export default function AttackPage() {
   const [result, setResult] = useState(null)
@@ -139,51 +139,60 @@ export default function AttackPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <HubPanelIntro
+    <AttackPageShell>
+      <AttackPanelIntro
         description="执行自动化对抗攻击场景，在同一工作台内配置、运行并分析测试结果。"
         badge={<StatusPill online={apiConnected} onlineLabel="Live API 正常" offlineLabel="演示模式运行中" />}
       />
 
-      <motion.section variants={itemVariants} className="hero-panel mb-4">
+      <motion.div variants={itemVariants}>
         <button
           type="button"
-          className="relative z-10 flex w-full items-center justify-between gap-3 text-left lg:hidden"
+          className="attack-lab-hero hero-panel mb-4 flex w-full items-center justify-between gap-3 text-left lg:hidden"
           onClick={() => setHeroOpen((open) => !open)}
           aria-expanded={heroOpen}
         >
-          <div className="min-w-0">
+          <div className="relative z-10 min-w-0">
             <p className="text-xs font-bold uppercase tracking-widest text-cyan-500">攻击实验室</p>
             <p className="mt-1 truncate text-sm font-bold text-[var(--text-main)]">
               {watchAllFields.model || '未选模型'} · {watchAllFields.max_iterations || 10} 轮迭代
             </p>
           </div>
           {heroOpen ? (
-            <ChevronUp className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />
+            <ChevronUp className="relative z-10 h-5 w-5 shrink-0 text-[var(--text-muted)]" />
           ) : (
-            <ChevronDown className="h-5 w-5 shrink-0 text-[var(--text-muted)]" />
+            <ChevronDown className="relative z-10 h-5 w-5 shrink-0 text-[var(--text-muted)]" />
           )}
         </button>
 
-        <div className={`relative z-10 grid gap-6 lg:grid-cols-[1.3fr_0.9fr] ${heroOpen ? 'mt-4' : 'hidden lg:grid'}`}>
-          <div className="space-y-4">
-            <span className="badge badge-info bg-cyan-500/10 border-cyan-500/20 text-cyan-500">
-              <Sparkles className="h-3.5 w-3.5" /> 状态已自动保存至本地缓存
-            </span>
-            <h2 className="font-display text-2xl font-bold tracking-tight text-[var(--text-main)] leading-snug sm:text-3xl">
-              将每次测试视为真实的网络攻防演练，而不仅仅是提交一次表单。
-            </h2>
-            <p className="max-w-2xl text-sm font-medium text-[var(--text-muted)] sm:text-base leading-relaxed">
-              实验室面板紧凑整合了模型选取、提示词构造、目标预期和测试结果。这样你就能在不断的迭代和变种测试中，始终保持对前置上下文的全面掌握，实现高效攻防。
-            </p>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            {quickFacts.map((item) => (
-              <HeroStat key={item.label} label={item.label} value={item.value} hint={item.hint} tone={item.tone} />
-            ))}
-          </div>
+        <div className={heroOpen ? 'block lg:hidden mb-4' : 'hidden'}>
+          <AttackLabHero
+            eyebrow="攻击实验室"
+            title="将每次测试视为真实的网络攻防演练。"
+            subtitle="状态已自动保存至本地缓存，可随时继续上次配置。"
+            stats={quickFacts.map((item) => ({
+              label: item.label,
+              value: item.value,
+              hint: item.hint,
+              tone: item.tone,
+            }))}
+          />
         </div>
-      </motion.section>
+
+        <div className="hidden lg:block mb-4">
+          <AttackLabHero
+            eyebrow="攻击实验室"
+            title="将每次测试视为真实的网络攻防演练，而不仅仅是提交一次表单。"
+            subtitle="实验室面板紧凑整合了模型选取、提示词构造、目标预期和测试结果，实现高效攻防迭代。"
+            stats={quickFacts.map((item) => ({
+              label: item.label,
+              value: item.value,
+              hint: item.hint,
+              tone: item.tone,
+            }))}
+          />
+        </div>
+      </motion.div>
 
       <div className="page-grid">
         <motion.div variants={itemVariants}>
@@ -254,6 +263,6 @@ export default function AttackPage() {
           </div>
         </motion.div>
       </div>
-    </motion.div>
+    </AttackPageShell>
   )
 }

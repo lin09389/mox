@@ -5,7 +5,16 @@ import { AlertTriangle, Bot, Play, Shield, Wrench, Zap, Loader2 } from 'lucide-r
 import { attackApi, isDemoModeEnabled } from '../api'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
-import { HubPanelIntro } from '../context/HubContext'
+import {
+  AttackPageShell,
+  AttackPanelIntro,
+  AttackConfigPanel,
+  AttackReportPanel,
+  AttackTypeCard,
+  AttackRunButton,
+  AttackDemoBanner,
+  AttackReportEmpty,
+} from '../components/attack'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -41,7 +50,7 @@ function buildDemoResult(type, tools) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { itemVariants } from '../utils/animations'
 
 const agentSchema = z.object({
   attackType: z.string().min(1),
@@ -108,11 +117,12 @@ export default function AgentAttackPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <HubPanelIntro description="围绕 Agent 工具调用流、权限边界突破和多智能体协同链路进行深度安全验证。" />
+    <AttackPageShell>
+      <AttackPanelIntro description="围绕 Agent 工具调用流、权限边界突破和多智能体协同链路进行深度安全验证。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
+        <motion.div variants={itemVariants}>
+        <AttackConfigPanel>
           <PanelHeader title="攻击配置面板" description="组装攻击链路矩阵，测试智能体防御纵深。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -121,17 +131,13 @@ export default function AgentAttackPage() {
                 {ATTACK_TYPES.map((item) => {
                   const active = watchAttackType === item.id
                   return (
-                    <button
-                      type="button"
+                    <AttackTypeCard
                       key={item.id}
+                      active={active}
                       onClick={() => setValue('attackType', item.id, { shouldValidate: true })}
-                      className={`rounded-xl border p-3 text-left transition-all duration-300 ${
-                        active ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]' : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <p className={`text-sm font-bold font-display mb-1 ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{item.name}</p>
-                      <p className={`text-xs font-medium ${active ? 'text-cyan-500/70' : 'text-[var(--text-muted)]'}`}>{item.desc}</p>
-                    </button>
+                      title={item.name}
+                      description={item.desc}
+                    />
                   )
                 })}
               </div>
@@ -186,18 +192,19 @@ export default function AgentAttackPage() {
               {errors.selectedTools && <p className="text-xs text-rose-500">{errors.selectedTools.message}</p>}
             </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <AttackRunButton
+              loading={isSubmitting}
+              icon={Play}
+              loadingText="正在执行越权渗透测试..."
             >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              {isSubmitting ? '正在执行越权渗透测试...' : '启动渗透链路'}
-            </button>
+              启动渗透链路
+            </AttackRunButton>
           </form>
-        </motion.section>
+        </AttackConfigPanel>
+        </motion.div>
 
-        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+        <motion.div variants={itemVariants}>
+        <AttackReportPanel>
           <PanelHeader title="实战分析报告" description="评估智能体沙箱隔离、工具混淆与数据窃取风险。" />
           
           <AnimatePresence mode="wait">
@@ -210,10 +217,7 @@ export default function AgentAttackPage() {
                 className="space-y-6"
               >
                 {result._demo_mode && (
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地沙箱推演</span>
-                  </div>
+                  <AttackDemoBanner text="演示模式：本地沙箱推演" />
                 )}
                 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -257,31 +261,21 @@ export default function AgentAttackPage() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
-              >
-                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
-                  {isSubmitting ? (
-                    <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                  ) : (
-                    <Bot className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">{isSubmitting ? '渗透链路生成中...' : '智能体靶场就绪'}</h3>
-                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
-                    {isSubmitting ? '正在根据目标任务生成多步工具链载荷，尝试绕过大模型安全边界。' : '在左侧配置需要测试的恶意任务与开放接口，启动以验证 Agent 的工具调用安全性。'}
-                  </p>
-                </div>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AttackReportEmpty
+                  icon={Bot}
+                  title="智能体靶场就绪"
+                  description="在左侧配置需要测试的恶意任务与开放接口，启动以验证 Agent 的工具调用安全性。"
+                  loading={isSubmitting}
+                  loadingTitle="渗透链路生成中..."
+                  loadingDescription="正在根据目标任务生成多步工具链载荷，尝试绕过大模型安全边界。"
+                />
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.section>
+        </AttackReportPanel>
+        </motion.div>
       </div>
-    </motion.div>
+    </AttackPageShell>
   )
 }

@@ -5,7 +5,16 @@ import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert, Loader2 } fr
 import { attackApi, isDemoModeEnabled } from '../api'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
-import { HubPanelIntro } from '../context/HubContext'
+import {
+  AttackPageShell,
+  AttackPanelIntro,
+  AttackConfigPanel,
+  AttackReportPanel,
+  AttackTypeCard,
+  AttackRunButton,
+  AttackDemoBanner,
+  AttackReportEmpty,
+} from '../components/attack'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -45,7 +54,7 @@ function buildDemoResult(payload) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { itemVariants } from '../utils/animations'
 
 const multimodalSchema = z.object({
   attackType: z.string().min(1),
@@ -124,11 +133,12 @@ export default function MultimodalAttackPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <HubPanelIntro description="构建图文声多模态对抗扰动，评估视觉/听觉大模型的模态对齐边界。" />
+    <AttackPageShell>
+      <AttackPanelIntro description="构建图文声多模态对抗扰动，评估视觉/听觉大模型的模态对齐边界。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
+        <motion.div variants={itemVariants}>
+        <AttackConfigPanel>
           <PanelHeader title="对抗载荷编排" description="选择多模态挂载形式并注入对抗特征。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -138,25 +148,17 @@ export default function MultimodalAttackPage() {
                   const Icon = type.icon
                   const active = watchAttackType === type.id
                   return (
-                    <button
+                    <AttackTypeCard
                       key={type.id}
-                      type="button"
+                      active={active}
                       onClick={() => {
                         setValue('attackType', type.id, { shouldValidate: true })
                         setValue('template', type.id === 'audio_injection' ? AUDIO_TEMPLATES[0].id : IMAGE_TEMPLATES[0].id, { shouldValidate: true })
                       }}
-                      className={`relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 ${
-                        active ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]' : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <div className="mb-2 flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-cyan-500 text-[var(--bg-main)]' : 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)]'}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <p className={`text-sm font-bold font-display ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{type.name}</p>
-                      </div>
-                      <p className={`text-xs font-medium ${active ? 'text-cyan-500/70' : 'text-[var(--text-muted)]'}`}>{type.description}</p>
-                    </button>
+                      icon={Icon}
+                      title={type.name}
+                      description={type.description}
+                    />
                   )
                 })}
               </div>
@@ -234,14 +236,15 @@ export default function MultimodalAttackPage() {
               </div>
             )}
 
-            <button type="submit" className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              {isSubmitting ? '正在合成对抗样本...' : '发起多模态注入测试'}
-            </button>
+            <AttackRunButton loading={isSubmitting} icon={Play} loadingText="正在合成对抗样本...">
+              发起多模态注入测试
+            </AttackRunButton>
           </form>
-        </motion.section>
+        </AttackConfigPanel>
+        </motion.div>
 
-        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+        <motion.div variants={itemVariants}>
+        <AttackReportPanel>
           <PanelHeader title="分析靶场数据" description="输出跨模态对齐脆弱性与防护失效报告。" />
           
           <AnimatePresence mode="wait">
@@ -254,10 +257,7 @@ export default function MultimodalAttackPage() {
                 className="space-y-6"
               >
                 {result._demo_mode && (
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：离线沙盒预测评估</span>
-                  </div>
+                  <AttackDemoBanner text="演示模式：离线沙盒预测评估" />
                 )}
                 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -281,31 +281,21 @@ export default function MultimodalAttackPage() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
-              >
-                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
-                  {isSubmitting ? (
-                    <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                  ) : (
-                    <Layers3 className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">{isSubmitting ? '生成对抗样本中...' : '靶场引擎待命'}</h3>
-                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
-                    {isSubmitting ? '正在计算多模态特征层的微小扰动梯度，合成视觉与听觉对抗样本，请稍候。' : '平台将利用梯度算法将文本 Payload 嵌入至图片或音频媒体流，测试多模态大模型的防线强度。'}
-                  </p>
-                </div>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AttackReportEmpty
+                  icon={Layers3}
+                  title="靶场引擎待命"
+                  description="平台将利用梯度算法将文本 Payload 嵌入至图片或音频媒体流，测试多模态大模型的防线强度。"
+                  loading={isSubmitting}
+                  loadingTitle="生成对抗样本中..."
+                  loadingDescription="正在计算多模态特征层的微小扰动梯度，合成视觉与听觉对抗样本，请稍候。"
+                />
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.section>
+        </AttackReportPanel>
+        </motion.div>
       </div>
-    </motion.div>
+    </AttackPageShell>
   )
 }

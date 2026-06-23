@@ -4,4 +4,5 @@
 
 export { default as AttackForm } from './AttackForm'
 export { default as AttackResult } from './AttackResult'
+export * from './AttackTheme'
 export * from './constants'

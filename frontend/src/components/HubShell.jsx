@@ -30,10 +30,12 @@ export default function HubShell({
   accentClass = 'text-cyan-400',
   tabIndicatorClass = 'bg-cyan-400',
   layoutId = 'hub-tab',
+  theme,
   defaultTab,
   tabStorageKey,
   tabs = [],
 }) {
+  const isAttackTheme = theme === 'attack'
   const [searchParams, setSearchParams] = useSearchParams()
   const tabRefs = useRef([])
 
@@ -121,29 +123,54 @@ export default function HubShell({
   )
 
   return (
-    <div className="flex h-full flex-col space-y-6">
+    <div className={`flex h-full flex-col space-y-6 ${isAttackTheme ? 'attack-hub' : ''}`}>
       <div className="flex flex-col space-y-4">
-        <div>
-          <nav aria-label="工作台导航" className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
-            <span>{title}</span>
-            {activePanel?.label ? (
-              <>
-                <ChevronRight className="h-3.5 w-3.5 opacity-60" aria-hidden />
-                <span className={accentClass}>{activePanel.label}</span>
-              </>
-            ) : null}
-          </nav>
-          <h1 className={`flex items-center gap-2 text-2xl font-bold tracking-tight text-[var(--text-main)]`}>
-            {Icon ? <Icon className={`h-6 w-6 ${accentClass}`} /> : null}
-            {activePanel?.label || title}
-          </h1>
-          {description ? <p className="mt-1 text-sm text-[var(--text-muted)]">{description}</p> : null}
-        </div>
+        {isAttackTheme ? (
+          <div className="attack-hub-hero">
+            <nav aria-label="工作台导航" className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+              <span>{title}</span>
+              {activePanel?.label ? (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" aria-hidden />
+                  <span className={accentClass}>{activePanel.label}</span>
+                </>
+              ) : null}
+            </nav>
+            <h1 className="relative z-10 flex items-center gap-2 text-2xl font-bold font-display tracking-tight text-[var(--text-main)]">
+              {Icon ? <Icon className={`h-6 w-6 ${accentClass}`} /> : null}
+              {activePanel?.label || title}
+            </h1>
+            <p className="relative z-10 mt-1.5 max-w-2xl text-sm font-medium text-[var(--text-muted)] leading-relaxed">
+              {activePanel?.desc || description}
+            </p>
+          </div>
+        ) : (
+          <div>
+            <nav aria-label="工作台导航" className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+              <span>{title}</span>
+              {activePanel?.label ? (
+                <>
+                  <ChevronRight className="h-3.5 w-3.5 opacity-60" aria-hidden />
+                  <span className={accentClass}>{activePanel.label}</span>
+                </>
+              ) : null}
+            </nav>
+            <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-[var(--text-main)]">
+              {Icon ? <Icon className={`h-6 w-6 ${accentClass}`} /> : null}
+              {activePanel?.label || title}
+            </h1>
+            {description ? <p className="mt-1 text-sm text-[var(--text-muted)]">{description}</p> : null}
+          </div>
+        )}
 
         <div
           role="tablist"
           aria-label={`${title} 标签`}
-          className="scrollbar-hide flex space-x-1 overflow-x-auto border-b border-[var(--border-glass)] pb-px"
+          className={
+            isAttackTheme
+              ? 'attack-hub-tablist scrollbar-hide'
+              : 'scrollbar-hide flex space-x-1 overflow-x-auto border-b border-[var(--border-glass)] pb-px'
+          }
         >
           {tabs.map((tab, index) => {
             const TabIcon = tab.icon
@@ -163,13 +190,18 @@ export default function HubShell({
                 tabIndex={isActive ? 0 : -1}
                 onClick={() => handleTabChange(tab.id)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
-                className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
-                  isActive ? accentClass : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
-                }`}
+                className={
+                  isAttackTheme
+                    ? `attack-hub-tab ${isActive ? 'attack-hub-tab--active' : ''}`
+                    : `relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
+                        isActive ? accentClass : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
+                      }`
+                }
               >
-                {TabIcon ? <TabIcon className="h-4 w-4" /> : null}
-                {tab.label}
-                {isActive ? (
+                {isAttackTheme ? <span className="attack-hub-tab-glow" aria-hidden /> : null}
+                {TabIcon ? <TabIcon className="h-4 w-4 relative z-10" /> : null}
+                <span className="relative z-10">{tab.label}</span>
+                {!isAttackTheme && isActive ? (
                   <motion.div
                     layoutId={layoutId}
                     className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full ${tabIndicatorClass}`}

@@ -4,7 +4,16 @@ import toast from 'react-hot-toast'
 import { AlertTriangle, Bug, CheckCircle2, Globe, Layers, Lock, Play, Shield, Zap, Loader2 } from 'lucide-react'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
-import { HubPanelIntro } from '../context/HubContext'
+import {
+  AttackPageShell,
+  AttackPanelIntro,
+  AttackConfigPanel,
+  AttackReportPanel,
+  AttackTypeCard,
+  AttackRunButton,
+  AttackDemoBanner,
+  AttackReportEmpty,
+} from '../components/attack'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -41,7 +50,7 @@ function buildDemoResults(selected, target) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { itemVariants } from '../utils/animations'
 
 const advancedSchema = z.object({
   selected: z.array(z.string()).min(1, '请至少选择一个攻击分类'),
@@ -134,11 +143,12 @@ export default function AdvancedAttackPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <HubPanelIntro description="按高级攻击分类组合执行定向越狱、Token 走私及梯度攻击测试。" />
+    <AttackPageShell>
+      <AttackPanelIntro description="按高级攻击分类组合执行定向越狱、Token 走私及梯度攻击测试。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
+        <motion.div variants={itemVariants}>
+        <AttackConfigPanel>
           <PanelHeader title="攻击向量编排" description="勾选攻击分类组、设置模型参数并挂载目标诱导提示词。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -151,22 +161,14 @@ export default function AdvancedAttackPage() {
                   const Icon = category.icon
                   const active = watchSelected.includes(category.key)
                   return (
-                    <button
+                    <AttackTypeCard
                       key={category.key}
-                      type="button"
+                      active={active}
                       onClick={() => toggleCategory(category.key)}
-                      className={`relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 ${
-                        active ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]' : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <div className="relative z-10 mb-2 flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-cyan-500 text-[var(--bg-main)]' : 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)]'}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <p className={`text-sm font-bold font-display transition-colors ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{category.name}</p>
-                      </div>
-                      <p className={`relative z-10 text-xs font-medium transition-colors ${active ? 'text-cyan-500/80' : 'text-[var(--text-muted)]'}`}>{category.desc}</p>
-                    </button>
+                      icon={Icon}
+                      title={category.name}
+                      description={category.desc}
+                    />
                   )
                 })}
               </div>
@@ -210,18 +212,19 @@ export default function AdvancedAttackPage() {
               {errors.targetPrompt && <p className="text-xs text-rose-500">{errors.targetPrompt.message}</p>}
             </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <AttackRunButton
+              loading={isSubmitting}
+              icon={Play}
+              loadingText="正在执行编排矩阵组合攻击..."
             >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              {isSubmitting ? '正在执行编排矩阵组合攻击...' : '启动矩阵渗透'}
-            </button>
+              启动矩阵渗透
+            </AttackRunButton>
           </form>
-        </motion.section>
+        </AttackConfigPanel>
+        </motion.div>
 
-        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+        <motion.div variants={itemVariants}>
+        <AttackReportPanel>
           <PanelHeader title="多维风险报告" description="综合展示平均风险热度、维度通过率与漏洞细节反馈。" />
           
           <AnimatePresence mode="wait">
@@ -234,10 +237,7 @@ export default function AdvancedAttackPage() {
                 className="space-y-6"
               >
                 {report._demo_mode && (
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地组合攻击推演展示</span>
-                  </div>
+                  <AttackDemoBanner text="演示模式：本地组合攻击推演展示" />
                 )}
                 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -279,31 +279,21 @@ export default function AdvancedAttackPage() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
-              >
-                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
-                  {isSubmitting ? (
-                    <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                  ) : (
-                    <Layers className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">{isSubmitting ? '多线程渗透执行中...' : '高级演练平台就绪'}</h3>
-                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
-                    {isSubmitting ? '引擎正在根据编排矩阵同时派发多种高危越权探测脚本，并持续计算目标防线衰减率。' : '尚未进行编排。在左侧选定攻击载荷库并指定核心提示词，平台将自动并发执行。'}
-                  </p>
-                </div>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+              <AttackReportEmpty
+                icon={Layers}
+                title="高级演练平台就绪"
+                description="尚未进行编排。在左侧选定攻击载荷库并指定核心提示词，平台将自动并发执行。"
+                loading={isSubmitting}
+                loadingTitle="多线程渗透执行中..."
+                loadingDescription="引擎正在根据编排矩阵同时派发多种高危越权探测脚本，并持续计算目标防线衰减率。"
+              />
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.section>
+        </AttackReportPanel>
+        </motion.div>
       </div>
-    </motion.div>
+    </AttackPageShell>
   )
 }
