@@ -1,11 +1,4 @@
-"""Attack success evaluation — re-exports from mox.evaluation.attack_success.
-
-Canonical types live in ``mox.evaluation.attack_success`` to avoid naming
-conflicts with ``mox.evaluation.framework.EvaluationResult`` and
-``mox.evaluation.attack_evaluator.AttackEvaluator``.
-"""
-
-import warnings
+"""Attack success evaluation — re-exports from mox.evaluation.attack_success."""
 
 from mox.evaluation.attack_success import (
     AttackSuccessResult,
@@ -21,14 +14,7 @@ from mox.evaluation.attack_success import (
     is_attack_successful,
 )
 
-warnings.warn(
-    "Import attack-success evaluators from mox.evaluation.attack_success; "
-    "mox.attacks.evaluation re-exports are deprecated.",
-    DeprecationWarning,
-    stacklevel=2,
-)
-
-# Backward-compatible aliases (remove in v0.7.0)
+# Backward-compatible aliases (module-level only, not in attacks.__all__)
 EvaluationResult = AttackSuccessResult
 AttackEvaluator = AttackSuccessEvaluator
 

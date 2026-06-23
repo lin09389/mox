@@ -7,8 +7,8 @@ implementations remain importable from their submodules, e.g.
 
 from .base import BaseAttack, AttackConfig
 
-# Attack-success evaluation (canonical types in mox.evaluation.attack_success)
-from .evaluation import (
+# Attack-success evaluation (canonical: mox.evaluation.attack_success)
+from mox.evaluation.attack_success import (
     AttackSuccessResult,
     AttackSuccessEvaluator,
     KeywordOverlapEvaluator,
@@ -20,9 +20,10 @@ from .evaluation import (
     create_evaluator,
     evaluate_attack_success,
     is_attack_successful,
-    EvaluationResult,
-    AttackEvaluator,
 )
+
+# Deprecated aliases — module-level only, not exported via __all__
+from .evaluation import EvaluationResult, AttackEvaluator
 
 from .config import (
     TAPConfig,
@@ -145,7 +146,4 @@ __all__ = [
     "AgentAttackConfig",
     "create_config",
     "get_default_config",
-    # Deprecated aliases (scheduled removal v0.7.0)
-    "EvaluationResult",
-    "AttackEvaluator",
 ]

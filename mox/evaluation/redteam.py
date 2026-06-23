@@ -58,13 +58,15 @@ class AttackTechnique(Enum):
     GCG = "gcg"  # 梯度攻击
 
 
-# 攻击模块映射
-ATTACK_MAPPING = {}
+# 攻击模块映射（延迟初始化，避免 evaluation↔attacks 循环导入）
+_ATTACK_MAPPING: Dict[Any, Any] | None = None
 
 
-def _init_attack_mapping():
-    """初始化攻击映射"""
-    global ATTACK_MAPPING
+def get_attack_mapping() -> Dict[Any, Any]:
+    """Return attack-class mapping, populated lazily on first use."""
+    global _ATTACK_MAPPING
+    if _ATTACK_MAPPING is not None:
+        return _ATTACK_MAPPING
 
     try:
         from mox.attacks.llm_driven import TAPAttack, MultiTurnJailbreakAttack, CrescendoAttack
@@ -73,7 +75,7 @@ def _init_attack_mapping():
         from mox.attacks.agent_attacks import ToolAbuseAttack, MemoryInjectionAttack
         from mox.attacks.gcg import GCGAttack
 
-        ATTACK_MAPPING = {
+        _ATTACK_MAPPING = {
             AttackTechnique.TAP: TAPAttack,
             AttackTechnique.AUTO_DAN: MultiTurnJailbreakAttack,
             AttackTechnique.CRESCENDO: CrescendoAttack,
@@ -87,10 +89,9 @@ def _init_attack_mapping():
         import warnings
 
         warnings.warn(f"Failed to import advanced attack modules: {e}")
-        ATTACK_MAPPING = {}
+        _ATTACK_MAPPING = {}
 
-
-_init_attack_mapping()
+    return _ATTACK_MAPPING
 
 
 @dataclass
@@ -829,7 +830,7 @@ class RedTeamOrchestrator:
             self._progress_callback(scenario, None)
 
         # 使用高级攻击模块
-        if scenario.technique in ATTACK_MAPPING:
+        if scenario.technique in get_attack_mapping():
             result = await self._run_advanced_attack(scenario, max_attempts)
         else:
             # 使用基础方法
@@ -847,7 +848,7 @@ class RedTeamOrchestrator:
         max_attempts: int,
     ) -> RedTeamResult:
         """运行高级攻击"""
-        attack_class = ATTACK_MAPPING.get(scenario.technique)
+        attack_class = get_attack_mapping().get(scenario.technique)
         if not attack_class:
             return await self._run_basic_attack(scenario, max_attempts)
 
