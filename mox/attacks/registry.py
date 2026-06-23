@@ -208,6 +208,9 @@ def _create_default_registry() -> AttackRegistry:
     # 注册 LLM 驱动攻击
     _register_llm_driven_attacks(registry)
 
+    # 注册 RAG / Agent / 多轮攻击
+    _register_rag_agent_attacks(registry)
+
     # 注册新型攻击
     _register_novel_attacks(registry)
 
@@ -320,6 +323,45 @@ def _register_llm_driven_attacks(registry: AttackRegistry):
         description="Crescendo 渐进式多轮越狱",
         requires_llm=True,
         aliases=["crescendo_jailbreak"],
+    )
+
+
+def _register_rag_agent_attacks(registry: AttackRegistry):
+    """注册 RAG / Agent / 多轮攻击"""
+    from .llm_driven import MultiTurnJailbreakAttack, TAPConfig
+    from .rag_attacks import RAGContextInjectionAttack, AgentToolManipulationAttack
+
+    registry.register(
+        name="multi_turn",
+        factory=lambda llm, iter: MultiTurnJailbreakAttack(
+            target_llm=llm, config=TAPConfig(max_iterations=iter, max_depth=5)
+        ),
+        category=AttackCategory.BASIC,
+        attack_class=MultiTurnJailbreakAttack,
+        config_class=TAPConfig,
+        description="多轮对话越狱攻击",
+        requires_llm=True,
+        aliases=["multi_turn_jailbreak", "goat"],
+    )
+
+    registry.register(
+        name="rag_context_injection",
+        factory=lambda llm, iter: RAGContextInjectionAttack(target_llm=llm),
+        category=AttackCategory.NOVEL,
+        attack_class=RAGContextInjectionAttack,
+        description="RAG 上下文注入攻击",
+        aliases=["rag"],
+    )
+
+    registry.register(
+        name="agent_tool_manipulation",
+        factory=lambda llm, iter: AgentToolManipulationAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.AGENT,
+        attack_class=AgentToolManipulationAttack,
+        description="Agent 工具操纵攻击",
+        aliases=["agent"],
     )
 
 

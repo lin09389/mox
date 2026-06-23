@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AudioLines, Image, Layers3, Play, ScanSearch, ShieldAlert, Loader2 } from 'lucide-react'
-import { isDemoModeEnabled, v2Api } from '../api'
+import { attackApi, isDemoModeEnabled } from '../api'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
 import { HubPanelIntro } from '../context/HubContext'
@@ -63,7 +63,7 @@ export default function MultimodalAttackPage() {
 
   const runAttackMutation = useMutation({
     mutationFn: async (payloadData) => {
-      return v2Api.multimodalAttack(payloadData)
+      return attackApi.multimodalAttack(payloadData)
     }
   })
 

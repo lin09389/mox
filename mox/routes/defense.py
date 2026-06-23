@@ -27,6 +27,23 @@ class DefenseRequest(BaseModel):
     defense_types: List[str] = ["input_filter", "output_filter"]
 
 
+class SemanticFirewallRequest(BaseModel):
+    text: str
+    context: Optional[str] = None
+    user_id: Optional[str] = None
+
+
+class OutputValidationRequest(BaseModel):
+    text: str
+    check_pii: bool = True
+    check_sensitive: bool = True
+
+
+class ConstitutionalAIRequest(BaseModel):
+    text: str
+    model_name: str = "gpt-4"
+
+
 # ============ 依赖 ============
 
 def _analyze_detection_patterns(detected_patterns: List[str]) -> Dict[str, Any]:
@@ -319,6 +336,57 @@ async def detect_injection(
         }
     except Exception:
         return {"is_malicious": False, "confidence": 0, "error": "Injection detection failed"}
+
+
+@router.post("/semantic-firewall")
+async def run_semantic_firewall_v1(
+    request: SemanticFirewallRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """语义防火墙检测（v1 主路径）"""
+    try:
+        from mox.routes.services.advanced_handlers import run_semantic_firewall
+
+        return await run_semantic_firewall(
+            request.text,
+            context=request.context,
+            source="api_v1_semantic_firewall",
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Semantic firewall failed")
+
+
+@router.post("/output-validator")
+async def run_output_validator_v1(
+    request: OutputValidationRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """输出验证器（v1 主路径）"""
+    try:
+        from mox.routes.services.advanced_handlers import run_output_validator
+
+        return await run_output_validator(
+            request.text,
+            check_pii=request.check_pii,
+            check_sensitive=request.check_sensitive,
+            source="api_v1_output_validator",
+        )
+    except Exception:
+        raise HTTPException(status_code=500, detail="Output validation failed")
+
+
+@router.post("/constitutional-ai")
+async def run_constitutional_ai_v1(
+    request: ConstitutionalAIRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """Constitutional AI 修正（v1 主路径）"""
+    try:
+        from mox.routes.services.advanced_handlers import run_constitutional_ai
+
+        return await run_constitutional_ai(request.text, request.model_name)
+    except Exception:
+        raise HTTPException(status_code=500, detail="Constitutional AI failed")
 
 
 @router.get("/logs")

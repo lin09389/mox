@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AlertTriangle, Bot, Play, Shield, Wrench, Zap, Loader2 } from 'lucide-react'
-import { isDemoModeEnabled, v2Api } from '../api'
+import { attackApi, isDemoModeEnabled } from '../api'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
 import { HubPanelIntro } from '../context/HubContext'
@@ -55,7 +55,7 @@ export default function AgentAttackPage() {
 
   const runAttackMutation = useMutation({
     mutationFn: async (payload) => {
-      return v2Api.agentAttack(payload)
+      return attackApi.agentAttack(payload)
     }
   })
 

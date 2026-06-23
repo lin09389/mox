@@ -70,6 +70,20 @@ def test_routes_use_registry_not_hand_maps():
     assert "get_cached_llm" in combined
 
 
+def test_cli_uses_registry_not_hand_maps():
+    from mox.attacks.registry import has_attack_type
+
+    import mox.cli as cli_module
+
+    source = inspect.getsource(cli_module)
+    assert "attack_map" not in source
+    assert "execute_registry_attack" in source
+    assert "PromptInjectionAttack" not in source
+    assert has_attack_type("rag")
+    assert has_attack_type("agent")
+    assert has_attack_type("multi_turn")
+
+
 def test_attacks_export_surface_slimmed():
     import mox.attacks as attacks
 

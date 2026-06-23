@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AlertTriangle, CheckCircle2, FileText, ShieldCheck, Fingerprint, Loader2, Target, Clock3 } from 'lucide-react'
-import { v2Api, isDemoModeEnabled } from '../api'
+import { platformApi, isDemoModeEnabled } from '../api'
 import { useLocalStorage } from '../hooks/useLocalStorage'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
@@ -46,7 +46,7 @@ export default function SafetyCardPage() {
   useEffect(() => {
     const loadRecent = async () => {
       try {
-        const data = await v2Api.safetyCardsRecent()
+        const data = await platformApi.safetyCardsRecent()
         setRecentCards(data || [])
       } catch {
         setRecentCards([])
@@ -59,7 +59,7 @@ export default function SafetyCardPage() {
     setLoading(true)
     setSafetyCard(null)
     try {
-      const data = await v2Api.safetyCardsGenerate({ model_name: modelName })
+      const data = await platformApi.safetyCardsGenerate({ model_name: modelName })
       setSafetyCard(data)
       toast.success('大模型安全评估镜像已生成。')
     } catch {

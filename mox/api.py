@@ -34,6 +34,7 @@ from mox.routes.websocket import manager as ws_manager
 from mox.routes.websocket import router as websocket_router
 
 API_V1_PREFIX = "/api/v1"
+API_V2_PREFIX = "/api/v2"
 COMPAT_PREFIX = "/api"
 
 
@@ -86,9 +87,12 @@ def _register_middleware(app: FastAPI) -> None:
     @app.middleware("http")
     async def add_compatibility_headers(request: Request, call_next):
         response = await call_next(request)
-        if request.url.path.startswith(f"{COMPAT_PREFIX}/") and not request.url.path.startswith(
-            f"{API_V1_PREFIX}/"
-        ):
+        path = request.url.path
+        if path.startswith(f"{API_V2_PREFIX}/"):
+            response.headers["Deprecation"] = "true"
+            response.headers["Sunset"] = "2026-12-31"
+            response.headers["Link"] = f'<{API_V1_PREFIX}>; rel="successor-version"'
+        elif path.startswith(f"{COMPAT_PREFIX}/") and not path.startswith(f"{API_V1_PREFIX}/"):
             response.headers["Deprecation"] = "true"
             response.headers["Sunset"] = "2026-12-31"
             response.headers["Link"] = f'<{API_V1_PREFIX}>; rel="successor-version"'

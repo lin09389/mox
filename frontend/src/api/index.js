@@ -97,6 +97,9 @@ export const authApi = {
 
 export const attackApi = {
   run: async (data) => unwrap(await api.post(`${API_PREFIX}/attack`, data)),
+  agentAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/agent`, payload)),
+  multimodalAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/multimodal`, payload)),
+  novelAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/novel`, payload)),
   getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/attack/history`, { params })),
   test: async () => unwrap(await api.get(`${API_PREFIX}/health`)),
   getRegistry: async () => unwrap(await api.get(`${API_PREFIX}/attacks/registry`)),
@@ -149,6 +152,9 @@ export const reportApi = {
 export const defenseApi = {
   scan: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/scan`, data)),
   sanitize: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/sanitize`, data)),
+  semanticFirewall: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/semantic-firewall`, data)),
+  outputValidator: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/output-validator`, data)),
+  constitutionalAI: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/constitutional-ai`, data)),
   getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/defense/history`, { params })),
 }
 
@@ -299,13 +305,18 @@ export const auditApi = {
   getLogs: async (params) => unwrap(await api.get(`${API_PREFIX}/audit/logs`, { params })),
 }
 
-const API_V2_PREFIX = '/api/v2'
+export const platformApi = {
+  safetyCardsRecent: async () => unwrap(await api.get(`${API_PREFIX}/safety-cards/recent`)),
+  safetyCardsGenerate: async (data) => unwrap(await api.post(`${API_PREFIX}/safety-cards/generate`, data)),
+  ollamaStatus: async (data) => unwrap(await api.post(`${API_PREFIX}/ollama/status`, data)),
+}
 
+/** @deprecated Use attackApi / platformApi — v2 compat only */
 export const v2Api = {
-  agentAttack: async (payload) => unwrap(await api.post(`${API_V2_PREFIX}/attacks/agent`, payload)),
-  multimodalAttack: async (payload) => unwrap(await api.post(`${API_V2_PREFIX}/attacks/multimodal`, payload)),
-  safetyCardsRecent: async () => unwrap(await api.get(`${API_V2_PREFIX}/safety-cards/recent`)),
-  safetyCardsGenerate: async (data) => unwrap(await api.post(`${API_V2_PREFIX}/safety-cards/generate`, data)),
+  agentAttack: attackApi.agentAttack,
+  multimodalAttack: attackApi.multimodalAttack,
+  safetyCardsRecent: platformApi.safetyCardsRecent,
+  safetyCardsGenerate: platformApi.safetyCardsGenerate,
 }
 
 export const evaluationApi = {

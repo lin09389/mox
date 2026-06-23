@@ -112,12 +112,12 @@ describe('API utilities', () => {
     expect(axiosMock.instance.get).toHaveBeenCalledWith('/api/v1/monitoring/visualization')
   })
 
-  it('v2Api.agentAttack posts to /api/v2/attacks/agent', async () => {
+  it('attackApi.agentAttack posts to /api/v1/attack/agent', async () => {
     axiosMock.instance.post.mockResolvedValue({ data: { success: true } })
-    const { v2Api } = await import('./index.js')
+    const { attackApi } = await import('./index.js')
     const payload = { strategy: 'tool_abuse' }
-    const result = await v2Api.agentAttack(payload)
+    const result = await attackApi.agentAttack(payload)
     expect(result).toEqual({ success: true })
-    expect(axiosMock.instance.post).toHaveBeenCalledWith('/api/v2/attacks/agent', payload)
+    expect(axiosMock.instance.post).toHaveBeenCalledWith('/api/v1/attack/agent', payload)
   })
 })

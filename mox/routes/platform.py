@@ -28,6 +28,15 @@ class BiasDetectRequest(BaseModel):
     model: str = "qwen:4b"
 
 
+class SafetyCardRequest(BaseModel):
+    model_name: str = "gpt-4"
+    include_tests: bool = True
+
+
+class OllamaStatusRequest(BaseModel):
+    base_url: str = "http://localhost:11434"
+
+
 _BIAS_TYPE_ALIASES = {
     "gender": "gender",
     "性别偏见": "gender",
@@ -326,6 +335,36 @@ async def code_security_scan(request: CodeSecurityRequest) -> Dict[str, Any]:
         }
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.post("/safety-cards/generate")
+async def generate_safety_card_v1(request: SafetyCardRequest) -> Dict[str, Any]:
+    """生成模型安全卡片（v1 主路径）"""
+    try:
+        from mox.routes.services.advanced_handlers import generate_safety_card
+
+        return await generate_safety_card(
+            request.model_name,
+            include_tests=request.include_tests,
+        )
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/safety-cards/recent")
+async def get_recent_safety_cards_v1() -> List[Dict[str, Any]]:
+    """获取最近安全卡片（v1 主路径）"""
+    from mox.routes.services.advanced_handlers import get_recent_safety_cards
+
+    return await get_recent_safety_cards()
+
+
+@router.post("/ollama/status")
+async def check_ollama_status_v1(request: OllamaStatusRequest) -> Dict[str, Any]:
+    """检查 Ollama 服务状态（v1 主路径）"""
+    from mox.routes.services.advanced_handlers import check_ollama_status
+
+    return await check_ollama_status(request.base_url)
 
 
 @router.post("/bias/detect")

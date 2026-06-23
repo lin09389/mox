@@ -122,9 +122,9 @@ def test_api_v2_novel_attack_persists_history(history_client: TestClient):
         timestamp=datetime.now(),
     )
 
-    with patch("mox.routes.api_v2.get_cached_llm", return_value=MagicMock()):
+    with patch("mox.routes.services.specialized_attack.get_cached_llm", return_value=MagicMock()):
         with patch(
-            "mox.routes.api_v2.execute_registry_attack",
+            "mox.routes.services.specialized_attack.execute_registry_attack",
             new_callable=AsyncMock,
             return_value=outcome,
         ):
