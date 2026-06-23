@@ -11,7 +11,8 @@ export function AttackPageShell({ children, className = '' }) {
       variants={containerVariants}
       initial="hidden"
       animate="show"
-      className={`attack-shell page-shell ${className}`}
+      data-ws-theme="attack"
+      className={`attack-shell ws-shell page-shell ${className}`}
     >
       <div className="attack-shell-grid" aria-hidden />
       <div className="attack-shell-glow" aria-hidden />
@@ -77,16 +78,16 @@ export function AttackTypeCard({
   className = '',
   type = 'button',
 }) {
-  const Tag = type === 'button' ? motion.button : motion.label
+  const Tag = type === 'button' ? motion.button : type === 'label' ? motion.label : motion.div
   return (
     <Tag
       type={type === 'button' ? 'button' : undefined}
       onClick={onClick}
       variants={wsTypeCardVariants}
       initial="rest"
-      whileHover={active ? undefined : 'hover'}
+      whileHover={active || type === 'div' ? undefined : 'hover'}
       whileTap={type === 'button' ? 'tap' : undefined}
-      className={`attack-type-card ${active ? 'attack-type-card--active' : ''} ${
+      className={`attack-type-card type-card--motion ${active ? 'attack-type-card--active' : ''} ${
         active && danger ? 'attack-type-card--danger' : ''
       } ${className}`}
     >
@@ -122,7 +123,7 @@ export function AttackRunButton({
       type="submit"
       disabled={disabled || loading}
       whileTap={disabled || loading ? undefined : tapEffect}
-      className={`attack-run-btn btn-primary w-full justify-center py-3 text-base font-bold ${className}`}
+      className={`attack-run-btn w-full py-3 text-base ${className}`}
     >
       {loading ? (
         <>

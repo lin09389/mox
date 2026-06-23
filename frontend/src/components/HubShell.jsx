@@ -203,6 +203,14 @@ export default function HubShell({
                       }`
                 }
               >
+                {isThemedHub && isActive ? (
+                  <motion.div
+                    layoutId={`${layoutId}-ws-tab-indicator`}
+                    className="ws-hub-tab-indicator"
+                    transition={{ type: 'spring', stiffness: 480, damping: 32 }}
+                    aria-hidden
+                  />
+                ) : null}
                 {isThemedHub ? <span className="ws-hub-tab-glow" aria-hidden /> : null}
                 {TabIcon ? <TabIcon className="h-4 w-4 relative z-10" /> : null}
                 <span className="relative z-10">{tab.label}</span>

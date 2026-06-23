@@ -189,11 +189,17 @@
 .ws-hub-tab:hover { color: var(--text-main); background: var(--bg-glass-strong); }
 .ws-hub-tab--active {
   color: var(--ws-accent);
+}
+.ws-hub-tab-indicator {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
   background: var(--ws-accent-soft);
   box-shadow:
     inset 0 0 0 1px color-mix(in srgb, var(--ws-accent) 35%, transparent),
     0 2px 12px color-mix(in srgb, var(--ws-glow) 40%, transparent);
-  transform: translateY(-1px);
+  pointer-events: none;
+  z-index: 0;
 }
 .ws-hub-tab-glow {
   position: absolute;
@@ -259,12 +265,14 @@
   padding: 1rem;
   text-align: left;
   cursor: pointer;
-  transition: transform var(--duration-fast) var(--ease-out-expo), border-color var(--duration-normal) var(--ease-out-expo), background-color var(--duration-normal) var(--ease-out-expo), box-shadow var(--duration-normal) var(--ease-out-expo);
+  transition:
+    border-color var(--duration-normal) var(--ease-out-expo),
+    background-color var(--duration-normal) var(--ease-out-expo),
+    box-shadow var(--duration-normal) var(--ease-out-expo);
 }
 .ws-type-card:hover {
   border-color: color-mix(in srgb, var(--ws-accent) 38%, var(--border-glass));
   background: var(--bg-glass-strong);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-soft), 0 0 20px color-mix(in srgb, var(--ws-glow) 25%, transparent);
 }
 .ws-type-card--active {
@@ -274,7 +282,6 @@
     inset 0 0 28px color-mix(in srgb, var(--ws-accent) 14%, transparent),
     0 0 0 1px color-mix(in srgb, var(--ws-accent) 18%, transparent),
     0 4px 20px color-mix(in srgb, var(--ws-glow) 30%, transparent);
-  transform: translateY(-1px) scale(1.012);
 }
 .ws-type-card--danger.ws-type-card--active {
   border-color: color-mix(in srgb, var(--ws-danger) 50%, transparent);
@@ -335,13 +342,26 @@
 .ws-run-btn {
   position: relative;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
   background: linear-gradient(135deg, var(--ws-accent), color-mix(in srgb, var(--ws-accent) 68%, #0f172a));
   color: white;
-  border-color: transparent;
   box-shadow: 0 4px 28px var(--ws-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition:
     transform var(--duration-normal) var(--ease-spring),
     box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+.ws-run-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 .ws-run-btn::before {
   content: "";

@@ -35,7 +35,7 @@ function demoCard(model) {
   }
 }
 
-import { WorkspacePageShell } from '../components/workspace'
+import { WorkspacePageShell, WorkspaceRunButton } from '../components/workspace'
 import { itemVariants } from '../utils/animations'
 
 export default function SafetyCardPage() {
@@ -94,15 +94,17 @@ export default function SafetyCardPage() {
               </div>
             </div>
             
-            <button 
-              type="button" 
-              onClick={generateCard} 
-              disabled={loading || !modelName.trim()} 
-              className="btn-primary w-full justify-center py-4 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={generateCard}
+              disabled={loading || !modelName.trim()}
+              loading={loading}
+              icon={Fingerprint}
+              loadingText="正在提取模型防御特征..."
+              className="py-4"
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin mr-2" /> : <Fingerprint className="h-5 w-5 mr-2" />}
-              {loading ? '正在提取模型防御特征...' : '生成完整安全快照'}
-            </button>
+              生成完整安全快照
+            </WorkspaceRunButton>
 
             <div className="mt-8 pt-6 border-t border-[var(--border-glass)]">
               <p className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest mb-4 flex items-center gap-2">

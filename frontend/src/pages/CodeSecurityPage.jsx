@@ -30,7 +30,7 @@ function demoResult(text) {
   }
 }
 
-import { WorkspacePageShell } from '../components/workspace'
+import { WorkspacePageShell, WorkspaceRunButton } from '../components/workspace'
 import { itemVariants } from '../utils/animations'
 
 export default function CodeSecurityPage() {
@@ -94,15 +94,16 @@ export default function CodeSecurityPage() {
               </div>
             </div>
             
-            <button 
-              type="button" 
-              onClick={runSecurityTest} 
-              disabled={loading || !codePrompt.trim()} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={runSecurityTest}
+              disabled={loading || !codePrompt.trim()}
+              loading={loading}
+              icon={ShieldAlert}
+              loadingText="代码安全扫描中..."
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldAlert className="h-5 w-5" />}
-              {loading ? '代码安全扫描中...' : '运行安全检测'}
-            </button>
+              运行安全检测
+            </WorkspaceRunButton>
           </div>
         </motion.section>
 

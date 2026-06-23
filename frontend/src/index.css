@@ -1217,7 +1217,6 @@ textarea:focus:not(:focus-visible) {
   text-align: left;
   cursor: pointer;
   transition:
-    transform var(--duration-fast) var(--ease-out-expo),
     border-color var(--duration-normal) var(--ease-out-expo),
     background-color var(--duration-normal) var(--ease-out-expo),
     box-shadow var(--duration-normal) var(--ease-out-expo);
@@ -1226,7 +1225,6 @@ textarea:focus:not(:focus-visible) {
 .attack-type-card:hover {
   border-color: color-mix(in srgb, var(--attack-accent) 38%, var(--border-glass));
   background: var(--bg-glass-strong);
-  transform: translateY(-2px);
   box-shadow: var(--shadow-soft), 0 0 20px color-mix(in srgb, var(--attack-glow) 25%, transparent);
 }
 
@@ -1237,7 +1235,6 @@ textarea:focus:not(:focus-visible) {
     inset 0 0 28px color-mix(in srgb, var(--attack-accent) 14%, transparent),
     0 0 0 1px color-mix(in srgb, var(--attack-accent) 18%, transparent),
     0 4px 20px color-mix(in srgb, var(--attack-glow) 30%, transparent);
-  transform: translateY(-1px) scale(1.012);
 }
 
 .attack-type-card--danger.attack-type-card--active {
@@ -1322,9 +1319,17 @@ textarea:focus:not(:focus-visible) {
 .attack-run-btn {
   position: relative;
   overflow: hidden;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  border-radius: 9999px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  cursor: pointer;
+  border: 1px solid transparent;
   background: linear-gradient(135deg, var(--attack-accent), color-mix(in srgb, var(--attack-accent) 68%, #0e7490));
   color: white;
-  border-color: transparent;
   box-shadow: 0 4px 28px var(--attack-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
   transition:
     transform var(--duration-normal) var(--ease-spring),
@@ -1641,7 +1646,6 @@ textarea:focus:not(:focus-visible) {
     animation: none;
   }
 
-  .ws-hub-tab--active,
   .ws-type-card:hover,
   .ws-pricing-tier:hover,
   .ws-stat-mini:hover {

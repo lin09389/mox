@@ -92,9 +92,9 @@ export function WorkspaceTypeCard({
       onClick={onClick}
       variants={wsTypeCardVariants}
       initial="rest"
-      whileHover={active ? undefined : 'hover'}
+      whileHover={active || type === 'div' ? undefined : 'hover'}
       whileTap={type === 'button' ? 'tap' : undefined}
-      className={`ws-type-card ${active ? 'ws-type-card--active' : ''} ${
+      className={`ws-type-card type-card--motion ${active ? 'ws-type-card--active' : ''} ${
         active && danger ? 'ws-type-card--danger' : ''
       } ${className}`}
     >
@@ -116,6 +116,8 @@ export function WorkspaceTypeCard({
 }
 
 export function WorkspaceRunButton({
+  type = 'submit',
+  onClick,
   loading = false,
   disabled = false,
   icon: Icon,
@@ -126,10 +128,11 @@ export function WorkspaceRunButton({
 }) {
   return (
     <motion.button
-      type="submit"
+      type={type}
+      onClick={onClick}
       disabled={disabled || loading}
       whileTap={disabled || loading ? undefined : tapEffect}
-      className={`ws-run-btn btn-primary w-full justify-center py-3 text-base font-bold ${className}`}
+      className={`ws-run-btn w-full py-3 text-base ${className}`}
     >
       {loading ? (
         <>
