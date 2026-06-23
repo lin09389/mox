@@ -147,6 +147,17 @@ export const wsTypeCardVariants = {
   tap: { scale: 0.985, y: 0 },
 }
 
+// 6c. Workspace 运行按钮悬停（motion 独占 transform，CSS 只管光晕）
+export const wsRunBtnVariants = {
+  rest: { y: 0, scale: 1 },
+  hover: {
+    y: -3,
+    scale: 1,
+    transition: { type: 'spring', stiffness: 460, damping: 26 },
+  },
+  tap: { y: -1, scale: 0.98, transition: { type: 'spring', stiffness: 500, damping: 30 } },
+}
+
 // 7. 微交互：点击反馈 (Micro-interaction: Tap)
 export const tapEffect = {
   scale: 0.98,

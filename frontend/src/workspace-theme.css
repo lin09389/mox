@@ -384,9 +384,7 @@
   background: linear-gradient(135deg, var(--ws-accent), color-mix(in srgb, var(--ws-accent) 68%, #0f172a));
   color: white;
   box-shadow: 0 4px 28px var(--ws-glow), inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  transition:
-    transform var(--duration-normal) var(--ease-spring),
-    box-shadow var(--duration-normal) var(--ease-out-expo);
+  transition: box-shadow var(--duration-normal) var(--ease-out-expo);
 }
 .ws-run-btn:disabled {
   opacity: 0.55;
@@ -403,12 +401,7 @@
   pointer-events: none;
 }
 .ws-run-btn:hover:not(:disabled) {
-  transform: translateY(-3px);
   box-shadow: 0 10px 36px var(--ws-glow), inset 0 1px 0 rgba(255, 255, 255, 0.28);
-}
-.ws-run-btn:active:not(:disabled) {
-  transform: translateY(-1px);
-  transition-duration: 80ms;
 }
 .ws-demo-banner {
   display: flex;

@@ -1,8 +1,13 @@
-import { motion } from 'framer-motion'
+import { motion, useReducedMotion } from 'framer-motion'
 import { Loader2 } from 'lucide-react'
 import { ProgressMeter } from '../ui/AppFrame'
 import { useHubContext } from '../../context/HubContext'
-import { containerVariants, hoverCardVariants, tapEffect, wsTypeCardVariants } from '../../utils/animations'
+import {
+  containerVariants,
+  hoverCardVariants,
+  wsTypeCardVariants,
+  wsRunBtnVariants,
+} from '../../utils/animations'
 import { WORKSPACE_THEME_META } from './themeMeta'
 
 export function WorkspacePageShell({ theme: themeProp, children, className = '', showGrid = true }) {
@@ -85,6 +90,7 @@ export function WorkspaceTypeCard({
   className = '',
   type = 'button',
 }) {
+  const reduceMotion = useReducedMotion()
   const Tag = type === 'button' ? motion.button : type === 'label' ? motion.label : motion.div
   return (
     <Tag
@@ -92,8 +98,8 @@ export function WorkspaceTypeCard({
       onClick={onClick}
       variants={wsTypeCardVariants}
       initial="rest"
-      whileHover={active || type === 'div' ? undefined : 'hover'}
-      whileTap={type === 'button' ? 'tap' : undefined}
+      whileHover={active || type === 'div' || reduceMotion ? undefined : 'hover'}
+      whileTap={type === 'button' && !reduceMotion ? 'tap' : undefined}
       className={`ws-type-card type-card--motion ${active ? 'ws-type-card--active' : ''} ${
         active && danger ? 'ws-type-card--danger' : ''
       } ${className}`}
@@ -126,12 +132,17 @@ export function WorkspaceRunButton({
   children,
   className = '',
 }) {
+  const reduceMotion = useReducedMotion()
+  const inactive = disabled || loading
   return (
     <motion.button
       type={type}
       onClick={onClick}
-      disabled={disabled || loading}
-      whileTap={disabled || loading ? undefined : tapEffect}
+      disabled={inactive}
+      variants={wsRunBtnVariants}
+      initial="rest"
+      whileHover={inactive || reduceMotion ? undefined : 'hover'}
+      whileTap={inactive || reduceMotion ? undefined : 'tap'}
       className={`ws-run-btn w-full py-3 text-base ${className}`}
     >
       {loading ? (
