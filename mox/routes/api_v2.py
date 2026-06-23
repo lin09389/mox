@@ -1,15 +1,24 @@
+"""API v2 compatibility layer — thin wrappers over v1 registry-backed routes."""
+
+import warnings
 from typing import Dict, Any, List, Optional
+
 from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel, Field
 
-from mox.core import BaseLLM, LLMFactory, AttackType
+from mox.core import AttackType
 from mox.core.auth import get_optional_active_user, User
 from mox.core.history_store import persist_attack_outcome, persist_defense_scan
+from mox.routes.services import get_cached_llm, execute_registry_attack
+from mox.routes.services.attack_service import format_attack_outcome
+
+warnings.warn(
+    "mox.routes.api_v2 is a compatibility layer; prefer /api/v1/attack/* endpoints.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 router = APIRouter(prefix="/api/v2", tags=["API v2"])
-
-
-# ============        ============
 
 
 class AgentAttackRequest(BaseModel):
@@ -18,7 +27,6 @@ class AgentAttackRequest(BaseModel):
     target_behavior: Optional[str] = None
     model_name: str = "gpt-4"
     tools: List[str] = Field(default_factory=lambda: ["read_file", "http_request"])
-    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -30,7 +38,6 @@ class MultimodalAttackRequest(BaseModel):
     image_url: Optional[str] = None
     audio_url: Optional[str] = None
     template: Optional[str] = None
-    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -40,7 +47,6 @@ class NovelAttackRequest(BaseModel):
     prompt: str
     target_behavior: Optional[str] = None
     model_name: str = "gpt-4"
-    # Ollama
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
 
@@ -66,103 +72,45 @@ class OllamaStatusRequest(BaseModel):
     base_url: str = "http://localhost:11434"
 
 
-# ============ LLM     ============
-
-_llm_cache: Dict[str, BaseLLM] = {}
-
-
-def get_llm(
-    model: str, use_ollama: bool = False, ollama_base_url: str = "http://localhost:11434/v1"
-) -> BaseLLM:
-    cache_key = f"{model}:{use_ollama}:{ollama_base_url}"
-
-    if cache_key not in _llm_cache:
-        if use_ollama:
-            #     Ollama
-            _llm_cache[cache_key] = LLMFactory.create_from_model_name(
-                model,
-                base_url=ollama_base_url,
-                api_key="ollama",
-            )
-        else:
-            _llm_cache[cache_key] = LLMFactory.create_from_model_name(model)
-
-    return _llm_cache[cache_key]
+class ConstitutionalAIRequest(BaseModel):
+    text: str
+    model_name: str = "gpt-4"
 
 
-# ============ Ollama       ?============
-
-
-@router.get("/ollama/status")
-async def get_ollama_status(
-    base_url: str = "http://localhost:11434",
-    current_user: User = Depends(get_optional_active_user),
+async def _registry_attack_response(
+    attack_type: str,
+    request_model: str,
+    prompt: str,
+    *,
+    target_behavior: Optional[str] = None,
+    use_ollama: bool = False,
+    ollama_base_url: str = "http://localhost:11434/v1",
+    source: str,
+    max_iterations: int = 100,
 ) -> Dict[str, Any]:
-    import aiohttp
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.get(f"{base_url}/api/tags", timeout=5) as resp:
-                if resp.status == 200:
-                    data = await resp.json()
-                    models = [
-                        {
-                            "name": m["name"],
-                            "size": m.get("size", 0),
-                            "modified_at": m.get("modified_at", ""),
-                        }
-                        for m in data.get("models", [])
-                    ]
-                    return {
-                        "status": "running",
-                        "base_url": base_url,
-                        "models": models,
-                        "model_count": len(models),
-                    }
-                return {
-                    "status": "error",
-                    "message": f"HTTP {resp.status}",
-                }
-    except Exception as e:
-        return {
-            "status": "unavailable",
-            "message": str(e),
-            "hint": "    ?Ollama         : ollama serve",
-        }
-
-
-@router.post("/ollama/pull")
-async def pull_ollama_model(
-    model: str,
-    base_url: str = "http://localhost:11434",
-    current_user: User = Depends(get_optional_active_user),
-) -> Dict[str, Any]:
-    import aiohttp
-
-    try:
-        async with aiohttp.ClientSession() as session:
-            async with session.post(
-                f"{base_url}/api/pull",
-                json={"name": model},
-                timeout=300,
-            ) as resp:
-                if resp.status == 200:
-                    return {
-                        "status": "success",
-                        "message": f"    {model}       ",
-                    }
-                return {
-                    "status": "error",
-                    "message": f"      : HTTP {resp.status}",
-                }
-    except Exception as e:
-        return {
-            "status": "error",
-            "message": str(e),
-        }
-
-
-# ============ Agent       ============
+    llm = get_cached_llm(
+        request_model,
+        use_ollama=use_ollama,
+        ollama_base_url=ollama_base_url,
+    )
+    outcome = await execute_registry_attack(
+        attack_type,
+        llm,
+        prompt,
+        target_behavior=target_behavior,
+        max_iterations=max_iterations,
+    )
+    record_id = await persist_attack_outcome(
+        attack_type,
+        request_model,
+        outcome,
+        source=source,
+    )
+    payload = format_attack_outcome(outcome)
+    payload["model_used"] = request_model
+    payload["ollama_mode"] = use_ollama
+    payload["record_id"] = record_id
+    return payload
 
 
 @router.post("/attacks/agent")
@@ -171,75 +119,19 @@ async def run_agent_attack(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.attacks.agent_attacks import (
-            ToolChainingAttack,
-            IndirectToolInjection,
-            PrivilegeEscalationAttack,
-            ToolConfusionAttack,
-            DataExfiltrationAttack,
-            MultiAgentAttack,
-            CompositeAgentAttack,
-        )
-        from mox.attacks.base import AttackConfig
-        from mox.core import AttackPayload
-
-        #    Ollama
-        llm = get_llm(
+        return await _registry_attack_response(
+            request.attack_type,
             request.model_name,
+            request.prompt,
+            target_behavior=request.target_behavior,
             use_ollama=request.use_ollama,
             ollama_base_url=request.ollama_base_url,
-        )
-        config = AttackConfig()
-
-        #
-        attack_map = {
-            "tool_chaining": ToolChainingAttack,
-            "indirect_injection": IndirectToolInjection,
-            "privilege_escalation": PrivilegeEscalationAttack,
-            "tool_confusion": ToolConfusionAttack,
-            "data_exfiltration": DataExfiltrationAttack,
-            "multi_agent": MultiAgentAttack,
-            "composite": CompositeAgentAttack,
-        }
-
-        attack_class = attack_map.get(request.attack_type, ToolChainingAttack)
-        attack = attack_class(llm, config)
-
-        #
-        payload = AttackPayload(
-            attack_type=AttackType.AGENT_ATTACK,
-            prompt=request.prompt,
-            target_behavior=request.target_behavior or request.prompt,
-        )
-
-        #
-        outcome = await attack.generate_attack(payload)
-        record_id = await persist_attack_outcome(
-            f"agent_{request.attack_type}",
-            request.model_name,
-            outcome,
             source="api_v2_agent",
         )
-
-        return {
-            "result": outcome.result.value
-            if hasattr(outcome.result, "value")
-            else str(outcome.result),
-            "success_score": outcome.success_score,
-            "adversarial_prompt": outcome.adversarial_prompt,
-            "model_response": outcome.response,
-            "iterations": outcome.iterations,
-            "metadata": outcome.metadata,
-            "model_used": request.model_name,
-            "ollama_mode": request.use_ollama,
-            "record_id": record_id,
-        }
-
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============           ?============
 
 
 @router.post("/attacks/multimodal")
@@ -248,73 +140,18 @@ async def run_multimodal_attack(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.attacks.multimodal_attacks import (
-            ImageInjectionAttack,
-            VisualPromptAttack,
-            TextImageHybridAttack,
-            MultimodalAttackEnsemble,
-        )
-        from mox.attacks.base import AttackConfig
-        from mox.core import AttackPayload
-
-        #    Ollama
-        llm = get_llm(
+        return await _registry_attack_response(
+            request.attack_type,
             request.model_name,
+            request.prompt,
             use_ollama=request.use_ollama,
             ollama_base_url=request.ollama_base_url,
-        )
-        config = AttackConfig()
-
-        #
-        attack_map = {
-            "image_injection": ImageInjectionAttack,
-            "visual_prompt": VisualPromptAttack,
-            "text_image_hybrid": TextImageHybridAttack,
-            "multimodal_ensemble": MultimodalAttackEnsemble,
-            # legacy aliases
-            "audio_injection": ImageInjectionAttack,
-            "cross_modal": TextImageHybridAttack,
-            "figstep": VisualPromptAttack,
-            "multimodal_jailbreak": VisualPromptAttack,
-        }
-
-        attack_class = attack_map.get(request.attack_type, ImageInjectionAttack)
-        attack = attack_class(llm, config)
-
-        #
-        payload = AttackPayload(
-            attack_type=AttackType.MULTIMODAL_ADVERSARIAL,
-            prompt=request.prompt,
-            target_behavior=request.prompt,
-        )
-
-        #
-        outcome = await attack.generate_attack(payload)
-        record_id = await persist_attack_outcome(
-            f"multimodal_{request.attack_type}",
-            request.model_name,
-            outcome,
             source="api_v2_multimodal",
         )
-
-        return {
-            "result": outcome.result.value
-            if hasattr(outcome.result, "value")
-            else str(outcome.result),
-            "success_score": outcome.success_score,
-            "adversarial_prompt": outcome.adversarial_prompt,
-            "model_response": outcome.response,
-            "detected_patterns": outcome.metadata.get("detected_patterns", []),
-            "model_used": request.model_name,
-            "ollama_mode": request.use_ollama,
-            "record_id": record_id,
-        }
-
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============          ============
 
 
 @router.post("/attacks/novel")
@@ -323,69 +160,19 @@ async def run_novel_attack(
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
     try:
-        from mox.attacks.novel_attacks import (
-            ManyShotJailbreakAttack,
-            SkeletonKeyAttack,
-            DeceptiveAlignmentAttack,
-            CognitiveOverloadAttack,
-            ContextOverflowAttack,
-            RoleConfusionAttack,
-        )
-        from mox.attacks.base import AttackConfig
-        from mox.core import AttackPayload
-
-        #    Ollama
-        llm = get_llm(
-            request.model_name,
-            use_ollama=request.use_ollama,
-            ollama_base_url=request.ollama_base_url,
-        )
-        config = AttackConfig()
-
-        attack_map = {
-            "many_shot": ManyShotJailbreakAttack,
-            "skeleton_key": SkeletonKeyAttack,
-            "deceptive_alignment": DeceptiveAlignmentAttack,
-            "cognitive_overload": CognitiveOverloadAttack,
-            "context_overflow": ContextOverflowAttack,
-            "role_confusion": RoleConfusionAttack,
-        }
-
-        attack_class = attack_map.get(request.attack_type, ManyShotJailbreakAttack)
-        attack = attack_class(llm, config)
-
-        payload = AttackPayload(
-            attack_type=AttackType.JAILBREAK,
-            prompt=request.prompt,
-            target_behavior=request.target_behavior or request.prompt,
-        )
-
-        outcome = await attack.generate_attack(payload)
-        record_id = await persist_attack_outcome(
+        return await _registry_attack_response(
             request.attack_type,
             request.model_name,
-            outcome,
+            request.prompt,
+            target_behavior=request.target_behavior,
+            use_ollama=request.use_ollama,
+            ollama_base_url=request.ollama_base_url,
             source="api_v2_novel",
         )
-
-        return {
-            "result": outcome.result.value
-            if hasattr(outcome.result, "value")
-            else str(outcome.result),
-            "success_score": outcome.success_score,
-            "adversarial_prompt": outcome.adversarial_prompt,
-            "model_response": outcome.response,
-            "iterations": outcome.iterations,
-            "model_used": request.model_name,
-            "ollama_mode": request.use_ollama,
-            "record_id": record_id,
-        }
-
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============       ============
 
 
 @router.post("/defense/semantic-firewall")
@@ -465,11 +252,6 @@ async def run_output_validator(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class ConstitutionalAIRequest(BaseModel):
-    text: str
-    model_name: str = "gpt-4"
-
-
 @router.post("/defense/constitutional-ai")
 async def run_constitutional_ai_v2(
     request: ConstitutionalAIRequest,
@@ -478,7 +260,7 @@ async def run_constitutional_ai_v2(
     try:
         from mox.defense.constitutional_ai import ConstitutionalAI
 
-        llm = get_llm(request.model_name)
+        llm = get_cached_llm(request.model_name)
         cai = ConstitutionalAI(llm)
         result = await cai.process(request.text)
 
@@ -492,9 +274,6 @@ async def run_constitutional_ai_v2(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============          ============
 
 
 @router.post("/safety-cards/generate")
@@ -541,70 +320,39 @@ async def generate_safety_card(
 async def get_recent_safety_cards(
     current_user: User = Depends(get_optional_active_user),
 ) -> List[Dict[str, Any]]:
-    #                         ?
     return [
         {
             "model_name": "gpt-4",
             "created_at": "2025-03-27T10:00:00",
             "overall_safety_score": 85,
-        },
-        {
-            "model_name": "claude-3-opus",
-            "created_at": "2025-03-26T15:30:00",
-            "overall_safety_score": 88,
-        },
+        }
     ]
 
 
-# ============          ============
-
-
-@router.get("/benchmarks/cases")
-async def get_benchmark_cases(
-    benchmark_type: str = "harmbench_v2",
+@router.post("/ollama/status")
+async def check_ollama_status(
+    request: OllamaStatusRequest,
     current_user: User = Depends(get_optional_active_user),
 ) -> Dict[str, Any]:
+    import aiohttp
+
     try:
-        from mox.evaluation.benchmarks import (
-            HARMBENCH_V2_CASES,
-            AGENTBENCH_CASES,
-            MM_SAFETY_BENCH_CASES,
-            SAFETY_BENCH_CASES,
-            RED_TEAM_BENCH_CASES,
-        )
-
-        benchmark_map = {
-            "harmbench_v2": HARMBENCH_V2_CASES,
-            "agentbench": AGENTBENCH_CASES,
-            "mm_safety_bench": MM_SAFETY_BENCH_CASES,
-            "safety_bench": SAFETY_BENCH_CASES,
-            "red_team_bench": RED_TEAM_BENCH_CASES,
-        }
-
-        cases = benchmark_map.get(benchmark_type, HARMBENCH_V2_CASES)
-
-        return {
-            "benchmark_type": benchmark_type,
-            "total_cases": len(cases),
-            "cases": [
-                {
-                    "id": c.id,
-                    "category": c.category.value
-                    if hasattr(c.category, "value")
-                    else str(c.category),
-                    "prompt": c.prompt,
-                    "severity": c.severity.value
-                    if hasattr(c.severity, "value")
-                    else str(c.severity),
+        async with aiohttp.ClientSession() as session:
+            async with session.get(f"{request.base_url.rstrip('/')}/api/tags") as resp:
+                if resp.status == 200:
+                    data = await resp.json()
+                    models = [m.get("name", "") for m in data.get("models", [])]
+                    return {
+                        "status": "success",
+                        "message": "Ollama is reachable",
+                        "models": models,
+                    }
+                return {
+                    "status": "error",
+                    "message": f"HTTP {resp.status}",
                 }
-                for c in cases[:20]  #     ?0 ?
-            ],
-        }
-
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-# ============       ============
-
-__all__ = ["router"]
+        return {
+            "status": "error",
+            "message": str(e),
+        }

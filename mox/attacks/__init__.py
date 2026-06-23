@@ -1,12 +1,16 @@
-"""Attacks module exports
+"""Attacks module — slim public export surface.
 
-统一的攻击模块导出，解决命名冲突问题。
+Commonly used symbols are exported via ``__all__``. Additional attack
+implementations remain importable from their submodules, e.g.
+``from mox.attacks.novel_attacks import SkeletonKeyAttack``.
 """
 
 from .base import BaseAttack, AttackConfig
+
+# Attack-success evaluation (canonical types in mox.evaluation.attack_success)
 from .evaluation import (
-    AttackEvaluator,
-    EvaluationResult,
+    AttackSuccessResult,
+    AttackSuccessEvaluator,
     KeywordOverlapEvaluator,
     RefusalPatternEvaluator,
     SemanticEvaluator,
@@ -16,107 +20,35 @@ from .evaluation import (
     create_evaluator,
     evaluate_attack_success,
     is_attack_successful,
+    EvaluationResult,
+    AttackEvaluator,
 )
+
 from .config import (
-    EvaluationStrategy,
-    GCGConfig,
     TAPConfig,
-    CrescendoConfig,
-    JailbreakConfig,
-    PromptInjectionConfig,
+    GCGConfig,
     AgentAttackConfig,
-    RAGAttackConfig,
-    GradientAttackConfig,
-    MetaAdversarialConfig,
-    GOATConfig,
-    CodeSecurityConfig,
-    CONFIG_REGISTRY,
     create_config,
     get_default_config,
 )
-from .prompt_injection import (
-    PromptInjectionAttack,
-    AdvancedPromptInjection,
-    InjectionTemplate,
-    INJECTION_TEMPLATES,
-)
-from .jailbreak import (
-    JailbreakAttack,
-    JailbreakTemplate,
-    JAILBREAK_TEMPLATES,
-)
 
-# GCG 攻击 - 使用明确的别名避免冲突
-from .gcg import (
-    GCGAttack as GCGAttackBasic,
-    AutoDANAttack,
-    GCGPlusPlusAttack,
-)
-from .llm_driven import (
-    TAPAttack,
-    MultiTurnJailbreakAttack,
-    CrescendoAttack,
-)
-from .rag_attacks import (
-    RAGAttackType,
-    RAGContextInjectionAttack,
-    AgentToolManipulationAttack,
-    ChainOfThoughtExfiltrationAttack,
-    IndirectPromptInjectionAttack,
-)
-from .agent_attacks import (
-    AgentAttackType,
-    ToolAbuseAttack,
-    MemoryInjectionAttack,
-    RoleHijackingAttack,
-    AuthorityEscalationAttack,
-    ChainOfThoughtInjectionAttack,
-    TOOL_TEMPLATES,
-    AdvancedAgentAttackType,
-    ToolDefinition,
-    DEFAULT_TOOLS,
-    ToolChainingAttack,
-    IndirectToolInjection,
-    PrivilegeEscalationAttack,
-    ToolConfusionAttack,
-    DataExfiltrationAttack,
-    MultiAgentAttack,
-    CompositeAgentAttack,
-)
-from .code_security import (
-    CodeSecurityAttacker,
-    CWECategory,
-    VulnerabilityFinding,
-    CodeSecurityReport,
-)
-from .multi_turn import (
-    GOATAttack,
-    CrescendoAttack as MultiTurnCrescendoAttack,
-)
-
-# 梯度攻击 - GCGAttack 的梯度版本
+from .prompt_injection import PromptInjectionAttack
+from .jailbreak import JailbreakAttack
+from .gcg import GCGAttack as GCGAttackBasic, AutoDANAttack
+from .llm_driven import TAPAttack, CrescendoAttack
 from .gradient_attack import (
-    GradientBasedAttack,
     GCGAttack as GCGAttackGradient,
     AutoPromptAttack,
     GradientBasedSuffixAttack,
 )
+from .agent_attacks import ToolAbuseAttack, ToolChainingAttack
+from .rag_attacks import RAGContextInjectionAttack
 from .advanced_attacks import (
-    AdvancedAttackConfig,
     TextBasedAdversarialAttack,
-    MultimodalAdversarialAttack,  # 向后兼容别名
-    ZeroShotAdversarialAttack,
-    HallucinationInductionAttack,
-    CollaborativeAttack,
+    MultimodalAdversarialAttack,
     KnowledgeExtractionAttack,
-    KnowledgeDistillationAttack,  # 向后兼容别名
-    EvasionAttack,
-    PAIRAttack,
-    DeepInceptionAttack,
-    CrescendoAttack as AdvancedCrescendoAttack,
+    KnowledgeDistillationAttack,
 )
-
-# 知识提取攻击 - 使用明确的别名避免冲突
 from .knowledge_extraction import (
     KnowledgeExtractionConfig,
     ProgressiveKnowledgeExtraction,
@@ -132,68 +64,11 @@ from .multimodal_attacks import (
     TextImageHybridAttack,
     MultimodalAttackEnsemble,
 )
-from .meta_adversarial import (
-    OptimizationStrategy,
-    GeneratorAgent,
-    AuditorAgent,
-    OptimizerAgent,
-    MetaAdversarialAttack,
-    RecursiveMetaAttack,
-)
-from .novel_attacks import (
-    NovelAttackConfig,
-    TokenLevelAttack,
-    EncodingAttack,
-    PolicyPuppetryAttack,
-    DistractAndAttack,
-    ControlCharInjectionAttack,
-    CascadingAttack,
-    ManyShotJailbreakAttack,
-    ManyShotJailbreak,
-    SkeletonKeyAttack,
-    DeceptiveAlignmentAttack,
-    CognitiveOverloadAttack,
-    ContextOverflowAttack,
-    RoleConfusionAttack,
-    CompositeNovelAttack,
-    IndirectPromptInjection,
-    AdaptiveAttackEnsemble,
-    ManyShotExample,
-    MANY_SHOT_EXAMPLES,
-    HARMFUL_MANY_SHOT_EXAMPLES,
-    SKELETON_KEY_TEMPLATES,
-    DECEPTIVE_ALIGNMENT_TEMPLATES,
-    COGNITIVE_OVERLOAD_TEMPLATES,
-    ROLE_CONFUSION_TEMPLATES,
-)
 
-# 新增：统一攻击框架
-from mox.attacks.orchestrator import (
-    AttackOrchestrator,
-    AttackScenario,
-    AttackExecutionResult,
-    AttackReportGenerator,
-    UnifiedAttackType,
-)
-
-# 新增：攻击链和组合
-from mox.attacks.chain import (
-    AttackChain,
-    AttackChainResult,
-    AttackEnsemble,
-    EnsembleResult,
-    TargetModel,
-    LLMTargetModel,
-    RAGTargetModel,
-    MultimodalTargetModel,
-)
-
-# 统一攻击注册表
 from .registry import (
     AttackCategory,
     AttackTypeInfo,
     AttackRegistry,
-    AttackFactory,
     get_registry,
     create_attack_instance,
     get_attack_type,
@@ -204,13 +79,57 @@ from .registry import (
     get_registry_statistics,
 )
 
+# Backward-compatible module-level imports (not in __all__)
+from .prompt_injection import AdvancedPromptInjection
+from .llm_driven import MultiTurnJailbreakAttack
+from .rag_attacks import (
+    RAGAttackType,
+    RAGAttackConfig,
+    AgentToolManipulationAttack,
+    ChainOfThoughtExfiltrationAttack,
+    IndirectPromptInjectionAttack,
+)
+from .agent_attacks import (
+    AgentAttackType,
+    MemoryInjectionAttack,
+    RoleHijackingAttack,
+    AuthorityEscalationAttack,
+    ChainOfThoughtInjectionAttack,
+)
+
+GCGAttack = GCGAttackGradient
+
 __all__ = [
-    # 基础
+    # Core
     "BaseAttack",
     "AttackConfig",
-    # 评估器
-    "AttackEvaluator",
-    "EvaluationResult",
+    # Registry (primary API)
+    "AttackCategory",
+    "AttackTypeInfo",
+    "AttackRegistry",
+    "get_registry",
+    "create_attack_instance",
+    "get_attack_type",
+    "get_all_attack_types",
+    "get_attack_types_by_category",
+    "list_attack_types",
+    "has_attack_type",
+    "get_registry_statistics",
+    # Canonical attack classes
+    "PromptInjectionAttack",
+    "JailbreakAttack",
+    "GCGAttackBasic",
+    "GCGAttackGradient",
+    "GCGAttack",
+    "AutoDANAttack",
+    "TAPAttack",
+    "CrescendoAttack",
+    "ToolAbuseAttack",
+    "ToolChainingAttack",
+    "RAGContextInjectionAttack",
+    # Attack-success evaluation
+    "AttackSuccessResult",
+    "AttackSuccessEvaluator",
     "KeywordOverlapEvaluator",
     "RefusalPatternEvaluator",
     "SemanticEvaluator",
@@ -220,168 +139,13 @@ __all__ = [
     "create_evaluator",
     "evaluate_attack_success",
     "is_attack_successful",
-    # 统一配置
-    "EvaluationStrategy",
-    "GCGConfig",
+    # Config helpers
     "TAPConfig",
-    "CrescendoConfig",
-    "JailbreakConfig",
-    "PromptInjectionConfig",
+    "GCGConfig",
     "AgentAttackConfig",
-    "RAGAttackConfig",
-    "GradientAttackConfig",
-    "MetaAdversarialConfig",
-    "GOATConfig",
-    "CodeSecurityConfig",
-    "CONFIG_REGISTRY",
     "create_config",
     "get_default_config",
-    # 攻击实现 - 使用明确的别名
-    "PromptInjectionAttack",
-    "AdvancedPromptInjection",
-    "InjectionTemplate",
-    "INJECTION_TEMPLATES",
-    "JailbreakAttack",
-    "JailbreakTemplate",
-    "JAILBREAK_TEMPLATES",
-    # GCG 攻击 - 明确区分版本
-    "GCGAttackBasic",  # 基础版本（模拟实现）
-    "GCGAttackGradient",  # 梯度版本（真实梯度）
-    "GCGAttack",  # 向后兼容别名
-    "AutoDANAttack",
-    "GCGPlusPlusAttack",
-    # LLM 驱动攻击
-    "TAPAttack",
-    "MultiTurnJailbreakAttack",
-    "CrescendoAttack",
-    # RAG 攻击
-    "RAGAttackType",
-    "RAGContextInjectionAttack",
-    "AgentToolManipulationAttack",
-    "ChainOfThoughtExfiltrationAttack",
-    "IndirectPromptInjectionAttack",
-    # Agent 攻击
-    "AgentAttackType",
-    "ToolAbuseAttack",
-    "MemoryInjectionAttack",
-    "RoleHijackingAttack",
-    "AuthorityEscalationAttack",
-    "ChainOfThoughtInjectionAttack",
-    "TOOL_TEMPLATES",
-    # 代码安全
-    "CodeSecurityAttacker",
-    "CWECategory",
-    "VulnerabilityFinding",
-    "CodeSecurityReport",
-    # 多轮攻击
-    "GOATAttack",
-    "MultiTurnCrescendoAttack",
-    # 梯度攻击
-    "GradientBasedAttack",
-    "AutoPromptAttack",
-    "GradientBasedSuffixAttack",
-    # 高级攻击
-    "AdvancedAttackConfig",
-    "TextBasedAdversarialAttack",
-    "MultimodalAdversarialAttack",  # 向后兼容
-    "ZeroShotAdversarialAttack",
-    "HallucinationInductionAttack",
-    "CollaborativeAttack",
-    # 知识提取攻击 - 明确区分版本
-    "KnowledgeExtractionAttack",  # 基础版本
-    "KnowledgeDistillationAttack",  # 向后兼容别名
-    "KnowledgeDistillationAttackV2",  # 增强版本
-    "EvasionAttack",
-    # 知识提取配置
-    "KnowledgeExtractionConfig",
-    "ProgressiveKnowledgeExtraction",
-    "FeatureProbingAttack",
-    "SoftLabelExtractionAttack",
-    "KnowledgeExtractionEnsemble",
-    # 多模态攻击
-    "MultimodalAttackConfig",
-    "ImageInjectionAttack",
-    "VisualPromptAttack",
-    "TextImageHybridAttack",
-    "MultimodalAttackEnsemble",
-    # 元对抗攻击
-    "OptimizationStrategy",
-    "GeneratorAgent",
-    "AuditorAgent",
-    "OptimizerAgent",
-    "MetaAdversarialAttack",
-    "RecursiveMetaAttack",
-    # 高级攻击 v2
-    "PAIRAttack",
-    "DeepInceptionAttack",
-    "AdvancedCrescendoAttack",
-    # 新型攻击
-    "NovelAttackConfig",
-    "TokenLevelAttack",
-    "EncodingAttack",
-    "PolicyPuppetryAttack",
-    "DistractAndAttack",
-    "ControlCharInjectionAttack",
-    "CascadingAttack",
-    # 攻击框架
-    "AttackOrchestrator",
-    "AttackScenario",
-    "AttackExecutionResult",
-    "AttackReportGenerator",
-    "UnifiedAttackType",
-    # 攻击链
-    "AttackChain",
-    "AttackChainResult",
-    "AttackEnsemble",
-    "EnsembleResult",
-    "TargetModel",
-    "LLMTargetModel",
-    "RAGTargetModel",
-    "MultimodalTargetModel",
-    # 最新攻击技术
-    "ManyShotJailbreak",
-    "IndirectPromptInjection",
-    "AdaptiveAttackEnsemble",
-    # 最新攻击技术 (2025)
-    "ManyShotJailbreakAttack",
-    "SkeletonKeyAttack",
-    "DeceptiveAlignmentAttack",
-    "CognitiveOverloadAttack",
-    "ContextOverflowAttack",
-    "RoleConfusionAttack",
-    "CompositeNovelAttack",
-    "ManyShotExample",
-    "MANY_SHOT_EXAMPLES",
-    "HARMFUL_MANY_SHOT_EXAMPLES",
-    "SKELETON_KEY_TEMPLATES",
-    "DECEPTIVE_ALIGNMENT_TEMPLATES",
-    "COGNITIVE_OVERLOAD_TEMPLATES",
-    "ROLE_CONFUSION_TEMPLATES",
-    # 高级 Agent 攻击 (2025)
-    "AdvancedAgentAttackType",
-    "ToolDefinition",
-    "DEFAULT_TOOLS",
-    "ToolChainingAttack",
-    "IndirectToolInjection",
-    "PrivilegeEscalationAttack",
-    "ToolConfusionAttack",
-    "DataExfiltrationAttack",
-    "MultiAgentAttack",
-    "CompositeAgentAttack",
-    # 统一攻击注册表
-    "AttackCategory",
-    "AttackTypeInfo",
-    "AttackRegistry",
-    "AttackFactory",
-    "get_registry",
-    "create_attack_instance",
-    "get_attack_type",
-    "get_all_attack_types",
-    "get_attack_types_by_category",
-    "list_attack_types",
-    "has_attack_type",
-    "get_registry_statistics",
+    # Deprecated aliases (scheduled removal v0.7.0)
+    "EvaluationResult",
+    "AttackEvaluator",
 ]
-
-# 向后兼容的别名 - 允许旧代码继续工作
-GCGAttack = GCGAttackGradient  # 默认使用梯度版本

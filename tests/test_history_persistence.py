@@ -53,9 +53,12 @@ def test_run_attack_persists_attack_history(history_client: TestClient):
         timestamp=datetime.now(),
     )
 
-    with patch("mox.routes.attack.get_llm", return_value=MagicMock()):
-        with patch("mox.routes.attack.PromptInjectionAttack") as mock_cls:
-            mock_cls.return_value.generate_attack = AsyncMock(return_value=outcome)
+    with patch("mox.routes.attack.get_cached_llm", return_value=MagicMock()):
+        with patch(
+            "mox.routes.attack.execute_registry_attack",
+            new_callable=AsyncMock,
+            return_value=outcome,
+        ):
             response = history_client.post(
                 "/api/attack",
                 json={
@@ -119,9 +122,12 @@ def test_api_v2_novel_attack_persists_history(history_client: TestClient):
         timestamp=datetime.now(),
     )
 
-    with patch("mox.routes.api_v2.get_llm", return_value=MagicMock()):
-        with patch("mox.attacks.novel_attacks.ManyShotJailbreakAttack") as mock_cls:
-            mock_cls.return_value.generate_attack = AsyncMock(return_value=outcome)
+    with patch("mox.routes.api_v2.get_cached_llm", return_value=MagicMock()):
+        with patch(
+            "mox.routes.api_v2.execute_registry_attack",
+            new_callable=AsyncMock,
+            return_value=outcome,
+        ):
             response = history_client.post(
                 "/api/api/v2/attacks/novel",
                 json={

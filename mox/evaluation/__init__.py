@@ -58,6 +58,15 @@ from mox.evaluation.attack_evaluator import (
     create_evaluator,
 )
 
+# --- 攻击成功率评估（canonical types）---
+from mox.evaluation.attack_success import (
+    AttackSuccessResult,
+    AttackSuccessEvaluator,
+    KeywordOverlapEvaluator as AttackSuccessKeywordEvaluator,
+    evaluate_attack_success,
+    is_attack_successful,
+)
+
 # --- 困惑度和 LLM Judge ---
 from mox.evaluation.perplexity_judge import (
     AccuratePerplexityCalculator,

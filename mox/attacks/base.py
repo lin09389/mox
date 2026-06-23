@@ -19,9 +19,9 @@ from mox.core.error_handling import (
     handle_attack_error,
     handle_evaluation_error,
 )
-from mox.attacks.evaluation import (
-    AttackEvaluator,
-    EvaluationResult,
+from mox.evaluation.attack_success import (
+    AttackSuccessEvaluator as AttackEvaluator,
+    AttackSuccessResult as EvaluationResult,
     create_evaluator,
 )
 

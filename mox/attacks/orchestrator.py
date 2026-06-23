@@ -1,6 +1,16 @@
-"""Attacks Module - 统一攻击框架
+"""Deprecated attack orchestrator — use ``mox.evaluation.redteam.RedTeamOrchestrator``."""
 
-整合所有攻击技术:
+import warnings
+
+warnings.warn(
+    "mox.attacks.orchestrator.AttackOrchestrator is deprecated; "
+    "use mox.evaluation.redteam.RedTeamOrchestrator instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
+
+# Attacks Module - 统一攻击框架 (legacy)
+# 整合所有攻击技术:
 1. Prompt Injection
 2. Jailbreak
 3. LLM-Driven Attacks (TAP, PAIR, Crescendo)

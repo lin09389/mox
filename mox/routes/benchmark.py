@@ -5,8 +5,8 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
 from pydantic import BaseModel, Field
 
 from mox.evaluation import BenchmarkRunner, BenchmarkDataset
-from mox.attacks import PromptInjectionAttack, JailbreakAttack
 from mox.core.auth import User
+from mox.routes.services import get_cached_llm, execute_registry_attack
 from mox.routes.auth_helpers import require_optional_access
 from mox.routes.platform import _persist_platform_report
 
@@ -32,22 +32,6 @@ benchmark_dataset = BenchmarkDataset()
 # ============ 辅助函数 ============
 
 
-def _get_llm(model: str):
-    """获取 LLM 实例"""
-    from mox.core import LLMFactory
-    from mox.core.config import settings
-
-    if model.startswith("abab") or model.startswith("minimax"):
-        from mox.core import MiniMaxLLM
-
-        return MiniMaxLLM(
-            model=model,
-            api_key=settings.MINIMAX_API_KEY,
-            group_id=settings.MINIMAX_GROUP_ID,
-        )
-    return LLMFactory.create_from_model_name(model)
-
-
 # ============ 路由端点 ============
 
 
@@ -62,21 +46,17 @@ async def run_benchmark(
 ) -> Dict[str, Any]:
     """运行基准测试"""
     try:
-        llm = _get_llm(request.model)
-
-        attack_type_map = {
-            "prompt_injection": PromptInjectionAttack,
-            "jailbreak": JailbreakAttack,
-        }
-
-        attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
-        attack = attack_class(target_llm=llm)
-
+        llm = get_cached_llm(request.model)
         payloads = benchmark_dataset.get_attack_payloads(request.dataset)[: request.max_cases]
 
         results = []
         for payload in payloads:
-            outcome = await attack.generate_attack(payload)
+            outcome = await execute_registry_attack(
+                request.attack_type,
+                llm,
+                payload.prompt,
+                target_behavior=payload.target_behavior,
+            )
             results.append(
                 {
                     "result": outcome.result.value,

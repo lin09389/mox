@@ -566,6 +566,7 @@ def _register_multimodal_attacks(registry: AttackRegistry):
         config_class=MultimodalAttackConfig,
         description="图像注入攻击",
         requires_image=True,
+        aliases=["audio_injection"],
     )
 
     registry.register(
@@ -576,6 +577,7 @@ def _register_multimodal_attacks(registry: AttackRegistry):
         config_class=MultimodalAttackConfig,
         description="视觉提示攻击",
         requires_image=True,
+        aliases=["figstep", "multimodal_jailbreak"],
     )
 
     registry.register(
@@ -586,6 +588,7 @@ def _register_multimodal_attacks(registry: AttackRegistry):
         config_class=MultimodalAttackConfig,
         description="图文混合攻击",
         requires_image=True,
+        aliases=["cross_modal"],
     )
 
     registry.register(
@@ -773,6 +776,148 @@ def _register_agent_attacks(registry: AttackRegistry):
         config_class=AgentAttackConfig,
         description="思维链注入攻击",
         requires_llm=True,
+    )
+
+    from .agent_attacks_advanced import (
+        ToolChainingAttack,
+        IndirectToolInjection,
+        PrivilegeEscalationAttack,
+        ToolConfusionAttack,
+        DataExfiltrationAttack,
+        MultiAgentAttack,
+        CompositeAgentAttack,
+    )
+
+    def _build_agent_advanced(factory_fn):
+        def builder(llm: BaseLLM, max_iterations: int):
+            config = AgentAttackConfig(max_iterations=max_iterations)
+            return factory_fn(llm, config)
+
+        return builder
+
+    registry.register(
+        name="tool_chaining",
+        factory=_build_agent_advanced(ToolChainingAttack),
+        category=AttackCategory.AGENT,
+        attack_class=ToolChainingAttack,
+        config_class=AgentAttackConfig,
+        description="工具链攻击",
+        requires_llm=True,
+    )
+    registry.register(
+        name="indirect_injection",
+        factory=_build_agent_advanced(IndirectToolInjection),
+        category=AttackCategory.AGENT,
+        attack_class=IndirectToolInjection,
+        config_class=AgentAttackConfig,
+        description="间接工具注入攻击",
+        requires_llm=True,
+    )
+    registry.register(
+        name="privilege_escalation",
+        factory=_build_agent_advanced(PrivilegeEscalationAttack),
+        category=AttackCategory.AGENT,
+        attack_class=PrivilegeEscalationAttack,
+        config_class=AgentAttackConfig,
+        description="权限提升攻击（Agent）",
+        requires_llm=True,
+        aliases=["authority_escalation_agent"],
+    )
+    registry.register(
+        name="tool_confusion",
+        factory=_build_agent_advanced(ToolConfusionAttack),
+        category=AttackCategory.AGENT,
+        attack_class=ToolConfusionAttack,
+        config_class=AgentAttackConfig,
+        description="工具混淆攻击",
+        requires_llm=True,
+    )
+    registry.register(
+        name="data_exfiltration",
+        factory=_build_agent_advanced(DataExfiltrationAttack),
+        category=AttackCategory.AGENT,
+        attack_class=DataExfiltrationAttack,
+        config_class=AgentAttackConfig,
+        description="数据外泄攻击",
+        requires_llm=True,
+    )
+    registry.register(
+        name="multi_agent",
+        factory=_build_agent_advanced(MultiAgentAttack),
+        category=AttackCategory.AGENT,
+        attack_class=MultiAgentAttack,
+        config_class=AgentAttackConfig,
+        description="多 Agent 攻击",
+        requires_llm=True,
+    )
+    registry.register(
+        name="composite",
+        factory=_build_agent_advanced(CompositeAgentAttack),
+        category=AttackCategory.AGENT,
+        attack_class=CompositeAgentAttack,
+        config_class=AgentAttackConfig,
+        description="组合 Agent 攻击",
+        requires_llm=True,
+        aliases=["composite_agent"],
+    )
+
+    from .novel_attacks import (
+        ManyShotJailbreakAttack,
+        SkeletonKeyAttack,
+        DeceptiveAlignmentAttack,
+        CognitiveOverloadAttack,
+        ContextOverflowAttack,
+        RoleConfusionAttack,
+    )
+
+    def _build_novel(factory_fn):
+        def builder(llm: BaseLLM, max_iterations: int):
+            return factory_fn(target_llm=llm)
+
+        return builder
+
+    registry.register(
+        name="many_shot",
+        factory=_build_novel(ManyShotJailbreakAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=ManyShotJailbreakAttack,
+        description="Many-shot 越狱攻击",
+        aliases=["many_shot_jailbreak"],
+    )
+    registry.register(
+        name="skeleton_key",
+        factory=_build_novel(SkeletonKeyAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=SkeletonKeyAttack,
+        description="Skeleton Key 攻击",
+    )
+    registry.register(
+        name="deceptive_alignment",
+        factory=_build_novel(DeceptiveAlignmentAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=DeceptiveAlignmentAttack,
+        description="欺骗性对齐攻击",
+    )
+    registry.register(
+        name="cognitive_overload",
+        factory=_build_novel(CognitiveOverloadAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=CognitiveOverloadAttack,
+        description="认知过载攻击",
+    )
+    registry.register(
+        name="context_overflow",
+        factory=_build_novel(ContextOverflowAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=ContextOverflowAttack,
+        description="上下文溢出攻击",
+    )
+    registry.register(
+        name="role_confusion",
+        factory=_build_novel(RoleConfusionAttack),
+        category=AttackCategory.NOVEL,
+        attack_class=RoleConfusionAttack,
+        description="角色混淆攻击",
     )
 
 
