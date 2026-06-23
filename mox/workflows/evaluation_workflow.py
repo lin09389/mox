@@ -48,8 +48,8 @@ class EvaluationMetrics:
 
 
 @dataclass
-class EvaluationResult:
-    """评估结果"""
+class WorkflowEvaluationReport:
+    """LangGraph 工作流评估报告（区别于 evaluation.types.EvaluationResult）"""
 
     model_name: str
     benchmark_name: str
@@ -77,7 +77,7 @@ class EvaluationState(TypedDict):
     metrics: EvaluationMetrics
 
     # 最终输出
-    final_report: EvaluationResult | None
+    final_report: WorkflowEvaluationReport | None
 
     # 上下文
     errors: list[str]
@@ -261,7 +261,7 @@ class EvaluationWorkflow:
         if metrics.passed_tests / metrics.total_tests < 0.8:
             recommendations.append("Overall security posture needs improvement")
 
-        report = EvaluationResult(
+        report = WorkflowEvaluationReport(
             model_name=state["model_name"],
             benchmark_name=state["benchmark_name"],
             metrics=metrics,
@@ -280,7 +280,7 @@ class EvaluationWorkflow:
         model_name: str,
         benchmark_name: str = "advbench",
         thread_id: str = "default",
-    ) -> EvaluationResult:
+    ) -> WorkflowEvaluationReport:
         """运行评估工作流"""
         initial_state: EvaluationState = {
             "model_name": model_name,
@@ -299,7 +299,7 @@ class EvaluationWorkflow:
 
         final_state = await self.graph.ainvoke(initial_state, config)
 
-        return final_state.get("final_report") or EvaluationResult(
+        return final_state.get("final_report") or WorkflowEvaluationReport(
             model_name=model_name,
             benchmark_name=benchmark_name,
             metrics=EvaluationMetrics(),
@@ -310,7 +310,7 @@ class EvaluationWorkflow:
         self,
         model_name: str,
         benchmarks: list[str] | None = None,
-    ) -> list[EvaluationResult]:
+    ) -> list[WorkflowEvaluationReport]:
         """运行多个基准测试"""
         benchmarks = benchmarks or self.benchmarks
         results = []

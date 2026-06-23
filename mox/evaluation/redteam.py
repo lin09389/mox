@@ -58,40 +58,32 @@ class AttackTechnique(Enum):
     GCG = "gcg"  # 梯度攻击
 
 
-# 攻击模块映射（延迟初始化，避免 evaluation↔attacks 循环导入）
-_ATTACK_MAPPING: Dict[Any, Any] | None = None
+# AttackTechnique → registry key (no attack-class imports; avoids evaluation↔attacks cycle)
+TECHNIQUE_REGISTRY_KEYS: Dict[AttackTechnique, str] = {
+    AttackTechnique.TAP: "tap",
+    AttackTechnique.AUTO_DAN: "autodan",
+    AttackTechnique.CRESCENDO: "crescendo",
+    AttackTechnique.JAILBREAK: "jailbreak",
+    AttackTechnique.PROMPT_INJECTION: "prompt_injection",
+    AttackTechnique.TOOL_ABUSE: "tool_abuse",
+    AttackTechnique.MEMORY_INJECTION: "memory_injection",
+    AttackTechnique.GCG: "gcg",
+}
 
 
-def get_attack_mapping() -> Dict[Any, Any]:
-    """Return attack-class mapping, populated lazily on first use."""
-    global _ATTACK_MAPPING
-    if _ATTACK_MAPPING is not None:
-        return _ATTACK_MAPPING
+def get_technique_registry_key(technique: AttackTechnique) -> Optional[str]:
+    """Return registry attack type for a red-team technique, if registered."""
+    return TECHNIQUE_REGISTRY_KEYS.get(technique)
 
-    try:
-        from mox.attacks.llm_driven import TAPAttack, MultiTurnJailbreakAttack, CrescendoAttack
-        from mox.attacks.jailbreak import JailbreakAttack
-        from mox.attacks.prompt_injection import PromptInjectionAttack
-        from mox.attacks.agent_attacks import ToolAbuseAttack, MemoryInjectionAttack
-        from mox.attacks.gcg import GCGAttack
 
-        _ATTACK_MAPPING = {
-            AttackTechnique.TAP: TAPAttack,
-            AttackTechnique.AUTO_DAN: MultiTurnJailbreakAttack,
-            AttackTechnique.CRESCENDO: CrescendoAttack,
-            AttackTechnique.JAILBREAK: JailbreakAttack,
-            AttackTechnique.PROMPT_INJECTION: PromptInjectionAttack,
-            AttackTechnique.TOOL_ABUSE: ToolAbuseAttack,
-            AttackTechnique.MEMORY_INJECTION: MemoryInjectionAttack,
-            AttackTechnique.GCG: GCGAttack,
-        }
-    except ImportError as e:
-        import warnings
+def technique_has_registry_attack(technique: AttackTechnique) -> bool:
+    """Check whether the technique maps to a registry-backed attack type."""
+    key = get_technique_registry_key(technique)
+    if not key:
+        return False
+    from mox.attacks.registry import has_attack_type
 
-        warnings.warn(f"Failed to import advanced attack modules: {e}")
-        _ATTACK_MAPPING = {}
-
-    return _ATTACK_MAPPING
+    return has_attack_type(key)
 
 
 @dataclass
@@ -830,7 +822,7 @@ class RedTeamOrchestrator:
             self._progress_callback(scenario, None)
 
         # 使用高级攻击模块
-        if scenario.technique in get_attack_mapping():
+        if technique_has_registry_attack(scenario.technique):
             result = await self._run_advanced_attack(scenario, max_attempts)
         else:
             # 使用基础方法
@@ -848,13 +840,18 @@ class RedTeamOrchestrator:
         max_attempts: int,
     ) -> RedTeamResult:
         """运行高级攻击"""
-        attack_class = get_attack_mapping().get(scenario.technique)
-        if not attack_class:
+        registry_key = get_technique_registry_key(scenario.technique)
+        if not registry_key:
             return await self._run_basic_attack(scenario, max_attempts)
 
         try:
-            # 创建攻击实例
-            attack = attack_class(self.target_llm, self.llm)
+            from mox.attacks.registry import create_attack_instance
+
+            attack = create_attack_instance(
+                registry_key,
+                self.target_llm,
+                max_iterations=max_attempts,
+            )
 
             # 构建攻击载荷
             payload = scenario.to_attack_payload()

@@ -96,13 +96,26 @@ def test_import_mox_attacks_without_deprecation_warnings():
     assert not deprecation_msgs, f"unexpected deprecations on import: {deprecation_msgs}"
 
 
-def test_redteam_attack_mapping_populated():
-    from mox.evaluation.redteam import AttackTechnique, get_attack_mapping
+def test_redteam_technique_registry_keys_populated():
+    from mox.evaluation.redteam import (
+        AttackTechnique,
+        TECHNIQUE_REGISTRY_KEYS,
+        technique_has_registry_attack,
+    )
 
-    mapping = get_attack_mapping()
-    assert mapping, "attack mapping must not be empty after lazy init"
-    assert AttackTechnique.TAP in mapping
-    assert AttackTechnique.JAILBREAK in mapping
+    assert len(TECHNIQUE_REGISTRY_KEYS) >= 8
+    assert AttackTechnique.TAP in TECHNIQUE_REGISTRY_KEYS
+    assert technique_has_registry_attack(AttackTechnique.TAP)
+    assert technique_has_registry_attack(AttackTechnique.JAILBREAK)
+
+
+def test_canonical_evaluation_result_is_unique():
+    from mox.evaluation.types import EvaluationResult as CanonicalResult
+    from mox.evaluation.framework import EvaluationResult as FrameworkResult
+    from mox.workflows.evaluation_workflow import WorkflowEvaluationReport
+
+    assert CanonicalResult is FrameworkResult
+    assert WorkflowEvaluationReport.__name__ != "EvaluationResult"
 
 
 def test_attack_orchestrator_not_in_public_exports():

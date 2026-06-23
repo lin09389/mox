@@ -4,7 +4,7 @@
 """
 
 from abc import ABC, abstractmethod
-from typing import List, Optional, Dict, Any
+from typing import List, Optional, Dict, Any, TYPE_CHECKING
 from dataclasses import dataclass
 
 from mox.core import (
@@ -19,11 +19,18 @@ from mox.core.error_handling import (
     handle_attack_error,
     handle_evaluation_error,
 )
-from mox.evaluation.attack_success import (
-    AttackSuccessEvaluator as AttackEvaluator,
-    AttackSuccessResult as EvaluationResult,
-    create_evaluator,
-)
+if TYPE_CHECKING:
+    from mox.evaluation.attack_success import (
+        AttackSuccessEvaluator as AttackEvaluator,
+        AttackSuccessResult as EvaluationResult,
+    )
+
+
+def _create_attack_evaluator(evaluator_type: str):
+    from mox.evaluation.attack_success import create_evaluator
+
+    return create_evaluator(evaluator_type)
+
 
 logger = get_logger("attacks.base")
 
@@ -53,11 +60,11 @@ class BaseAttack(ABC):
         self,
         target_llm: BaseLLM,
         config: Optional[AttackConfig] = None,
-        evaluator: Optional[AttackEvaluator] = None,
+        evaluator: Optional[Any] = None,
     ):
         self.target_llm = target_llm
         self.config = config or AttackConfig()
-        self.evaluator = evaluator or create_evaluator(self.config.evaluator_type)
+        self.evaluator = evaluator or _create_attack_evaluator(self.config.evaluator_type)
         self.history: List[AttackOutcome] = []
 
     @abstractmethod
@@ -87,7 +94,7 @@ class BaseAttack(ABC):
             float: 成功分数 0.0-1.0
         """
         try:
-            result: EvaluationResult = await self.evaluator.evaluate(
+            result = await self.evaluator.evaluate(
                 response, target_behavior, **kwargs
             )
             return result.score
@@ -100,22 +107,15 @@ class BaseAttack(ABC):
         response: str,
         target_behavior: str,
         **kwargs,
-    ) -> EvaluationResult:
-        """评估攻击并返回详细结果
+    ) -> Any:
+        """评估攻击并返回详细结果"""
+        from mox.evaluation.attack_success import AttackSuccessResult
 
-        Args:
-            response: 模型响应
-            target_behavior: 目标行为
-            **kwargs: 额外参数
-
-        Returns:
-            EvaluationResult: 详细评估结果
-        """
         try:
             return await self.evaluator.evaluate(response, target_behavior, **kwargs)
         except Exception as e:
             handle_evaluation_error(e, f"Evaluating attack for {self.__class__.__name__}")
-            return EvaluationResult(
+            return AttackSuccessResult(
                 score=0.0,
                 is_successful=False,
                 confidence=0.0,

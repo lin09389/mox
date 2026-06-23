@@ -95,15 +95,15 @@ from mox.evaluation.redteam import (
     AttackTechnique,
 )
 
-# --- 统一编排层 ---
-from mox.evaluation.framework import (
-    UnifiedEvaluator,
-    EvaluationScenario,
+# --- 统一编排层（canonical types in types.py）---
+from mox.evaluation.types import (
     EvaluationType,
     EvaluationStatus,
     EvaluationConfig,
+    EvaluationScenario,
     EvaluationResult,
 )
+from mox.evaluation.framework import UnifiedEvaluator
 
 # --- 模型安全卡片 ---
 from mox.evaluation.safety_card import (
