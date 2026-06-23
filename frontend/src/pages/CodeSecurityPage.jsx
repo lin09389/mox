@@ -30,7 +30,8 @@ function demoResult(text) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function CodeSecurityPage() {
   const [selectedModel, setSelectedModel] = useState('qwen:4b')
@@ -65,7 +66,7 @@ export default function CodeSecurityPage() {
   const criticalCount = vulnerabilities.filter((item) => item.severity === 'critical').length
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用 AI 引擎进行静态代码分析，快速识别常见 CWE 漏洞与注入风险。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -194,6 +195,6 @@ export default function CodeSecurityPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

@@ -40,7 +40,8 @@ const plans = [
   },
 ]
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspacePanelIntro } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState(null)
@@ -70,15 +71,16 @@ export default function PricingPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell theme="pricing">
       <motion.div variants={itemVariants} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
         计费与订阅功能正在规划中。当前开源版本可免费使用攻击、防御、评估等核心能力。
       </motion.div>
-      <motion.div variants={itemVariants} className="mb-4 space-y-2 max-w-2xl">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">系统算力与配额订阅</h1>
-        <p className="text-sm font-medium text-[var(--text-muted)]">
-          从轻量级验证到企业级治理，为红蓝对抗场景提供可扩展的算力与专家支持方案。
-        </p>
+      <motion.div variants={itemVariants}>
+        <WorkspacePanelIntro
+          theme="pricing"
+          badgeLabel="订阅方案 · 算力配额"
+          description="从轻量级验证到企业级治理，为红蓝对抗场景提供可扩展的算力与专家支持方案。"
+        />
       </motion.div>
 
       <motion.section variants={itemVariants} className="card p-6 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)] mb-8">
@@ -260,6 +262,6 @@ export default function PricingPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

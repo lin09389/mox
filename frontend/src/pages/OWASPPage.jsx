@@ -27,7 +27,8 @@ const severityBadge = {
   medium: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function OWASPPage() {
   const [results, setResults] = useState([])
@@ -60,7 +61,7 @@ export default function OWASPPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用 OWASP LLM Top 10 标准类目评估模型在关键风险域的通过率。" />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -170,6 +171,6 @@ export default function OWASPPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

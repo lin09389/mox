@@ -10,7 +10,8 @@ import ModelSelect from '../components/ui/ModelSelect'
 import RunCompleteBanner from '../components/ui/RunCompleteBanner'
 import { useTaskStore } from '../store/useTaskStore'
 import { saveDemoReport } from '../utils/demoReports'
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 const DEMO_LOGS = [
   { step_num: 1, timestamp: new Date().toISOString(), state: 'thinking', thought: '分析目标模型防护边界，优先尝试越狱类攻击。' },
@@ -263,7 +264,7 @@ export default function AutoRedTeamPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="自主 Agent 持续探测目标模型漏洞，实时输出 ReAct 推理链路与发现项。" />
 
       {status === 'completed' && (
@@ -429,6 +430,6 @@ export default function AutoRedTeamPage() {
           </div>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

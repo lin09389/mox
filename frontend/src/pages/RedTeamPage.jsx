@@ -28,7 +28,8 @@ const DIMENSIONS = [
   { id: 'coherence', label: '连贯性' },
 ]
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function RedTeamPage() {
   const [results, setResults] = useState([])
@@ -79,7 +80,7 @@ export default function RedTeamPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="按攻击技术组合进行红队压力测试，快速定位高风险能力缺口。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -240,6 +241,6 @@ export default function RedTeamPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

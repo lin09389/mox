@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom'
 import { Clock3, Eye, ListTodo, Loader2, Play, RefreshCw, XCircle, Terminal } from 'lucide-react'
 import { tasksApi, isDemoModeEnabled } from '../api'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { WorkspacePanelIntro } from '../components/workspace'
 import { getTaskHref, normalizeRemoteTask } from '../utils/taskTrayHelpers'
 
 const statusConfig = {
@@ -23,7 +24,8 @@ function fallbackTasks() {
   ]
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function TaskProgressPage() {
   const [tasks, setTasks] = useState([])
@@ -67,17 +69,18 @@ export default function TaskProgressPage() {
   }, [tasks])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants} className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div className="space-y-2 max-w-2xl">
-          <p className="text-sm font-medium text-[var(--text-muted)]">
-            查看攻击循环、自动红队与基准评测等后台任务进度，支持定时同步与进程切面分析。
-          </p>
-        </div>
-        <button type="button" onClick={fetchTasks} className="btn-secondary h-[42px] px-6 text-cyan-500 border-[var(--border-glass)] hover:border-cyan-500/30 shrink-0">
-          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-          刷新任务
-        </button>
+    <WorkspacePageShell theme="tasks">
+      <motion.div variants={itemVariants}>
+        <WorkspacePanelIntro
+          theme="tasks"
+          description="查看攻击循环、自动红队与基准评测等后台任务进度，支持定时同步与进程切面分析。"
+          action={
+            <button type="button" onClick={fetchTasks} className="btn-secondary h-[42px] px-6 shrink-0" style={{ color: 'var(--ws-accent)' }}>
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              刷新任务
+            </button>
+          }
+        />
       </motion.div>
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -196,6 +199,6 @@ export default function TaskProgressPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

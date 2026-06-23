@@ -16,7 +16,8 @@ const registerSchema = z.object({
   }),
 })
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function RegisterPage() {
   const navigate = useNavigate()
@@ -43,7 +44,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell min-h-[calc(100dvh-4rem)] justify-center py-6 pb-8 sm:min-h-[calc(100vh-7rem)] sm:py-10">
+    <WorkspacePageShell theme="auth" className="min-h-[calc(100dvh-4rem)] justify-center py-6 pb-8 sm:min-h-[calc(100vh-7rem)] sm:py-10">
       <section className="grid gap-6 lg:gap-8 lg:grid-cols-[1.1fr_480px] lg:items-center max-w-6xl mx-auto w-full">
         <motion.div variants={itemVariants} className="hidden lg:block space-y-8 pr-4">
           <div className="inline-flex items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-cyan-500">
@@ -162,6 +163,6 @@ export default function RegisterPage() {
           </div>
         </motion.section>
       </section>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

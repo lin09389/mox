@@ -25,7 +25,8 @@ const typeLabel = {
   auto_redteam: '自动红队',
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function ReportPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -161,7 +162,7 @@ export default function ReportPage() {
   }, [reports])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro
         description={
           demoMode
@@ -414,6 +415,6 @@ export default function ReportPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

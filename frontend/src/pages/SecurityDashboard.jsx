@@ -18,6 +18,7 @@ import { useDashboardStats, useRecentAttacks, useDefenseLogs, useMonitoringVisua
 import { useApiStatus } from '../hooks/useApiStatus'
 import { isDemoModeEnabled } from '../api'
 import { HeroStat, InfoCallout, InsightList, MetricCard, MetricCardSkeleton, PanelHeader, QuickLink, Skeleton } from '../components/ui/AppFrame'
+import { WorkspacePanelIntro } from '../components/workspace'
 
 const ThreatMap3D = lazy(() => import('../components/ui/ThreatMap3D'))
 import ThreatRadarChart from '../components/ui/ThreatRadarChart'
@@ -41,7 +42,8 @@ function formatRelativeTime(date) {
   return new Date(date).toLocaleDateString('zh-CN')
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function SecurityDashboard() {
   const { data: rawStats, isLoading: statsLoading, dataUpdatedAt: statsUpdatedAt } = useDashboardStats()
@@ -117,23 +119,19 @@ export default function SecurityDashboard() {
   )
 
   return (
-    <motion.div 
-      variants={containerVariants}
-      initial="hidden"
-      animate="show"
-      className="page-shell"
-    >
-      <motion.div variants={itemVariants} className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div className="space-y-2 max-w-2xl">
-          <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">系统总览与监控舱</h1>
-          <p className="text-sm font-medium text-[var(--text-muted)]">
-            宏观掌控攻击、防御与模型流转链路，快速识别风险信号与下一步演练方向。
-          </p>
-        </div>
-        <div className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] px-3 py-1.5 shrink-0">
-          <Clock3 className="h-3.5 w-3.5" />
-          {statsLoading ? '正在连接…' : `最新同步 ${lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
-        </div>
+    <WorkspacePageShell theme="dashboard">
+      <motion.div variants={itemVariants}>
+        <WorkspacePanelIntro
+          theme="dashboard"
+          badgeLabel="态势感知 · 系统总览"
+          description="宏观掌控攻击、防御与模型流转链路，快速识别风险信号与下一步演练方向。"
+          action={
+            <div className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass-strong)] px-3 py-1.5 shrink-0">
+              <Clock3 className="h-3.5 w-3.5" />
+              {statsLoading ? '正在连接…' : `最新同步 ${lastUpdate.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}`}
+            </div>
+          }
+        />
       </motion.div>
 
       <motion.section variants={itemVariants} className="mb-6 grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-6">
@@ -405,6 +403,6 @@ export default function SecurityDashboard() {
           <Link to="/governance?tab=reports" className="block"><QuickLink label="评估报告" description="沉淀结果，用于分享与复盘。" /></Link>
         </div>
       </motion.section>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

@@ -1,5 +1,6 @@
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "@xyflow/react/dist/style.css";
+@import "./workspace-theme.css";
 
 @import "tailwindcss";
 
@@ -1480,6 +1481,17 @@ h6,
   }
 
   .attack-type-card--active {
+    transform: none;
+  }
+
+  .ws-type-card-scan,
+  .ws-lab-hero-scan,
+  .ws-live-pulse,
+  .ws-report-empty-spinner {
+    animation: none;
+  }
+
+  .ws-type-card--active {
     transform: none;
   }
 }

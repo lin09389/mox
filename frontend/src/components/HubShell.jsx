@@ -35,7 +35,7 @@ export default function HubShell({
   tabStorageKey,
   tabs = [],
 }) {
-  const isAttackTheme = theme === 'attack'
+  const isThemedHub = ['attack', 'testing', 'evaluation', 'governance'].includes(theme)
   const [searchParams, setSearchParams] = useSearchParams()
   const tabRefs = useRef([])
 
@@ -118,15 +118,19 @@ export default function HubShell({
       tabId: activeTab,
       tabLabel: activePanel?.label || '',
       accentClass,
+      theme,
     }),
-    [title, activeTab, activePanel?.label, accentClass]
+    [title, activeTab, activePanel?.label, accentClass, theme]
   )
 
   return (
-    <div className={`flex h-full flex-col space-y-6 ${isAttackTheme ? 'attack-hub' : ''}`}>
+    <div
+      data-ws-theme={isThemedHub ? theme : undefined}
+      className={`flex h-full flex-col space-y-6 ${isThemedHub ? 'ws-hub' : ''}`}
+    >
       <div className="flex flex-col space-y-4">
-        {isAttackTheme ? (
-          <div className="attack-hub-hero">
+        {isThemedHub ? (
+          <div className="ws-hub-hero">
             <nav aria-label="工作台导航" className="mb-2 flex items-center gap-1.5 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
               <span>{title}</span>
               {activePanel?.label ? (
@@ -167,8 +171,8 @@ export default function HubShell({
           role="tablist"
           aria-label={`${title} 标签`}
           className={
-            isAttackTheme
-              ? 'attack-hub-tablist scrollbar-hide'
+            isThemedHub
+              ? 'ws-hub-tablist scrollbar-hide'
               : 'scrollbar-hide flex space-x-1 overflow-x-auto border-b border-[var(--border-glass)] pb-px'
           }
         >
@@ -191,17 +195,17 @@ export default function HubShell({
                 onClick={() => handleTabChange(tab.id)}
                 onKeyDown={(event) => handleTabKeyDown(event, index)}
                 className={
-                  isAttackTheme
-                    ? `attack-hub-tab ${isActive ? 'attack-hub-tab--active' : ''}`
+                  isThemedHub
+                    ? `ws-hub-tab ${isActive ? 'ws-hub-tab--active' : ''}`
                     : `relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${
                         isActive ? accentClass : 'text-[var(--text-muted)] hover:text-[var(--text-main)]'
                       }`
                 }
               >
-                {isAttackTheme ? <span className="attack-hub-tab-glow" aria-hidden /> : null}
+                {isThemedHub ? <span className="ws-hub-tab-glow" aria-hidden /> : null}
                 {TabIcon ? <TabIcon className="h-4 w-4 relative z-10" /> : null}
                 <span className="relative z-10">{tab.label}</span>
-                {!isAttackTheme && isActive ? (
+                {!isThemedHub && isActive ? (
                   <motion.div
                     layoutId={layoutId}
                     className={`absolute bottom-0 left-0 right-0 h-0.5 rounded-t-full ${tabIndicatorClass}`}

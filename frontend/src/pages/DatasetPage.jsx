@@ -11,7 +11,8 @@ const MOCK_DATASETS = [
   { id: '3', name: 'Toxigen', type: 'text', size: '12.5 MB', samples: 10000, tags: ['toxicity'], date: '2026-06-14' },
 ]
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function DatasetPage() {
   const [datasets, setDatasets] = useState([])
@@ -80,7 +81,7 @@ export default function DatasetPage() {
   const filteredDatasets = datasets.filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro
         description={
           demoMode
@@ -219,6 +220,6 @@ export default function DatasetPage() {
           </table>
         </div>
       </motion.div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

@@ -36,7 +36,8 @@ function demoResult(prompt) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function BiasDetectionPage() {
   const [selectedModel, setSelectedModel] = useState('qwen:4b')
@@ -71,7 +72,7 @@ export default function BiasDetectionPage() {
   const riskTone = result?.risk_level === 'high' ? 'danger' : result?.risk_level === 'medium' ? 'warning' : 'success'
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="检测大模型在性别、种族、年龄等维度上的公平性与偏见风险。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -203,6 +204,6 @@ export default function BiasDetectionPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

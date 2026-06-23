@@ -100,7 +100,8 @@ function buildDemoResult(form) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false)
@@ -184,7 +185,7 @@ export default function BenchmarkPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用标准数据集对目标模型执行自动化对抗评测与打分。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -365,6 +366,6 @@ export default function BenchmarkPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

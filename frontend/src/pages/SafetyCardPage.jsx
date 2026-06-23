@@ -35,7 +35,8 @@ function demoCard(model) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function SafetyCardPage() {
   const [modelName, setModelName] = useLocalStorage('mox_safetycard_model', 'gpt-4')
@@ -76,7 +77,7 @@ export default function SafetyCardPage() {
   const overall = Math.round((safetyCard?.overall_score || 0) * 100)
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="自动化扫描大模型合规缺陷，生成多维度风险态势画像。" />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -219,6 +220,6 @@ export default function SafetyCardPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

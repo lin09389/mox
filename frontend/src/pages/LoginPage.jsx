@@ -13,7 +13,8 @@ const loginSchema = z.object({
   password: z.string().min(1, '授权访问口令不能为空'),
 })
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function LoginPage() {
   const navigate = useNavigate()
@@ -51,7 +52,7 @@ export default function LoginPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-6 pb-8 sm:min-h-[calc(100vh-5rem)] sm:px-6 sm:py-12 lg:px-8 relative overflow-hidden">
+    <WorkspacePageShell theme="auth" className="flex min-h-[calc(100dvh-4rem)] items-center justify-center px-4 py-6 pb-8 sm:min-h-[calc(100vh-5rem)] sm:px-6 sm:py-12 lg:px-8 relative overflow-hidden">
       {/* Decorative background elements */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-cyan-500/5 blur-[120px] rounded-full pointer-events-none"></div>
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[400px] bg-blue-500/5 blur-[120px] rounded-[100%] pointer-events-none transform -rotate-45"></div>
@@ -192,6 +193,6 @@ export default function LoginPage() {
           )}
         </motion.div>
       </motion.div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }
