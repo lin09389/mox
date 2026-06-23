@@ -21,6 +21,7 @@ class BenchmarkRequest(BaseModel):
     attack_type: str = "prompt_injection"
     model: str = "abab2.5-chat"
     max_cases: int = Field(default=10, ge=1, le=500)  # Upper bound to prevent DoS
+    use_defense: bool = False
 
 
 # ============ 依赖 ============
@@ -38,6 +39,16 @@ benchmark_dataset = BenchmarkDataset()
 require_benchmark_access = require_optional_access
 
 
+@router.get("/gcg-profile")
+async def gcg_profile(
+    current_user: User = Depends(require_benchmark_access),
+) -> Dict[str, Any]:
+    """Improved GCG 硬件与并行配置剖析（无需 LLM 调用）"""
+    from mox.attacks.gcg_benchmark import profile_gcg_config
+
+    return profile_gcg_config()
+
+
 @router.post("/run")
 async def run_benchmark(
     request: BenchmarkRequest,
@@ -49,8 +60,28 @@ async def run_benchmark(
         llm = get_cached_llm(request.model)
         payloads = benchmark_dataset.get_attack_payloads(request.dataset)[: request.max_cases]
 
+        defense_pipeline = None
+        if request.use_defense:
+            from mox.defense.pipeline_factory import create_default_defense_pipeline
+
+            defense_pipeline = create_default_defense_pipeline()
+
         results = []
+        blocked_by_defense = 0
         for payload in payloads:
+            if defense_pipeline:
+                check = await defense_pipeline.check(payload.prompt)
+                if check.is_malicious:
+                    blocked_by_defense += 1
+                    results.append(
+                        {
+                            "result": "failure",
+                            "success_score": 0.0,
+                            "iterations": 0,
+                            "defense_blocked": True,
+                        }
+                    )
+                    continue
             outcome = await execute_registry_attack(
                 request.attack_type,
                 llm,
@@ -62,6 +93,7 @@ async def run_benchmark(
                     "result": outcome.result.value,
                     "success_score": outcome.success_score,
                     "iterations": outcome.iterations,
+                    "defense_blocked": False,
                 }
             )
 
@@ -74,6 +106,8 @@ async def run_benchmark(
             "dataset": request.dataset,
             "attack_type": request.attack_type,
             "model": request.model,
+            "use_defense": request.use_defense,
+            "defense_blocked_count": blocked_by_defense,
             "total_cases": total,
             "successful_attacks": successful,
             "failed_attacks": total - successful,

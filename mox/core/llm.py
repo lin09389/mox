@@ -113,7 +113,7 @@ class BaseLLM(ABC):
         yield ""
         raise NotImplementedError
 
-    def _build_messages(self, messages: List[Message]) -> List[Dict[str, str]]:
+    def _build_messages(self, messages: List[Message]) -> List[Dict[str, Any]]:
         return [msg.to_dict() for msg in messages]
 
 

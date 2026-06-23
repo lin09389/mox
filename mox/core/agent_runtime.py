@@ -163,4 +163,32 @@ class AgentRuntime:
         return f"[simulated] HTTP {args.get('method', 'GET')} {args.get('url', 'http://localhost')}"
 
 
-__all__ = ["AgentRuntime", "AgentRuntimeResult", "ToolCall", "ToolResult"]
+async def analyze_agent_tool_response(model_response: str) -> Dict[str, Any]:
+    """分析模型响应中的工具调用与策略违规"""
+    runtime = AgentRuntime()
+    result = await runtime.execute_from_response(model_response or "")
+    return {
+        "tool_calls_detected": len(result.tool_calls),
+        "tool_names": [c.name for c in result.tool_calls],
+        "policy_violations": result.policy_violations,
+        "any_tool_blocked": result.any_blocked,
+        "tool_results": [
+            {
+                "tool": tr.tool,
+                "success": tr.success,
+                "blocked": tr.blocked,
+                "reason": tr.reason,
+                "output_preview": (tr.output or "")[:200],
+            }
+            for tr in result.results
+        ],
+    }
+
+
+__all__ = [
+    "AgentRuntime",
+    "AgentRuntimeResult",
+    "ToolCall",
+    "ToolResult",
+    "analyze_agent_tool_response",
+]

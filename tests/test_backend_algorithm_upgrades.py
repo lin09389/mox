@@ -151,6 +151,41 @@ class TestRedTeamOrchestratorDefense:
         assert orch.defense_pipeline is not None
 
 
+class TestVisionAndGCG:
+    def test_supports_vision_gpt4o(self):
+        from mox.core.llm_vision import supports_vision
+
+        assert supports_vision("gpt-4o-mini")
+        assert not supports_vision("gpt2")
+
+    def test_gcg_profile(self):
+        from mox.attacks.gcg_benchmark import profile_gcg_config
+
+        profile = profile_gcg_config()
+        assert "device" in profile
+        assert profile["config"]["parallel_eval"] is True
+
+    def test_multimodal_message_builder(self):
+        class FakeLLM:
+            model = "gpt-4o"
+
+        from mox.attacks.multimodal_attacks import build_multimodal_user_message
+
+        msg = build_multimodal_user_message(FakeLLM(), "describe", "abc123")
+        assert msg.is_multimodal
+
+
+class TestAgentRuntimeAnalysis:
+    @pytest.mark.asyncio
+    async def test_analyze_tool_response(self):
+        from mox.core.agent_runtime import analyze_agent_tool_response
+
+        out = await analyze_agent_tool_response(
+            '{"name": "read_file", "arguments": {"path": "/etc/passwd"}}'
+        )
+        assert out["tool_calls_detected"] >= 1
+
+
 class TestRedTeamEvaluatorJudgeMode:
     def test_judge_mode_stored(self):
         ev = RedTeamEvaluator(judge_mode="hybrid")
