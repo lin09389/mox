@@ -157,11 +157,16 @@
   position: absolute;
   top: 0;
   right: 0;
-  width: 240px;
+  width: 280px;
   height: 100%;
-  background: linear-gradient(90deg, transparent, var(--ws-accent-soft));
-  opacity: 0.55;
+  background: linear-gradient(105deg, transparent 0%, var(--ws-accent-soft) 72%, color-mix(in srgb, var(--ws-accent) 12%, transparent) 100%);
+  opacity: 0.5;
   pointer-events: none;
+  animation: ws-hero-sheen 12s var(--ease-out-expo) infinite alternate;
+}
+@keyframes ws-hero-sheen {
+  0% { opacity: 0.38; transform: translateX(8px); }
+  100% { opacity: 0.62; transform: translateX(-4px); }
 }
 .ws-hub-tablist {
   display: flex;
@@ -192,12 +197,13 @@
 }
 .ws-hub-tab-indicator {
   position: absolute;
-  inset: 0;
-  border-radius: inherit;
-  background: var(--ws-accent-soft);
-  box-shadow:
-    inset 0 0 0 1px color-mix(in srgb, var(--ws-accent) 35%, transparent),
-    0 2px 12px color-mix(in srgb, var(--ws-glow) 40%, transparent);
+  bottom: 0.2rem;
+  left: 0.65rem;
+  right: 0.65rem;
+  height: 2px;
+  border-radius: 9999px;
+  background: var(--ws-accent);
+  box-shadow: 0 0 10px var(--ws-glow);
   pointer-events: none;
   z-index: 0;
 }
@@ -254,6 +260,13 @@
   border-color: color-mix(in srgb, var(--ws-accent) 12%, var(--border-glass));
   box-shadow: inset 0 0 48px color-mix(in srgb, var(--ws-accent) 4%, transparent);
 }
+.type-card--motion {
+  will-change: transform;
+}
+.type-card--motion:hover,
+.type-card--motion.ws-type-card--active {
+  transform: none;
+}
 .ws-type-card {
   position: relative;
   overflow: hidden;
@@ -265,10 +278,27 @@
   padding: 1rem;
   text-align: left;
   cursor: pointer;
+  box-shadow: var(--shadow-fine), inset 0 1px 0 color-mix(in srgb, var(--ws-accent) 6%, transparent);
   transition:
     border-color var(--duration-normal) var(--ease-out-expo),
     background-color var(--duration-normal) var(--ease-out-expo),
     box-shadow var(--duration-normal) var(--ease-out-expo);
+}
+.ws-type-card::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--ws-accent) 45%, transparent), transparent);
+  opacity: 0;
+  transition: opacity var(--duration-normal) var(--ease-out-expo);
+  pointer-events: none;
+}
+.ws-type-card:hover::before,
+.ws-type-card--active::before {
+  opacity: 0.7;
 }
 .ws-type-card:hover {
   border-color: color-mix(in srgb, var(--ws-accent) 38%, var(--border-glass));
@@ -570,7 +600,6 @@
   overflow: hidden;
   border-radius: 1.5rem;
   transition:
-    transform var(--duration-normal) var(--ease-spring),
     box-shadow var(--duration-normal) var(--ease-out-expo),
     border-color var(--duration-normal) var(--ease-out-expo);
 }
@@ -585,7 +614,8 @@
   transition: opacity var(--duration-normal) var(--ease-out-expo);
 }
 .ws-pricing-tier:hover {
-  transform: translateY(-4px);
+  border-color: color-mix(in srgb, var(--ws-accent) 28%, var(--border-glass));
+  box-shadow: 0 8px 28px color-mix(in srgb, var(--ws-glow) 18%, transparent);
 }
 .ws-pricing-tier:hover::after {
   opacity: 0.75;
@@ -616,13 +646,11 @@
   padding: 1.1rem 1.25rem;
   transition:
     border-color var(--duration-normal) var(--ease-out-expo),
-    box-shadow var(--duration-normal) var(--ease-out-expo),
-    transform var(--duration-normal) var(--ease-spring);
+    box-shadow var(--duration-normal) var(--ease-out-expo);
 }
 .ws-stat-mini:hover {
   border-color: color-mix(in srgb, var(--ws-accent) 28%, var(--border-glass));
   box-shadow: 0 4px 20px color-mix(in srgb, var(--ws-glow) 15%, transparent);
-  transform: translateY(-2px);
 }
 .ws-stat-mini-label {
   font-size: 0.625rem;

@@ -148,7 +148,7 @@ export default function AttackPage() {
       <motion.div variants={itemVariants}>
         <button
           type="button"
-          className="attack-lab-hero hero-panel mb-4 flex w-full items-center justify-between gap-3 text-left lg:hidden"
+          className="ws-lab-hero hero-panel mb-4 flex w-full items-center justify-between gap-3 text-left lg:hidden"
           onClick={() => setHeroOpen((open) => !open)}
           aria-expanded={heroOpen}
         >

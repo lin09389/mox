@@ -41,7 +41,7 @@ const plans = [
 ]
 
 import { WorkspacePageShell, WorkspacePanelIntro } from '../components/workspace'
-import { itemVariants } from '../utils/animations'
+import { hoverCardVariants, itemVariants } from '../utils/animations'
 
 export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState(null)
@@ -116,15 +116,17 @@ export default function PricingPage() {
           const Icon = plan.icon
           const toneStyles = {
             graphite: 'border-[var(--border-glass-strong)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/20',
-            electric: 'border-cyan-500/50 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.1),0_10px_30px_rgba(6,182,212,0.1)] transform scale-[1.02] z-10',
+            electric: 'border-cyan-500/50 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.1),0_10px_30px_rgba(6,182,212,0.1)] z-10',
             lava: 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50',
           }
 
           return (
             <motion.article
               key={plan.id}
+              variants={hoverCardVariants}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              whileHover="hover"
               transition={{ delay: 0.2 + index * 0.1, ease: [0.22, 1, 0.36, 1], duration: 0.5 }}
               className={`ws-pricing-tier ${plan.popular ? 'ws-pricing-tier--featured' : ''} relative border p-8 flex flex-col ${toneStyles[plan.tone]}`}
             >

@@ -15,9 +15,9 @@ function TabLoader() {
       className="flex min-h-[40vh] flex-col items-center justify-center gap-4"
     >
       <div className="relative flex h-12 w-12 items-center justify-center">
-        <span className="absolute inset-0 rounded-full border border-cyan-500/20" />
-        <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-cyan-500" />
-        <Loader className="h-5 w-5 text-cyan-500" />
+        <span className="absolute inset-0 rounded-full border border-[color-mix(in_srgb,var(--ws-accent,#06b6d4)_22%,transparent)]" />
+        <span className="absolute inset-0 animate-spin rounded-full border-2 border-transparent border-t-[var(--ws-accent,#06b6d4)]" />
+        <Loader className="h-5 w-5 text-[var(--ws-accent,#06b6d4)]" />
       </div>
       <p className="text-sm font-medium text-[var(--text-muted)]">模块加载中...</p>
     </motion.div>

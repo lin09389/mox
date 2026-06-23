@@ -11,7 +11,7 @@ import {
 } from 'lucide-react'
 import { EmptyState, PanelHeader } from '../ui/AppFrame'
 import { useCopyToClipboard } from '../../hooks/useCommon'
-import { AttackRiskGauge, AttackDemoBanner, AttackCodeBlock } from './AttackTheme'
+import { AttackReportPanel, AttackRiskGauge, AttackDemoBanner, AttackCodeBlock } from './AttackTheme'
 
 function getResultSummary(result) {
   if (!result) return null
@@ -49,7 +49,7 @@ export default function AttackResult({ result }) {
 
   if (!summary) {
     return (
-      <section className="attack-report-panel card-glow h-full min-h-[520px] flex flex-col">
+      <AttackReportPanel className="card-glow h-full min-h-[520px] flex flex-col">
         <PanelHeader
           title="结果面板"
           description="运行测试后，这里会展示成功分数、模型响应与后续建议。"
@@ -60,7 +60,7 @@ export default function AttackResult({ result }) {
           description="先在左侧配置攻击参数并提交。结果面板会自动切换到分析视图。"
           tone="electric"
         />
-      </section>
+      </AttackReportPanel>
     )
   }
 
@@ -68,19 +68,19 @@ export default function AttackResult({ result }) {
   const riskPercent = Math.round(summary.score * 100)
 
   return (
-    <motion.section
+    <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
-      className="attack-report-panel card-glow h-full"
     >
+    <AttackReportPanel className="card-glow h-full">
       <PanelHeader
         title="结果面板"
         description="统一查看风险评分、攻击状态、对抗提示词和模型响应。"
       />
 
       <div className="space-y-4">
-        <div className="attack-lab-hero hero-panel p-5">
+        <div className="ws-lab-hero hero-panel p-5">
           <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <span className={`badge ${isSuccess ? 'badge-danger' : 'badge-success'}`}>
@@ -114,7 +114,7 @@ export default function AttackResult({ result }) {
           <article className="attack-output-card">
             <div className="attack-output-card-header">
               <div className="attack-output-card-title">
-                <Clipboard className="h-4 w-4 text-[var(--attack-accent)]" />
+                <Clipboard className="h-4 w-4 text-[var(--ws-accent)]" />
                 对抗提示词
               </div>
               <button
@@ -194,6 +194,7 @@ export default function AttackResult({ result }) {
           )}
         </article>
       </div>
-    </motion.section>
+    </AttackReportPanel>
+    </motion.div>
   )
 }

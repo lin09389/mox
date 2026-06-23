@@ -3,7 +3,7 @@ import toast from 'react-hot-toast'
 import { BookText, RefreshCw, ShieldAlert, Sparkles, Wand2, AlertCircle } from 'lucide-react'
 import { ADVANCED_ATTACK_TYPES, ATTACK_TYPES, DEFAULT_MODELS, GRADIENT_ATTACK_TYPES } from './constants'
 import { PanelHeader, StatusPill } from '../ui/AppFrame'
-import { AttackRunButton, AttackTypeCard } from './AttackTheme'
+import { AttackConfigPanel, AttackRunButton, AttackTypeCard } from './AttackTheme'
 
 export default function AttackForm({
   form,
@@ -35,7 +35,7 @@ export default function AttackForm({
   }
 
   return (
-    <section className="attack-config-panel card-glow h-full flex flex-col">
+    <AttackConfigPanel className="card-glow h-full flex flex-col lg:static lg:top-auto">
       <PanelHeader
         title="攻击测试配置"
         description="选择攻击类型、目标模型与期望行为，快速发起一轮安全测试。"
@@ -221,6 +221,6 @@ export default function AttackForm({
           </AttackRunButton>
         </div>
       </form>
-    </section>
+    </AttackConfigPanel>
   )
 }
