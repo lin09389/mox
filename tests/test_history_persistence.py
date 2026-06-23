@@ -22,7 +22,7 @@ from mox.routes.auth_helpers import require_optional_access
 def history_client(tmp_path: Path):
     reset_database()
     db_path = tmp_path / "history.db"
-    asyncio.get_event_loop().run_until_complete(init_database(db_path=db_path))
+    asyncio.run(init_database(db_path=db_path))
 
     app = FastAPI()
     app.include_router(attack_router, prefix="/api")
@@ -38,7 +38,7 @@ def history_client(tmp_path: Path):
     )
     client = TestClient(app)
     yield client
-    asyncio.get_event_loop().run_until_complete(close_database())
+    asyncio.run(close_database())
     reset_database()
 
 

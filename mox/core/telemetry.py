@@ -12,7 +12,6 @@ from dataclasses import dataclass
 from contextlib import asynccontextmanager
 import time
 
-
 try:
     from opentelemetry import trace
     from opentelemetry.sdk.trace import TracerProvider

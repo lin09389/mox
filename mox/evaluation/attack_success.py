@@ -711,7 +711,9 @@ def get_default_evaluator() -> AttackSuccessEvaluator:
     return _default_evaluator
 
 
-def create_evaluator(evaluator_type: str = "default", judge_llm=None, **kwargs) -> AttackSuccessEvaluator:
+def create_evaluator(
+    evaluator_type: str = "default", judge_llm=None, **kwargs
+) -> AttackSuccessEvaluator:
     """创建评估器工厂函数
 
     Args:

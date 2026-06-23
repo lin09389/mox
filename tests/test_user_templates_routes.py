@@ -21,7 +21,7 @@ def client(tmp_path: Path, monkeypatch):
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(db_path))
+    asyncio.run(init_extended_database(db_path))
 
     yield TestClient(app)
     reset_extended_database()
@@ -97,7 +97,7 @@ def test_list_user_templates_requires_auth_when_enabled(tmp_path: Path, monkeypa
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(tmp_path / "tpl_auth.db"))
+    asyncio.run(init_extended_database(tmp_path / "tpl_auth.db"))
 
     client = TestClient(app)
     response = client.get("/api/v1/user-templates")

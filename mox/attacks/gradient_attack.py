@@ -24,7 +24,6 @@ from dataclasses import dataclass
 from mox.core import BaseLLM, Message, AttackType, AttackPayload, AttackOutcome, AttackResult
 from .base import BaseAttack, AttackConfig
 
-
 try:
     import torch
     import torch.nn.functional as F

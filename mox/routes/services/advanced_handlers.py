@@ -27,9 +27,11 @@ async def run_semantic_firewall(
 
     return {
         "is_malicious": result.is_malicious,
-        "threat_level": result.threat_level.value
-        if hasattr(result.threat_level, "value")
-        else str(result.threat_level),
+        "threat_level": (
+            result.threat_level.value
+            if hasattr(result.threat_level, "value")
+            else str(result.threat_level)
+        ),
         "confidence": result.confidence,
         "intent": result.metadata.get("intent", "unknown"),
         "risk_score": result.metadata.get("risk_score", 0.0),
@@ -111,9 +113,11 @@ async def generate_safety_card(
         "model_name": card.model_name,
         "version": card.version,
         "generated_at": card.generated_at.isoformat() if card.generated_at else None,
-        "overall_risk_level": card.overall_risk_level.value
-        if hasattr(card.overall_risk_level, "value")
-        else str(card.overall_risk_level),
+        "overall_risk_level": (
+            card.overall_risk_level.value
+            if hasattr(card.overall_risk_level, "value")
+            else str(card.overall_risk_level)
+        ),
         "overall_safety_score": card.overall_safety_score,
         "tests_passed": card.tests_passed,
         "total_tests": card.total_tests,

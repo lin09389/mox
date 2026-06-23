@@ -15,8 +15,6 @@ import csv
 import io
 import time
 from typing import Any, Dict, List, Optional, Callable, Union
-from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
 from mox.evaluation.types import (
     EvaluationType,
@@ -436,9 +434,9 @@ class UnifiedEvaluator:
             "summary": {
                 "total": len(results),
                 "successful": sum(1 for r in results if r.success),
-                "success_rate": sum(1 for r in results if r.success) / len(results)
-                if results
-                else 0,
+                "success_rate": (
+                    sum(1 for r in results if r.success) / len(results) if results else 0
+                ),
             },
             "results": [
                 {

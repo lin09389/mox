@@ -134,9 +134,9 @@ class HallucinationDetector:
         return HallucinationResult(
             is_hallucination=is_hallucination,
             confidence=confidence,
-            hallucination_type=hallucination_types[0]
-            if hallucination_types
-            else HallucinationType.FACTUAL,
+            hallucination_type=(
+                hallucination_types[0] if hallucination_types else HallucinationType.FACTUAL
+            ),
             evidence=evidence,
             explanation=self._generate_explanation(evidence),
             verified_facts=consistency_result.get("facts", {}),

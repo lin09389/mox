@@ -58,7 +58,25 @@ export default function ReportPage() {
         const items = mergeWithDemoReports(data?.reports || (Array.isArray(data) ? data : []))
         setDemoMode(false)
         setReports(items)
-        setSelected(items[0] || null)
+        if (highlightId) {
+          const match = items.find((item) => item.id === highlightId)
+          if (match) {
+            setSelected(match)
+            highlightApplied.current = true
+            requestAnimationFrame(() => {
+              document.getElementById(`report-row-${highlightId}`)?.scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              })
+            })
+          } else {
+            toast.error(`未找到报告 #${highlightId}`)
+            dismissHighlight()
+            setSelected(items[0] || null)
+          }
+        } else {
+          setSelected(items[0] || null)
+        }
       } catch {
         if (cancelled) return
         if (isDemoModeEnabled) {
@@ -82,24 +100,22 @@ export default function ReportPage() {
   }, [])
 
   useEffect(() => {
-    if (!highlightId || !reports.length || highlightApplied.current) return
+    if (!highlightId || !reports.length || highlightApplied.current || loading) return
     const match = reports.find((item) => item.id === highlightId)
     if (!match) {
-      if (!loading) {
-        toast.error(`未找到报告 #${highlightId}`)
-        dismissHighlight()
-      }
+      toast.error(`未找到报告 #${highlightId}`)
+      dismissHighlight()
       return
     }
-    setSelected(match)
     highlightApplied.current = true
     requestAnimationFrame(() => {
+      setSelected(match)
       document.getElementById(`report-row-${highlightId}`)?.scrollIntoView({
         behavior: 'smooth',
         block: 'center',
       })
     })
-  }, [highlightId, reports, loading])
+  }, [highlightId, reports, loading, dismissHighlight])
 
   const { detailLoading, detailContent } = useReportDetail(selected)
 

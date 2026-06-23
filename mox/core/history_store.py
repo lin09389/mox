@@ -18,7 +18,9 @@ async def persist_attack_outcome(
     report_id: Optional[int] = None,
 ) -> Optional[int]:
     try:
-        result_value = outcome.result.value if hasattr(outcome.result, "value") else str(outcome.result)
+        result_value = (
+            outcome.result.value if hasattr(outcome.result, "value") else str(outcome.result)
+        )
         metadata = dict(outcome.metadata or {})
         metadata["source"] = source
         if report_id is not None:
@@ -84,7 +86,9 @@ async def persist_advanced_attack_batch(
     try:
         total = len(results)
         success_count = sum(1 for item in results if getattr(item, "success", False))
-        avg_confidence = sum(float(getattr(item, "confidence", 0.0) or 0.0) for item in results) / total
+        avg_confidence = (
+            sum(float(getattr(item, "confidence", 0.0) or 0.0) for item in results) / total
+        )
         success_rate = success_count / total
         first = results[0]
         preview = [

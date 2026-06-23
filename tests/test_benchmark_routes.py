@@ -7,7 +7,8 @@ import pytest
 from fastapi.testclient import TestClient
 
 from mox.core.database import reset_extended_database
-from mox.core.types import AttackOutcome, AttackResult
+from mox.core import AttackType
+from mox.core.types import AttackOutcome, AttackResult, AttackPayload
 
 
 @pytest.fixture
@@ -22,7 +23,7 @@ def client(tmp_path: Path, monkeypatch):
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(db_path))
+    asyncio.run(init_extended_database(db_path))
 
     yield TestClient(app)
     reset_extended_database()
@@ -38,15 +39,31 @@ def _mock_outcome(success: bool = True) -> AttackOutcome:
     )
 
 
-def test_run_benchmark_persists_report(client: TestClient):
-    mock_attack = MagicMock()
-    mock_attack.generate_attack = AsyncMock(return_value=_mock_outcome(True))
+def _mock_payloads():
+    return [
+        AttackPayload(
+            attack_type=AttackType.PROMPT_INJECTION,
+            prompt="payload-a",
+            target_behavior="behavior-a",
+        ),
+        AttackPayload(
+            attack_type=AttackType.PROMPT_INJECTION,
+            prompt="payload-b",
+            target_behavior="behavior-b",
+        ),
+    ]
 
-    with patch("mox.routes.benchmark._get_llm", return_value=object()):
-        with patch("mox.routes.benchmark.PromptInjectionAttack", return_value=mock_attack):
+
+def test_run_benchmark_persists_report(client: TestClient):
+    with patch("mox.routes.benchmark.get_cached_llm", return_value=MagicMock()):
+        with patch(
+            "mox.routes.benchmark.execute_registry_attack",
+            new_callable=AsyncMock,
+            return_value=_mock_outcome(True),
+        ):
             with patch(
                 "mox.routes.benchmark.benchmark_dataset.get_attack_payloads",
-                return_value=["payload-a", "payload-b"],
+                return_value=_mock_payloads(),
             ):
                 response = client.post(
                     "/api/v1/benchmark/run",

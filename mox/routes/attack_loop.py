@@ -19,7 +19,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from mox.attack_loop import (
@@ -30,8 +30,6 @@ from mox.attack_loop import (
     ReportGenerator,
     AttackTestResult,
 )
-from mox.core import settings
-
 
 router = APIRouter(prefix="/attack-loop", tags=["Attack Loop"])
 logger = logging.getLogger(__name__)
@@ -41,8 +39,10 @@ logger = logging.getLogger(__name__)
 # 数据模型
 # ============================================================
 
+
 class AttackLoopConfig(BaseModel):
     """攻击循环配置"""
+
     models: List[str] = Field(..., min_length=1, description="模型列表")
     attack_types: List[str] = Field(..., min_length=1, description="攻击类型列表")
     prompts: List[str] = Field(default_factory=list, description="测试提示列表")
@@ -58,7 +58,9 @@ class AttackLoopConfig(BaseModel):
 
     # 随机提示配置
     random_prompts: bool = Field(default=False, description="是否启用随机提示生成")
-    random_prompt_templates: List[str] = Field(default_factory=list, description="自定义随机提示模板（留空使用内置模板）")
+    random_prompt_templates: List[str] = Field(
+        default_factory=list, description="自定义随机提示模板（留空使用内置模板）"
+    )
     random_prompt_count: int = Field(default=10, ge=1, le=1000, description="随机提示生成数量")
 
     # 检查点配置
@@ -72,6 +74,7 @@ class AttackLoopConfig(BaseModel):
 
 class AttackLoopProgress(BaseModel):
     """攻击循环进度"""
+
     task_id: str
     status: str  # pending, running, paused, completed, failed, stopped
     total: int
@@ -92,6 +95,7 @@ class AttackLoopProgress(BaseModel):
 
 class StartFromConfigResponse(BaseModel):
     """从配置文件启动响应"""
+
     task_id: str
     status: str
     config_summary: Dict[str, Any]
@@ -102,6 +106,7 @@ class StartFromConfigResponse(BaseModel):
 # ============================================================
 # 任务管理
 # ============================================================
+
 
 class AttackLoopTask:
     """攻击循环任务"""
@@ -167,6 +172,7 @@ def _pydantic_to_loopconfig(pydantic_config: AttackLoopConfig) -> LoopConfig:
 # ============================================================
 # 任务执行
 # ============================================================
+
 
 def _sync_task_store(task: AttackLoopTask) -> None:
     from mox.core.task_store import get_task_store
@@ -318,9 +324,7 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
             # 保存检查点
             if task.config.checkpoint_enabled and task.results:
                 try:
-                    cp_mgr = CheckpointManager(
-                        str(Path(task.config.output_dir) / "checkpoints")
-                    )
+                    cp_mgr = CheckpointManager(str(Path(task.config.output_dir) / "checkpoints"))
                     cp_mgr.save(
                         [r.test_id for r in task.results],
                         task.results,
@@ -336,9 +340,7 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
         # 出错时也尝试保存检查点
         if task.config.checkpoint_enabled and task.results:
             try:
-                cp_mgr = CheckpointManager(
-                    str(Path(task.config.output_dir) / "checkpoints")
-                )
+                cp_mgr = CheckpointManager(str(Path(task.config.output_dir) / "checkpoints"))
                 cp_mgr.save(
                     [r.test_id for r in task.results],
                     task.results,
@@ -350,6 +352,7 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
 # ============================================================
 # API 端点
 # ============================================================
+
 
 @router.post("/start")
 async def start_attack_loop(config: AttackLoopConfig, background_tasks: BackgroundTasks):
@@ -389,7 +392,11 @@ async def start_attack_loop(config: AttackLoopConfig, background_tasks: Backgrou
     run_coro = _run_attack_loop(task, resume=True)
     task._run_task = loop.create_task(run_coro)
 
-    return {"task_id": task_id, "status": "started", "resumed_from_checkpoint": task.resumed_from_checkpoint}
+    return {
+        "task_id": task_id,
+        "status": "started",
+        "resumed_from_checkpoint": task.resumed_from_checkpoint,
+    }
 
 
 @router.post("/start-from-config")
@@ -409,7 +416,7 @@ async def start_from_config_file(
         raise HTTPException(status_code=400, detail="请提供配置文件名")
 
     # 检查文件扩展名
-    if not (config_file.filename.endswith('.yaml') or config_file.filename.endswith('.yml')):
+    if not (config_file.filename.endswith(".yaml") or config_file.filename.endswith(".yml")):
         raise HTTPException(status_code=400, detail="仅支持 .yaml 或 .yml 格式的配置文件")
 
     # 读取文件内容
@@ -420,10 +427,9 @@ async def start_from_config_file(
 
     # 保存到临时文件以使用 LoopConfig.from_yaml
     import tempfile
+
     try:
-        with tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.yaml', delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".yaml", delete=False) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
     except Exception as e:
@@ -455,8 +461,7 @@ async def start_from_config_file(
     # 验证 prompts：如果既没有 prompts 也没开 random_prompts，报错
     if not loop_config.prompts and not loop_config.random_prompts:
         raise HTTPException(
-            status_code=400,
-            detail="配置错误: 必须提供 prompts 或启用 random_prompts"
+            status_code=400, detail="配置错误: 必须提供 prompts 或启用 random_prompts"
         )
 
     # 转换为 Pydantic 配置（供 API 层使用）
@@ -519,7 +524,10 @@ async def start_from_config_file(
         "estimated_total": (
             len(loop_config.models)
             * len(loop_config.attack_types)
-            * (len(loop_config.prompts) + (loop_config.random_prompt_count if loop_config.random_prompts else 0))
+            * (
+                len(loop_config.prompts)
+                + (loop_config.random_prompt_count if loop_config.random_prompts else 0)
+            )
             * loop_config.iterations_per_combo
         ),
     }
@@ -723,7 +731,7 @@ async def download_results(task_id: str, format: str = "json"):
     return StreamingResponse(
         io.BytesIO(content.encode("utf-8")),
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -732,26 +740,28 @@ async def get_history(limit: int = 10, offset: int = 0):
     """获取任务历史"""
     history = []
     all_tasks = list(tasks.items())
-    for task_id, task in all_tasks[offset:offset + limit]:
-        history.append({
-            "task_id": task_id,
-            "status": task.status,
-            "total": task.total,
-            "completed": task.completed,
-            "successful": task.successful,
-            "failed": task.failed,
-            "errors": task.errors,
-            "created_at": task.start_time.isoformat() if task.start_time else None,
-            "finished_at": task.end_time.isoformat() if task.end_time else None,
-            "config": {
-                "models_count": len(task.config.models),
-                "attack_types_count": len(task.config.attack_types),
-                "prompts_count": len(task.config.prompts),
-                "checkpoint_enabled": task.config.checkpoint_enabled,
-            },
-            "reports": task.reports if task.status == "completed" else None,
-            "resumed_from_checkpoint": task.resumed_from_checkpoint,
-        })
+    for task_id, task in all_tasks[offset : offset + limit]:
+        history.append(
+            {
+                "task_id": task_id,
+                "status": task.status,
+                "total": task.total,
+                "completed": task.completed,
+                "successful": task.successful,
+                "failed": task.failed,
+                "errors": task.errors,
+                "created_at": task.start_time.isoformat() if task.start_time else None,
+                "finished_at": task.end_time.isoformat() if task.end_time else None,
+                "config": {
+                    "models_count": len(task.config.models),
+                    "attack_types_count": len(task.config.attack_types),
+                    "prompts_count": len(task.config.prompts),
+                    "checkpoint_enabled": task.config.checkpoint_enabled,
+                },
+                "reports": task.reports if task.status == "completed" else None,
+                "resumed_from_checkpoint": task.resumed_from_checkpoint,
+            }
+        )
 
     return {"history": history, "total": len(tasks)}
 
@@ -763,13 +773,17 @@ def _build_attack_types_response() -> Dict[str, Any]:
     all_types = get_all_attack_types()
     attack_types = []
     for key, info in all_types.items():
-        attack_types.append({
-            "key": key,
-            "value": key,
-            "name": info.name,
-            "category": info.category.value if hasattr(info.category, "value") else str(info.category),
-            "description": info.description,
-        })
+        attack_types.append(
+            {
+                "key": key,
+                "value": key,
+                "name": info.name,
+                "category": (
+                    info.category.value if hasattr(info.category, "value") else str(info.category)
+                ),
+                "description": info.description,
+            }
+        )
 
     return {"attack_types": attack_types, "total": len(attack_types)}
 

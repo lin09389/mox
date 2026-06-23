@@ -46,6 +46,7 @@ class ConstitutionalAIRequest(BaseModel):
 
 # ============ 依赖 ============
 
+
 def _analyze_detection_patterns(detected_patterns: List[str]) -> Dict[str, Any]:
     """分析检测到的模式"""
     if not detected_patterns:

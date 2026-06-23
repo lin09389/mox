@@ -6,7 +6,7 @@ import argparse
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress
 
 from mox.core import LLMFactory
 from mox.attacks.registry import get_registry, has_attack_type, list_attack_types
@@ -315,7 +315,9 @@ def _attack_types_epilog() -> str:
             lines.append(f"  {name:18} - {info.description}")
         else:
             lines.append(f"  {name}")
-    lines.append(f"\n注册表共 {len(list_attack_types())} 种攻击，含别名共 {len(get_attack_type_choices())} 个 CLI 选项。")
+    lines.append(
+        f"\n注册表共 {len(list_attack_types())} 种攻击，含别名共 {len(get_attack_type_choices())} 个 CLI 选项。"
+    )
     return "\n".join(lines)
 
 

@@ -18,6 +18,7 @@ from mox.core import BaseLLM, Message
 from mox.attacks import (
     PromptInjectionAttack,
     JailbreakAttack,
+    MultiTurnJailbreakAttack,
 )
 
 
@@ -178,7 +179,7 @@ Provide a brief analysis of potential attack vectors."""
         elif strategy == AttackStrategy.JAILBREAK:
             attack = JailbreakAttack(self.target_llm)
         else:
-            attack = MultiTurnAttack(self.target_llm)
+            attack = MultiTurnJailbreakAttack(self.target_llm)
 
         # 执行攻击
         from mox.core import AttackPayload, AttackType

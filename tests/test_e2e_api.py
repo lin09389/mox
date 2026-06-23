@@ -1,22 +1,31 @@
 """Full-app API smoke tests (E2E via TestClient)."""
 
+import asyncio
+
 import pytest
 from fastapi.testclient import TestClient
 
 from mox.api import app
 from mox.core.auth import User, get_current_active_user, get_optional_active_user
+from mox.core.database import close_database, init_database, reset_database
 
 pytestmark = pytest.mark.integration
 
 
 @pytest.fixture
-def client():
+def client(tmp_path, monkeypatch):
+    reset_database()
+    monkeypatch.setenv("MOX_DATA_DIR", str(tmp_path))
+    asyncio.run(init_database(tmp_path / "e2e.db"))
+
     user = User(username="e2e_user", scopes=["admin", "attack", "defense", "eval"])
     app.dependency_overrides[get_current_active_user] = lambda: user
     app.dependency_overrides[get_optional_active_user] = lambda: user
-    with TestClient(app) as test_client:
-        yield test_client
+    # Avoid lifespan startup in TestClient — it can deadlock on Windows CI runners.
+    yield TestClient(app, raise_server_exceptions=False)
     app.dependency_overrides.clear()
+    asyncio.run(close_database())
+    reset_database()
 
 
 def test_root_metadata(client: TestClient):
@@ -101,7 +110,7 @@ def test_reports_get_returns_content(client: TestClient):
             }
         )
 
-    report_id = asyncio.get_event_loop().run_until_complete(_seed())
+    report_id = asyncio.run(_seed())
 
     listed = client.get("/api/v1/reports")
     assert listed.status_code == 200

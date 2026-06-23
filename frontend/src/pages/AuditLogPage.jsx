@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { FileText, Filter, RefreshCw, Search } from 'lucide-react'
@@ -14,19 +14,13 @@ export default function AuditLogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
-  const [actionFilter, setActionFilter] = useState(() => searchParams.get('action') || 'all')
-
-  useEffect(() => {
-    const actionFromUrl = searchParams.get('action') || 'all'
-    setActionFilter(actionFromUrl)
-  }, [searchParams])
+  const actionFilter = searchParams.get('action') || 'all'
 
   const { data: logsData, isLoading, isError, isFetching, refetch } = useAuditLogs({ action: actionFilter })
 
   const logs = useMemo(() => logsData || [], [logsData])
 
   const handleActionFilterChange = (value) => {
-    setActionFilter(value)
     const next = new URLSearchParams(searchParams)
     if (value === 'all') {
       next.delete('action')

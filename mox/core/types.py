@@ -4,7 +4,15 @@ from typing import Any, Dict, List, Optional
 from enum import Enum
 from datetime import datetime
 
-from pydantic import AliasChoices, BaseModel, Field, ConfigDict, computed_field, field_validator, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    ConfigDict,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class AttackType(str, Enum):

@@ -1,0 +1,6 @@
+skips:
+  - B324
+  - B110
+
+exclude_dirs:
+  - tests

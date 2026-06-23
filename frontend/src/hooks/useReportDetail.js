@@ -1,27 +1,27 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { reportApi } from '../api'
 import { getReportDetailContent } from '../utils/demoReports'
 
 export function useReportDetail(selected) {
+  const isStaticDetail = Boolean(selected?._demo_mode || selected?.content)
+  const staticContent = useMemo(
+    () => (selected && isStaticDetail ? getReportDetailContent(selected) : null),
+    [selected, isStaticDetail],
+  )
   const [detailLoading, setDetailLoading] = useState(false)
   const [detailContent, setDetailContent] = useState(null)
 
   useEffect(() => {
-    if (!selected) {
-      setDetailContent(null)
-      setDetailLoading(false)
-      return
-    }
-
-    if (selected._demo_mode || selected.content) {
-      setDetailContent(getReportDetailContent(selected))
-      setDetailLoading(false)
-      return
-    }
+    if (!selected || isStaticDetail) return
 
     let cancelled = false
-    setDetailLoading(true)
-    setDetailContent(getReportDetailContent(selected))
+    const preview = getReportDetailContent(selected)
+
+    queueMicrotask(() => {
+      if (cancelled) return
+      setDetailLoading(true)
+      setDetailContent(preview)
+    })
 
     reportApi.get(selected.id)
       .then((full) => {
@@ -37,7 +37,13 @@ export function useReportDetail(selected) {
       })
 
     return () => { cancelled = true }
-  }, [selected])
+  }, [selected, isStaticDetail])
 
+  if (!selected) {
+    return { detailLoading: false, detailContent: null }
+  }
+  if (isStaticDetail) {
+    return { detailLoading: false, detailContent: staticContent }
+  }
   return { detailLoading, detailContent }
 }

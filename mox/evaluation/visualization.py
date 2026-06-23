@@ -382,10 +382,11 @@ class ReportGenerator:
                 "total": len(self.results),
                 "success": sum(1 for r in self.results if r["result"] == "success"),
                 "failure": sum(1 for r in self.results if r["result"] == "failure"),
-                "success_rate": sum(1 for r in self.results if r["result"] == "success")
-                / len(self.results)
-                if self.results
-                else 0,
+                "success_rate": (
+                    sum(1 for r in self.results if r["result"] == "success") / len(self.results)
+                    if self.results
+                    else 0
+                ),
             },
             "attack_distribution": self.get_attack_type_distribution().__dict__,
             "success_by_type": self.get_success_by_type().__dict__,

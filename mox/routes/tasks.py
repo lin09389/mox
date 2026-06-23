@@ -113,10 +113,8 @@ async def submit_task(
     try:
         from mox.core.tasks import get_task_queue, TaskPriority
 
-        task_queue = get_task_queue()
-        priority = (
-            TaskPriority(request.priority) if 0 <= request.priority <= 3 else TaskPriority.NORMAL
-        )
+        get_task_queue()
+        (TaskPriority(request.priority) if 0 <= request.priority <= 3 else TaskPriority.NORMAL)
         if not request.func:
             raise HTTPException(status_code=400, detail="func is required")
 
@@ -127,11 +125,6 @@ async def submit_task(
                 "Use /api/v1/attack-loop/start or /api/v1/auto-redteam/start instead."
             ),
         )
-
-        return {
-            "task_id": task_id,
-            "status": "submitted",
-        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

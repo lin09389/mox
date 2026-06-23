@@ -8,6 +8,7 @@
 - 性能优化
 """
 
+import asyncio
 from datetime import datetime
 from typing import Optional, List, AsyncIterator, Dict, Any
 from pathlib import Path
@@ -356,12 +357,16 @@ async def migrate_legacy_extended_database(target: "Database") -> int:
                             continue
                         if model is UserAccountRecord:
                             existing = (
-                                await target_session.execute(
-                                    select(UserAccountRecord).where(
-                                        UserAccountRecord.username == row.username
+                                (
+                                    await target_session.execute(
+                                        select(UserAccountRecord).where(
+                                            UserAccountRecord.username == row.username
+                                        )
                                     )
                                 )
-                            ).scalars().first()
+                                .scalars()
+                                .first()
+                            )
                             if existing:
                                 continue
                         target_session.add(_model_from_row(model, row))
@@ -473,9 +478,7 @@ class Database:
         """Initialize all tables and migrate legacy mox_ext.db if present."""
         async with self.engine.begin() as conn:
             await conn.run_sync(
-                lambda sync_conn: Base.metadata.create_all(
-                    sync_conn, tables=list(_ALL_TABLES)
-                )
+                lambda sync_conn: Base.metadata.create_all(sync_conn, tables=list(_ALL_TABLES))
             )
         migrated = await migrate_legacy_extended_database(self)
         logger.info(
@@ -913,6 +916,15 @@ async def close_database() -> None:
 def reset_database() -> None:
     """Reset the database singleton (for tests)."""
     global _default_db
+    if _default_db is not None:
+        try:
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                loop.create_task(_default_db.close())
+            else:
+                loop.run_until_complete(_default_db.close())
+        except Exception:
+            pass
     _default_db = None
 
 
@@ -937,6 +949,3 @@ async def init_extended_database(
 
 async def close_extended_database() -> None:
     await close_database()
-
-
-

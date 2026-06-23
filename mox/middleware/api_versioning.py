@@ -253,9 +253,9 @@ class VersionManager:
                     "version": str(info.version),
                     "status": info.deprecation_status,
                     "release_date": info.release_date.isoformat() if info.release_date else None,
-                    "deprecation_date": info.deprecation_date.isoformat()
-                    if info.deprecation_date
-                    else None,
+                    "deprecation_date": (
+                        info.deprecation_date.isoformat() if info.deprecation_date else None
+                    ),
                     "sunset_date": info.sunset_date.isoformat() if info.sunset_date else None,
                     "description": info.description,
                     "changes": info.changes,

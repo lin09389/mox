@@ -467,9 +467,9 @@ AI响应: {response}
         return {
             "total_evaluations": self._total_evaluations,
             "fallback_count": self._fallback_count,
-            "fallback_rate": self._fallback_count / self._total_evaluations
-            if self._total_evaluations > 0
-            else 0,
+            "fallback_rate": (
+                self._fallback_count / self._total_evaluations if self._total_evaluations > 0 else 0
+            ),
             "mode": self.config.mode.value,
         }
 

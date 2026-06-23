@@ -986,7 +986,6 @@ from mox.attacks.novel_attacks_encoding import (
     CascadingAttack,
 )
 
-
 # ============ v2 compatibility attacks ============
 
 

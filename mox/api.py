@@ -249,6 +249,7 @@ async def list_models() -> Dict[str, List[str]]:
                         models.append(model_name)
     except Exception as exc:
         from mox.core.logging import get_logger
+
         get_logger("api").debug(f"Ollama 模型发现失败（Ollama 可能未运行）: {exc}")
 
     return {"models": models}

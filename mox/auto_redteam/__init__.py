@@ -1,8 +1,6 @@
 """自动化红蓝对抗 (Auto-RedTeam) 引擎"""
 
-from .state import (
-    AgentState, VulnerabilityType, DiscoveredVulnerability, StepLog, RedTeamTask
-)
+from .state import AgentState, VulnerabilityType, DiscoveredVulnerability, StepLog, RedTeamTask
 from .tools import AttackTools
 from .agent import RedTeamAgent
 

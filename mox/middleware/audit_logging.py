@@ -53,7 +53,11 @@ def _derive_action(method: str, path: str) -> str:
         if method == "DELETE":
             return "template_delete"
         if method == "POST":
-            return "template_create" if not path.rstrip("/").split("/")[-1].isdigit() else "template_update"
+            return (
+                "template_create"
+                if not path.rstrip("/").split("/")[-1].isdigit()
+                else "template_update"
+            )
         if method == "PUT":
             return "template_update"
         return "template_query"

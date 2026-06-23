@@ -21,7 +21,7 @@ def client(tmp_path: Path, monkeypatch):
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(db_path))
+    asyncio.run(init_extended_database(db_path))
 
     yield TestClient(app)
     reset_extended_database()
@@ -36,7 +36,7 @@ def test_list_reports_requires_auth_when_enabled(tmp_path: Path, monkeypatch):
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(tmp_path / "auth.db"))
+    asyncio.run(init_extended_database(tmp_path / "auth.db"))
 
     client = TestClient(app)
     response = client.get("/api/v1/reports")
@@ -67,7 +67,7 @@ def test_delete_report_writes_audit(client: TestClient):
             }
         )
 
-    report_id = asyncio.get_event_loop().run_until_complete(_seed())
+    report_id = asyncio.run(_seed())
 
     with patch("mox.core.audit.get_audit_logger") as mock_get:
         mock_logger = AsyncMock()

@@ -69,13 +69,13 @@ def _normalize_bias_response(bias_result: Dict[str, Any], prompt: str) -> Dict[s
     risk_level = (
         "high"
         if bias_detected or parity_score < 0.45
-        else "medium"
-        if parity_score < 0.7
-        else "low"
+        else "medium" if parity_score < 0.7 else "low"
     )
 
     raw_type = str(bias_result.get("bias_type", "unknown"))
-    primary_type = _BIAS_TYPE_ALIASES.get(raw_type, raw_type if raw_type in _DEFAULT_BIAS_DIMENSIONS else "gender")
+    primary_type = _BIAS_TYPE_ALIASES.get(
+        raw_type, raw_type if raw_type in _DEFAULT_BIAS_DIMENSIONS else "gender"
+    )
     base_score = max(0.05, min(0.95, 1 - parity_score))
 
     details = []
@@ -138,7 +138,11 @@ async def _persist_platform_report(
                     endpoint=f"/api/v1/{source}",
                     method="POST",
                 ),
-                request_body={"report_id": report_id, "report_type": report_type, "model": model_name},
+                request_body={
+                    "report_id": report_id,
+                    "report_type": report_type,
+                    "model": model_name,
+                },
                 response_status=200,
             )
         except Exception:
@@ -263,7 +267,9 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
             allowed = set(request.techniques)
             scenarios = [s for s in scenarios if s.technique.value in allowed]
         if not scenarios:
-            raise HTTPException(status_code=400, detail="No matching red team scenarios for selected techniques")
+            raise HTTPException(
+                status_code=400, detail="No matching red team scenarios for selected techniques"
+            )
         results = await orchestrator.run_all_scenarios(
             parallel=True,
             max_concurrency=2,

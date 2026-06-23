@@ -155,7 +155,9 @@ class EvaluationWorkflow:
                         logger.info(f"Loaded {len(cases)} cases from {file_path}")
                         return cases
             else:
-                logger.warning(f"Benchmark file {file_path} not found. Falling back to default cases.")
+                logger.warning(
+                    f"Benchmark file {file_path} not found. Falling back to default cases."
+                )
         except Exception as e:
             logger.error(f"Error loading benchmark {file_path}: {e}")
 

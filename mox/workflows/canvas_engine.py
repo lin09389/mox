@@ -1,4 +1,5 @@
 """Canvas Engine for DAG Execution."""
+
 from __future__ import annotations
 
 import asyncio
@@ -10,7 +11,7 @@ from typing import Any, Dict, List, Optional
 
 from pydantic import BaseModel, Field
 
-from mox.core import AttackPayload, AttackType, LLMFactory
+from mox.core import LLMFactory
 from mox.core.llm import Message
 from mox.core.exceptions import MoxException
 from mox.core.task_store import get_task_store
@@ -225,14 +226,18 @@ class CanvasEngine:
             for attack_result in context.attack_results:
                 if attack_result.get("error"):
                     continue
-                adversarial = attack_result.get("adversarial_prompt") or attack_result.get("prompt", "")
+                adversarial = attack_result.get("adversarial_prompt") or attack_result.get(
+                    "prompt", ""
+                )
                 response = await target_llm.generate([Message(role="user", content=adversarial)])
-                context.evaluations.append({
-                    "target": node.data.get("label", node.id),
-                    "attack_key": attack_result.get("attack_key"),
-                    "response_preview": (response.content or "")[:200],
-                    "attack_success": attack_result.get("success", False),
-                })
+                context.evaluations.append(
+                    {
+                        "target": node.data.get("label", node.id),
+                        "attack_key": attack_result.get("attack_key"),
+                        "response_preview": (response.content or "")[:200],
+                        "attack_success": attack_result.get("success", False),
+                    }
+                )
         except Exception as e:
             context.evaluations.append({"target": node.id, "error": str(e)})
 

@@ -68,6 +68,7 @@ async def _persist_auto_redteam_report(agent: RedTeamAgent) -> Optional[int]:
     except Exception:
         return None
 
+
 active_tasks: Dict[str, RedTeamAgent] = {}
 _background_tasks: Dict[str, asyncio.Task] = {}
 

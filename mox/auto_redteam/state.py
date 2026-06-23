@@ -8,6 +8,7 @@ from enum import Enum
 
 class AgentState(str, Enum):
     """智能体运行状态"""
+
     IDLE = "idle"
     THINKING = "thinking"
     ACTING = "acting"
@@ -18,6 +19,7 @@ class AgentState(str, Enum):
 
 class VulnerabilityType(str, Enum):
     """漏洞类型分类"""
+
     PROMPT_INJECTION = "prompt_injection"
     JAILBREAK = "jailbreak"
     DATA_EXFILTRATION = "data_exfiltration"
@@ -27,6 +29,7 @@ class VulnerabilityType(str, Enum):
 
 class DiscoveredVulnerability(BaseModel):
     """发现的漏洞记录"""
+
     id: str
     vuln_type: VulnerabilityType
     attack_name: str
@@ -38,6 +41,7 @@ class DiscoveredVulnerability(BaseModel):
 
 class StepLog(BaseModel):
     """推理步骤日志"""
+
     step_num: int
     timestamp: datetime = Field(default_factory=datetime.now)
     state: AgentState
@@ -49,9 +53,10 @@ class StepLog(BaseModel):
 
 class RedTeamTask(BaseModel):
     """红队任务整体状态"""
+
     task_id: str
     target_model: str
-    status: str = "running" # running, completed, failed
+    status: str = "running"  # running, completed, failed
     start_time: datetime = Field(default_factory=datetime.now)
     end_time: Optional[datetime] = None
     max_steps: int = 20

@@ -19,11 +19,9 @@ from mox.core.error_handling import (
     handle_attack_error,
     handle_evaluation_error,
 )
+
 if TYPE_CHECKING:
-    from mox.evaluation.attack_success import (
-        AttackSuccessEvaluator as AttackEvaluator,
-        AttackSuccessResult as EvaluationResult,
-    )
+    pass
 
 
 def _create_attack_evaluator(evaluator_type: str):
@@ -94,9 +92,7 @@ class BaseAttack(ABC):
             float: 成功分数 0.0-1.0
         """
         try:
-            result = await self.evaluator.evaluate(
-                response, target_behavior, **kwargs
-            )
+            result = await self.evaluator.evaluate(response, target_behavior, **kwargs)
             return result.score
         except Exception as e:
             handle_evaluation_error(e, f"Evaluating attack success for {self.__class__.__name__}")

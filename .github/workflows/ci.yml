@@ -57,7 +57,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run bandit
-        run: bandit -r mox/ -x tests/ -f json -o bandit-report.json
+        run: bandit -r mox/ -c bandit.yaml -lll -f json -o bandit-report.json
 
       - name: Run safety check
         run: safety check --json > safety-report.json

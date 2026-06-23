@@ -288,9 +288,7 @@ def _register_llm_driven_attacks(registry: AttackRegistry):
 
     registry.register(
         name="tap",
-        factory=lambda llm, iter: TAPAttack(
-            target_llm=llm, config=TAPConfig(max_iterations=iter)
-        ),
+        factory=lambda llm, iter: TAPAttack(target_llm=llm, config=TAPConfig(max_iterations=iter)),
         category=AttackCategory.BASIC,
         attack_class=TAPAttack,
         config_class=TAPConfig,

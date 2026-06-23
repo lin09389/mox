@@ -1,7 +1,7 @@
 """监控统计服务 - 从数据库聚合真实指标"""
 
 from datetime import datetime, timedelta
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
 
 from sqlalchemy import case, func, select
 

@@ -429,9 +429,9 @@ class DefenseOrchestrator:
                 result.confidence,
                 scenario.test_input,
                 {
-                    "hallucination_type": result.hallucination_type.value
-                    if result.hallucination_type
-                    else None
+                    "hallucination_type": (
+                        result.hallucination_type.value if result.hallucination_type else None
+                    )
                 },
             )
         except Exception as e:

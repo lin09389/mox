@@ -98,9 +98,11 @@ class TextBasedAdversarialAttack(BaseAttack):
                 score = await self.evaluate_success(response.content, payload.target_behavior)
 
                 outcome = self._create_outcome(
-                    result=AttackResult.SUCCESS
-                    if score >= self.config.success_threshold
-                    else AttackResult.FAILURE,
+                    result=(
+                        AttackResult.SUCCESS
+                        if score >= self.config.success_threshold
+                        else AttackResult.FAILURE
+                    ),
                     original_prompt=payload.prompt,
                     adversarial_prompt=attack_prompt,
                     model_response=response.content,
@@ -704,9 +706,11 @@ class KnowledgeExtractionAttack(BaseAttack):
                 score = await self.evaluate_success(response.content, payload.target_behavior)
 
                 outcome = self._create_outcome(
-                    result=AttackResult.SUCCESS
-                    if score >= self.config.success_threshold
-                    else AttackResult.FAILURE,
+                    result=(
+                        AttackResult.SUCCESS
+                        if score >= self.config.success_threshold
+                        else AttackResult.FAILURE
+                    ),
                     original_prompt=payload.prompt,
                     adversarial_prompt=final_prompt,
                     model_response=response.content,

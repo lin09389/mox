@@ -532,10 +532,10 @@ class RedTeamEvaluator:
         if loop and loop.is_running():
             # 在已有事件循环中（如 Jupyter），使用 nest_asyncio 兼容
             import concurrent.futures
+
             with concurrent.futures.ThreadPoolExecutor() as pool:
                 return pool.submit(
-                    asyncio.run,
-                    self.evaluate(response, target_behavior, technique, prompt)
+                    asyncio.run, self.evaluate(response, target_behavior, technique, prompt)
                 ).result()
         else:
             return asyncio.run(self.evaluate(response, target_behavior, technique, prompt))
@@ -1341,13 +1341,13 @@ class RedTeamReportGenerator:
             "summary": {
                 "total": len(results),
                 "successful": sum(1 for r in results if r.success),
-                "success_rate": sum(1 for r in results if r.success) / len(results)
-                if results
-                else 0,
+                "success_rate": (
+                    sum(1 for r in results if r.success) / len(results) if results else 0
+                ),
                 "avg_score": sum(r.score for r in results) / len(results) if results else 0,
-                "avg_confidence": sum(r.confidence for r in results) / len(results)
-                if results
-                else 0,
+                "avg_confidence": (
+                    sum(r.confidence for r in results) / len(results) if results else 0
+                ),
             },
             "results": [
                 {

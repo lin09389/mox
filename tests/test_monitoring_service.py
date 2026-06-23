@@ -2,6 +2,7 @@
 
 import pytest
 
+from mox.core.database import close_database, init_database, reset_database
 from mox.core.monitoring_service import (
     get_attack_exposure_radar,
     get_hourly_trends,
@@ -10,6 +11,22 @@ from mox.core.monitoring_service import (
     get_security_stats,
     get_threat_topology,
 )
+
+
+@pytest.fixture(autouse=True)
+async def _fresh_database():
+    reset_database()
+    try:
+        await close_database()
+    except Exception:
+        pass
+    await init_database()
+    yield
+    try:
+        await close_database()
+    except Exception:
+        pass
+    reset_database()
 
 
 @pytest.mark.asyncio

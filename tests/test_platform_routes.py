@@ -48,7 +48,7 @@ def test_list_datasets_requires_auth_when_enabled(tmp_path: Path, monkeypatch):
 
     import asyncio
 
-    asyncio.get_event_loop().run_until_complete(init_extended_database(tmp_path / "datasets_auth.db"))
+    asyncio.run(init_extended_database(tmp_path / "datasets_auth.db"))
 
     client = TestClient(app)
     response = client.get("/api/v1/datasets")
