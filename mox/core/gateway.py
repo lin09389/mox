@@ -13,7 +13,6 @@ from enum import Enum
 
 from mox.core import BaseLLM, Message
 
-
 try:
     from sentence_transformers import SentenceTransformer
 

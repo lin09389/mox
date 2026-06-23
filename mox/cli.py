@@ -6,61 +6,75 @@ import argparse
 from rich.console import Console
 from rich.table import Table
 from rich.panel import Panel
-from rich.progress import Progress, SpinnerColumn, TextColumn
+from rich.progress import Progress
 
-from mox.core import (
-    LLMFactory,
-    AttackType,
-    AttackPayload,
-)
-from mox.attacks import (
-    PromptInjectionAttack,
-    JailbreakAttack,
-    GCGAttack,
-    AutoDANAttack,
-    AttackConfig,
-    TAPAttack,
-    MultiTurnJailbreakAttack,
-    CrescendoAttack,
-    TAPConfig,
-    RAGContextInjectionAttack,
-    AgentToolManipulationAttack,
-)
-from mox.defense import (
-    InputFilter,
-    OutputFilter,
-)
+from mox.core import LLMFactory
+from mox.attacks.registry import get_registry, has_attack_type, list_attack_types
+from mox.routes.services.attack_service import execute_registry_attack
+from mox.defense import InputFilter, OutputFilter
 from mox.defense.llm_judge import LLMJudge, SafetyCoTDefense, JudgmentType
-from mox.evaluation import (
-    BenchmarkDataset,
-)
+from mox.evaluation import BenchmarkDataset
 
 console = Console()
 
+DEFAULT_CLI_ATTACK_TYPES = [
+    "prompt_injection",
+    "jailbreak",
+    "gcg",
+    "autodan",
+    "tap",
+    "multi_turn",
+    "crescendo",
+    "rag",
+    "agent",
+]
 
-def create_attack(attack_type: str, model: str, max_iterations: int):
-    llm = LLMFactory.create_from_model_name(model)
 
-    attack_map = {
-        "prompt_injection": PromptInjectionAttack,
-        "jailbreak": JailbreakAttack,
-        "gcg": GCGAttack,
-        "autodan": AutoDANAttack,
-        "tap": TAPAttack,
-        "multi_turn": MultiTurnJailbreakAttack,
-        "crescendo": CrescendoAttack,
-        "rag": RAGContextInjectionAttack,
-        "agent": AgentToolManipulationAttack,
-    }
+def get_attack_type_choices() -> list[str]:
+    """Return all registry attack names and aliases for CLI argument validation."""
+    registry = get_registry()
+    return sorted(set(list_attack_types()) | set(registry.get_aliases().keys()))
 
-    attack_class = attack_map.get(attack_type, PromptInjectionAttack)
 
-    if attack_type in ["tap", "multi_turn"]:
-        config = TAPConfig(max_iterations=max_iterations, max_depth=5)
-    else:
-        config = AttackConfig(max_iterations=max_iterations)
+def resolve_attack_type(attack_type: str) -> str:
+    """Resolve CLI attack type via registry (supports aliases)."""
+    if not has_attack_type(attack_type):
+        raise ValueError(
+            f"Unknown attack type: {attack_type}. "
+            f"Use one of: {', '.join(DEFAULT_CLI_ATTACK_TYPES)}"
+        )
+    return get_registry().get_aliases().get(attack_type, attack_type)
 
-    return attack_class(target_llm=llm, config=config)
+
+def create_llm(model: str):
+    return LLMFactory.create_from_model_name(model)
+
+
+def get_max_iterations(args, default: int = 10) -> int:
+    return getattr(args, "max_iter", getattr(args, "max_iterations", default))
+
+
+async def run_registry_attack(
+    attack_type: str,
+    model: str,
+    prompt: str,
+    *,
+    target_behavior: str,
+    max_iterations: int = 10,
+):
+    llm = create_llm(model)
+    resolved = resolve_attack_type(attack_type)
+    return await execute_registry_attack(
+        resolved,
+        llm,
+        prompt,
+        target_behavior=target_behavior,
+        max_iterations=max_iterations,
+    )
+
+
+def _attack_response_text(outcome) -> str:
+    return getattr(outcome, "model_response", None) or getattr(outcome, "response", "")
 
 
 async def run_single_attack(args):
@@ -73,22 +87,17 @@ async def run_single_attack(args):
         )
     )
 
-    attack = create_attack(args.attack_type, args.model, args.max_iterations)
-
-    payload = AttackPayload(
-        attack_type=AttackType(args.attack_type),
-        prompt=args.prompt,
-        target_behavior=args.target,
-    )
-
-    with Progress(
-        SpinnerColumn(),
-        TextColumn("[progress.description]{task.description}"),
-        console=console,
-    ) as progress:
-        task = progress.add_task("执行攻击中...", total=None)
-        outcome = await attack.generate_attack(payload)
-        progress.remove_task(task)
+    try:
+        outcome = await run_registry_attack(
+            args.attack_type,
+            args.model,
+            args.prompt,
+            target_behavior=args.target,
+            max_iterations=get_max_iterations(args),
+        )
+    except ValueError as exc:
+        console.print(f"[bold red]错误:[/bold red] {exc}")
+        return
 
     table = Table(title="攻击结果")
     table.add_column("指标", style="cyan")
@@ -103,8 +112,9 @@ async def run_single_attack(args):
     console.print("\n[bold]对抗提示词:[/bold]")
     console.print(Panel(outcome.adversarial_prompt, expand=False))
 
+    response_text = _attack_response_text(outcome)
     console.print("\n[bold]模型响应:[/bold]")
-    console.print(Panel(outcome.response[:500], expand=False))
+    console.print(Panel(response_text[:500], expand=False))
 
 
 async def run_defense_scan(args):
@@ -148,16 +158,29 @@ async def run_benchmark(args):
         )
     )
 
-    attack = create_attack(args.attack_type, args.model, args.max_iterations)
+    try:
+        resolve_attack_type(args.attack_type)
+    except ValueError as exc:
+        console.print(f"[bold red]错误:[/bold red] {exc}")
+        return
+
+    llm = create_llm(args.model)
     benchmark = BenchmarkDataset()
     payloads = benchmark.get_attack_payloads(args.dataset)[: args.max_cases]
+    max_iterations = get_max_iterations(args)
 
     results = []
     with Progress(console=console) as progress:
         task = progress.add_task("运行测试...", total=len(payloads))
 
         for i, payload in enumerate(payloads):
-            outcome = await attack.generate_attack(payload)
+            outcome = await execute_registry_attack(
+                args.attack_type,
+                llm,
+                payload.prompt,
+                target_behavior=payload.target_behavior,
+                max_iterations=max_iterations,
+            )
             results.append(
                 {
                     "case": i + 1,
@@ -177,7 +200,7 @@ async def run_benchmark(args):
     table.add_row("总测试数", str(total))
     table.add_row("成功攻击数", str(successful))
     table.add_row("失败攻击数", str(total - successful))
-    table.add_row("攻击成功率", f"{successful / total * 100:.1f}%")
+    table.add_row("攻击成功率", f"{successful / total * 100:.1f}%" if total else "0.0%")
 
     console.print(table)
 
@@ -200,7 +223,7 @@ async def run_llm_judge_test(args):
         )
     )
 
-    llm = LLMFactory.create_from_model_name(args.model)
+    llm = create_llm(args.model)
     judge = LLMJudge(llm, judgment_type=JudgmentType.SAFETY)
 
     result = await judge.judge(args.text, args.response or "")
@@ -225,7 +248,7 @@ async def run_safety_cot(args):
         )
     )
 
-    llm = LLMFactory.create_from_model_name(args.model)
+    llm = create_llm(args.model)
     defense = SafetyCoTDefense(llm)
 
     result = await defense.check_and_respond(args.text)
@@ -251,23 +274,23 @@ async def run_quick_test(args):
         )
     )
 
-    llm = LLMFactory.create_from_model_name(args.model)
-
     if args.mode == "attack":
-        # 快速攻击测试
-        attack = MultiTurnJailbreakAttack(target_llm=llm)
-        payload = AttackPayload(
-            attack_type=AttackType.JAILBREAK,
-            prompt=args.prompt,
-            target_behavior=args.target or "test",
-        )
-        outcome = await attack.generate_attack(payload)
+        try:
+            outcome = await run_registry_attack(
+                "multi_turn",
+                args.model,
+                args.prompt,
+                target_behavior=args.target or "test",
+                max_iterations=10,
+            )
+        except ValueError as exc:
+            console.print(f"[bold red]错误:[/bold red] {exc}")
+            return
 
         console.print(f"\n[bold]攻击结果:[/bold] {outcome.result.value}")
         console.print(f"[bold]成功分数:[/bold] {outcome.success_score:.2f}")
 
     elif args.mode == "defense":
-        # 快速防御测试
         defense = InputFilter()
         result = await defense.detect(args.prompt)
 
@@ -275,7 +298,7 @@ async def run_quick_test(args):
         console.print(f"[bold]置信度:[/bold] {result.confidence:.2f}")
 
     elif args.mode == "judge":
-        # 快速判断
+        llm = create_llm(args.model)
         judge = LLMJudge(llm)
         result = await judge.judge(args.prompt, args.target or "")
 
@@ -283,21 +306,30 @@ async def run_quick_test(args):
         console.print(f"[bold]置信度:[/bold] {result.confidence:.2f}")
 
 
+def _attack_types_epilog() -> str:
+    lines = ["常用攻击类型 (registry):"]
+    registry = get_registry()
+    for name in DEFAULT_CLI_ATTACK_TYPES:
+        info = registry.get_attack_type(name)
+        if info:
+            lines.append(f"  {name:18} - {info.description}")
+        else:
+            lines.append(f"  {name}")
+    lines.append(
+        f"\n注册表共 {len(list_attack_types())} 种攻击，含别名共 {len(get_attack_type_choices())} 个 CLI 选项。"
+    )
+    return "\n".join(lines)
+
+
 def main():
+    attack_choices = get_attack_type_choices()
+    benchmark_choices = [t for t in DEFAULT_CLI_ATTACK_TYPES if t in attack_choices]
+
     parser = argparse.ArgumentParser(
         description="Mox v0.3.0 - 大模型对抗攻防平台 CLI",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="""
-支持的攻击类型:
-  prompt_injection  - 提示词注入
-  jailbreak        - 越狱攻击
-  gcg              - 基于梯度的攻击
-  autodan          - 自动DAN
-  tap              - 目标对齐提示
-  multi_turn       - 多轮对话攻击
-  crescendo        - 渐进式攻击
-  rag              - RAG系统攻击
-  agent            - Agent工具滥用
+        epilog=f"""
+{_attack_types_epilog()}
 
 支持的模型:
   OpenAI:    gpt-4, gpt-3.5-turbo, o1, o3
@@ -317,18 +349,8 @@ def main():
         "-t",
         dest="attack_type",
         default="prompt_injection",
-        choices=[
-            "prompt_injection",
-            "jailbreak",
-            "gcg",
-            "autodan",
-            "tap",
-            "multi_turn",
-            "crescendo",
-            "rag",
-            "agent",
-        ],
-        help="攻击类型",
+        choices=attack_choices,
+        help="攻击类型 (registry)",
     )
     attack_parser.add_argument("--model", "-m", default="gpt-4", help="目标模型")
     attack_parser.add_argument("--prompt", "-p", required=True, help="攻击提示词")
@@ -353,11 +375,12 @@ def main():
         "--attack-type",
         "-a",
         default="prompt_injection",
-        choices=["prompt_injection", "jailbreak", "tap", "multi_turn", "crescendo"],
-        help="攻击类型",
+        choices=benchmark_choices or attack_choices,
+        help="攻击类型 (registry)",
     )
     benchmark_parser.add_argument("--model", "-m", default="gpt-4", help="目标模型")
     benchmark_parser.add_argument("--max-cases", type=int, default=5, help="最大测试用例数")
+    benchmark_parser.add_argument("--max-iter", type=int, default=10, help="最大迭代次数")
 
     judge_parser = subparsers.add_parser("judge", help="LLM-as-Judge 评估")
     judge_parser.add_argument("--text", "-t", required=True, help="原始文本")

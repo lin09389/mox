@@ -42,8 +42,8 @@ class TestAttackRoutes:
         assert len(data["attack_types"]) > 0
 
     def test_attack_history_empty(self, client):
-        with patch("mox.routes.attack._db") as mock_db:
-            mock_db.get_attack_records = AsyncMock(return_value=[])
+        with patch("mox.routes.attack.get_database") as mock_db:
+            mock_db.return_value.get_attack_records = AsyncMock(return_value=[])
             response = client.get("/api/attack/history")
             assert response.status_code == 200
             data = response.json()
@@ -63,8 +63,8 @@ class TestAttackRoutes:
 
 class TestDefenseRoutes:
     def test_defense_history_empty(self, client):
-        with patch("mox.routes.defense._db") as mock_db:
-            mock_db.get_defense_records = AsyncMock(return_value=[])
+        with patch("mox.routes.defense.get_database") as mock_db:
+            mock_db.return_value.get_defense_records = AsyncMock(return_value=[])
             response = client.get("/api/defense/history")
             assert response.status_code == 200
             data = response.json()

@@ -1,5 +1,5 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom'
+import { BrowserRouter, Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import { Toaster } from 'react-hot-toast'
 import { Loader } from 'lucide-react'
 import Layout from './components/Layout'
@@ -7,28 +7,23 @@ import { ErrorBoundary } from './components/ErrorBoundary'
 import { ProtectedRoute } from './components/ProtectedRoute'
 
 const SecurityDashboard = lazy(() => import('./pages/SecurityDashboard'))
-const AttackPage = lazy(() => import('./pages/AttackPage'))
-const AdvancedAttackPage = lazy(() => import('./pages/AdvancedAttackPage'))
-const NovelAttackPage = lazy(() => import('./pages/NovelAttackPage'))
-const AgentAttackPage = lazy(() => import('./pages/AgentAttackPage'))
-const MultimodalAttackPage = lazy(() => import('./pages/MultimodalAttackPage'))
-const DefensePage = lazy(() => import('./pages/DefensePage'))
-const BenchmarkPage = lazy(() => import('./pages/BenchmarkPage'))
-const SafetyCardPage = lazy(() => import('./pages/SafetyCardPage'))
-const HistoryPage = lazy(() => import('./pages/HistoryPage'))
-const CodeSecurityPage = lazy(() => import('./pages/CodeSecurityPage'))
-const BiasDetectionPage = lazy(() => import('./pages/BiasDetectionPage'))
-const OWASPPage = lazy(() => import('./pages/OWASPPage'))
-const RedTeamPage = lazy(() => import('./pages/RedTeamPage'))
-const TemplatePage = lazy(() => import('./pages/TemplatePage'))
-const DatasetPage = lazy(() => import('./pages/DatasetPage'))
-const ReportPage = lazy(() => import('./pages/ReportPage'))
 const TaskProgressPage = lazy(() => import('./pages/TaskProgressPage'))
-const AuditLogPage = lazy(() => import('./pages/AuditLogPage'))
-const AttackLoopPage = lazy(() => import('./pages/AttackLoopPage'))
+const AttackHubPage = lazy(() => import('./pages/AttackHubPage'))
+const AutoTestingHubPage = lazy(() => import('./pages/AutoTestingHubPage'))
+const EvaluationHubPage = lazy(() => import('./pages/EvaluationHubPage'))
+const GovernanceHubPage = lazy(() => import('./pages/GovernanceHubPage'))
+const DefensePage = lazy(() => import('./pages/DefensePage'))
+
 const LoginPage = lazy(() => import('./pages/LoginPage'))
 const RegisterPage = lazy(() => import('./pages/RegisterPage'))
 const PricingPage = lazy(() => import('./pages/PricingPage'))
+
+function GovernanceTabRedirect({ tab }) {
+  const location = useLocation()
+  const params = new URLSearchParams(location.search)
+  params.set('tab', tab)
+  return <Navigate to={`/governance?${params.toString()}`} replace />
+}
 
 function PageLoader() {
   return (
@@ -54,28 +49,26 @@ export default function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/pricing" element={<PricingPage />} />
-              
-              {/* Protected Routes */}
+
               <Route path="/" element={<ProtectedRoute><SecurityDashboard /></ProtectedRoute>} />
-              <Route path="/attack" element={<ProtectedRoute><AttackPage /></ProtectedRoute>} />
-              <Route path="/attack/advanced" element={<ProtectedRoute><AdvancedAttackPage /></ProtectedRoute>} />
-              <Route path="/attack/novel" element={<ProtectedRoute><NovelAttackPage /></ProtectedRoute>} />
-              <Route path="/attack/agent" element={<ProtectedRoute><AgentAttackPage /></ProtectedRoute>} />
-              <Route path="/attack/multimodal" element={<ProtectedRoute><MultimodalAttackPage /></ProtectedRoute>} />
-              <Route path="/attack/loop" element={<ProtectedRoute><AttackLoopPage /></ProtectedRoute>} />
-              <Route path="/defense" element={<ProtectedRoute><DefensePage /></ProtectedRoute>} />
-              <Route path="/benchmark" element={<ProtectedRoute><BenchmarkPage /></ProtectedRoute>} />
-              <Route path="/safety-card" element={<ProtectedRoute><SafetyCardPage /></ProtectedRoute>} />
-              <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
-              <Route path="/code-security" element={<ProtectedRoute><CodeSecurityPage /></ProtectedRoute>} />
-              <Route path="/bias" element={<ProtectedRoute><BiasDetectionPage /></ProtectedRoute>} />
-              <Route path="/owasp" element={<ProtectedRoute><OWASPPage /></ProtectedRoute>} />
-              <Route path="/redteam" element={<ProtectedRoute><RedTeamPage /></ProtectedRoute>} />
-              <Route path="/templates" element={<ProtectedRoute><TemplatePage /></ProtectedRoute>} />
-              <Route path="/datasets" element={<ProtectedRoute><DatasetPage /></ProtectedRoute>} />
-              <Route path="/reports" element={<ProtectedRoute><ReportPage /></ProtectedRoute>} />
               <Route path="/tasks" element={<ProtectedRoute><TaskProgressPage /></ProtectedRoute>} />
-              <Route path="/audit" element={<ProtectedRoute><AuditLogPage /></ProtectedRoute>} />
+
+              <Route path="/attack" element={<ProtectedRoute><AttackHubPage /></ProtectedRoute>} />
+              <Route path="/testing" element={<ProtectedRoute><AutoTestingHubPage /></ProtectedRoute>} />
+              <Route path="/evaluation" element={<ProtectedRoute><EvaluationHubPage /></ProtectedRoute>} />
+              <Route path="/defense" element={<ProtectedRoute><DefensePage /></ProtectedRoute>} />
+              <Route path="/governance" element={<ProtectedRoute><GovernanceHubPage /></ProtectedRoute>} />
+
+              {/* Legacy redirects */}
+              <Route path="/auto-redteam" element={<Navigate to="/testing?tab=auto-redteam" replace />} />
+              <Route path="/canvas" element={<Navigate to="/testing?tab=canvas" replace />} />
+              <Route path="/benchmark" element={<Navigate to="/evaluation?tab=benchmark" replace />} />
+              <Route path="/datasets" element={<GovernanceTabRedirect tab="datasets" />} />
+              <Route path="/templates" element={<GovernanceTabRedirect tab="templates" />} />
+              <Route path="/reports" element={<GovernanceTabRedirect tab="reports" />} />
+              <Route path="/audit" element={<GovernanceTabRedirect tab="audit" />} />
+              <Route path="/history" element={<GovernanceTabRedirect tab="history" />} />
+
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </ErrorBoundary>

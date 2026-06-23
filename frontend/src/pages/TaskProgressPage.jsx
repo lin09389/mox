@@ -1,8 +1,10 @@
 import { useEffect, useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
+import { Link } from 'react-router-dom'
 import { Clock3, Eye, ListTodo, Loader2, Play, RefreshCw, XCircle, Terminal } from 'lucide-react'
-import api from '../api'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { tasksApi, isDemoModeEnabled } from '../api'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { getTaskHref, normalizeRemoteTask } from '../utils/taskTrayHelpers'
 
 const statusConfig = {
   running: { label: '执行中', tone: 'warning', badge: 'bg-amber-500/10 text-amber-500 border-amber-500/20' },
@@ -31,14 +33,14 @@ export default function TaskProgressPage() {
   const fetchTasks = async () => {
     setLoading(true)
     try {
-      const response = await api.get('/api/tasks')
-      setTasks(response.data || [])
+      const data = await tasksApi.list()
+      setTasks((data || []).map(normalizeRemoteTask))
     } catch {
-      setTimeout(() => {
-        setTasks(fallbackTasks())
-        setLoading(false)
-      }, 600)
-      return
+      if (isDemoModeEnabled) {
+        setTasks(fallbackTasks().map(normalizeRemoteTask))
+      } else {
+        setTasks([])
+      }
     }
     setLoading(false)
   }
@@ -66,18 +68,16 @@ export default function TaskProgressPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <PageHeader
-          eyebrow="TASK CENTER"
-          title="异步任务枢纽"
-          description="大盘展示所有在后台挂起的靶场渗透、模型扫描和矩阵评测进程，支持毫秒级轮询更新。"
-        />
-        <div className="flex items-center gap-3 pb-6">
-          <button type="button" onClick={fetchTasks} className="btn-secondary h-[42px] px-6 text-cyan-500 border-[var(--border-glass)] hover:border-cyan-500/30">
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-            主推同步
-          </button>
+      <motion.div variants={itemVariants} className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+        <div className="space-y-2 max-w-2xl">
+          <p className="text-sm font-medium text-[var(--text-muted)]">
+            查看攻击循环、自动红队与基准评测等后台任务进度，支持定时同步与进程切面分析。
+          </p>
         </div>
+        <button type="button" onClick={fetchTasks} className="btn-secondary h-[42px] px-6 text-cyan-500 border-[var(--border-glass)] hover:border-cyan-500/30 shrink-0">
+          <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+          刷新任务
+        </button>
       </motion.div>
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -88,7 +88,7 @@ export default function TaskProgressPage() {
       </motion.div>
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6 border-[var(--border-glass)]">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6 border-[var(--border-glass)]">
           <PanelHeader title="调度器日志流" description="点击指定节点查看详尽的执行内存栈。" />
           {loading && tasks.length === 0 ? (
             <div className="flex min-h-[360px] items-center justify-center">
@@ -120,6 +120,15 @@ export default function TaskProgressPage() {
                         </span>
                       </div>
                       <ProgressMeter value={task.progress || 0} tone={statusConfig[task.status]?.tone || 'electric'} label="进程切片进度" />
+                      {task.source && task.status === 'running' ? (
+                        <Link
+                          to={getTaskHref(task)}
+                          onClick={(event) => event.stopPropagation()}
+                          className="mt-3 inline-flex text-xs font-bold text-cyan-500 hover:underline"
+                        >
+                          打开来源页面 →
+                        </Link>
+                      ) : null}
                     </motion.button>
                   )
                 })}

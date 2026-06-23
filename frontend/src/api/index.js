@@ -1,8 +1,32 @@
 import axios from 'axios'
 import { clearSession, DEMO_MODE_ENABLED, getAccessToken } from '../auth'
 
+export { getAccessToken }
+
 const API_BASE = import.meta.env.VITE_API_URL || ''
-const API_PREFIX = '/api/v1'
+export const API_PREFIX = '/api/v1'
+
+/** 获取 API 根地址（用于 SSE / fetch 等不走 axios baseURL 的场景） */
+export function getApiBaseUrl() {
+  if (API_BASE) return API_BASE.replace(/\/$/, '')
+  if (typeof window !== 'undefined') return window.location.origin
+  return ''
+}
+
+/** 构建完整 API URL */
+export function buildGovernanceReportLink(reportId) {
+  const params = new URLSearchParams({ tab: 'reports' })
+  if (reportId != null && reportId !== '') {
+    params.set('highlight', String(reportId))
+  }
+  return `/governance?${params.toString()}`
+}
+
+export function buildApiUrl(path) {
+  const normalized = path.startsWith('/') ? path : `/${path}`
+  const base = getApiBaseUrl()
+  return base ? `${base}${normalized}` : normalized
+}
 
 export const api = axios.create({
   baseURL: API_BASE,
@@ -67,11 +91,15 @@ api.interceptors.response.use(
 
 export const authApi = {
   login: async (credentials) => unwrap(await api.post(`${API_PREFIX}/auth/login`, credentials)),
+  register: async (data) => unwrap(await api.post(`${API_PREFIX}/auth/register`, data)),
   me: async () => unwrap(await api.get(`${API_PREFIX}/auth/me`)),
 }
 
 export const attackApi = {
   run: async (data) => unwrap(await api.post(`${API_PREFIX}/attack`, data)),
+  agentAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/agent`, payload)),
+  multimodalAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/multimodal`, payload)),
+  novelAttack: async (payload) => unwrap(await api.post(`${API_PREFIX}/attack/novel`, payload)),
   getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/attack/history`, { params })),
   test: async () => unwrap(await api.get(`${API_PREFIX}/health`)),
   getRegistry: async () => unwrap(await api.get(`${API_PREFIX}/attacks/registry`)),
@@ -85,9 +113,48 @@ export const datasetApi = {
   delete: async (id) => unwrap(await api.delete(`${API_PREFIX}/datasets/${id}`)),
 }
 
+export const templateApi = {
+  list: async (params) => unwrap(await api.get(`${API_PREFIX}/user-templates`, { params })),
+  create: async (data) => unwrap(await api.post(`${API_PREFIX}/user-templates`, data)),
+  update: async (id, data) => unwrap(await api.put(`${API_PREFIX}/user-templates/${id}`, data)),
+  delete: async (id) => unwrap(await api.delete(`${API_PREFIX}/user-templates/${id}`)),
+  toggleFavorite: async (id) => unwrap(await api.post(`${API_PREFIX}/user-templates/${id}/favorite`)),
+}
+
+export const reportApi = {
+  list: async (params) => unwrap(await api.get(`${API_PREFIX}/reports`, { params })),
+  get: async (id) => unwrap(await api.get(`${API_PREFIX}/reports/${id}`)),
+  delete: async (id) => unwrap(await api.delete(`${API_PREFIX}/reports/${id}`)),
+  downloadUrl: (id) => buildApiUrl(`${API_PREFIX}/reports/${id}/download`),
+  download: async (id, filename = 'report') => {
+    const token = getAccessToken()
+    const url = buildApiUrl(`${API_PREFIX}/reports/${id}/download`)
+    const response = await fetch(url, {
+      headers: token ? { Authorization: `Bearer ${token}` } : {},
+    })
+    if (!response.ok) {
+      const error = new Error('Report download failed')
+      error.response = { status: response.status }
+      throw error
+    }
+    const blob = await response.blob()
+    const objectUrl = URL.createObjectURL(blob)
+    const anchor = document.createElement('a')
+    anchor.href = objectUrl
+    anchor.download = filename
+    document.body.appendChild(anchor)
+    anchor.click()
+    anchor.remove()
+    URL.revokeObjectURL(objectUrl)
+  },
+}
+
 export const defenseApi = {
   scan: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/scan`, data)),
   sanitize: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/sanitize`, data)),
+  semanticFirewall: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/semantic-firewall`, data)),
+  outputValidator: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/output-validator`, data)),
+  constitutionalAI: async (data) => unwrap(await api.post(`${API_PREFIX}/defense/constitutional-ai`, data)),
   getHistory: async (params) => unwrap(await api.get(`${API_PREFIX}/defense/history`, { params })),
 }
 
@@ -127,22 +194,23 @@ export async function getDefenseLogs() {
   )
 }
 
+function extractResultList(data) {
+  if (Array.isArray(data?.results)) return data.results
+  if (Array.isArray(data?.report?.results)) return data.report.results
+  if (Array.isArray(data)) return data
+  return []
+}
+
 export async function runOWASPTests(model) {
   const data = await withDemoFallback(
     async () => unwrap(await api.post(`${API_PREFIX}/owasp/run`, { model })),
     () => ({ results: generateMockOWASPResults() })
   )
 
-  if (Array.isArray(data?.results)) {
-    return data.results
+  return {
+    results: extractResultList(data),
+    reportId: data?.report_id ?? null,
   }
-  if (Array.isArray(data?.report?.results)) {
-    return data.report.results
-  }
-  if (Array.isArray(data)) {
-    return data
-  }
-  return []
 }
 
 export async function runRedTeam(targetModel, techniques) {
@@ -151,16 +219,11 @@ export async function runRedTeam(targetModel, techniques) {
     () => ({ results: generateMockRedTeamResults() })
   )
 
-  if (Array.isArray(data?.report?.results)) {
-    return data.report.results
+  return {
+    results: extractResultList(data),
+    reportId: data?.report_id ?? null,
+    summary: data?.summary ?? null,
   }
-  if (Array.isArray(data?.results)) {
-    return data.results
-  }
-  if (Array.isArray(data)) {
-    return data
-  }
-  return []
 }
 
 export async function testGateway(input) {
@@ -184,6 +247,24 @@ export async function getMonitoringData() {
   )
 }
 
+export async function getMonitoringVisualization() {
+  return withDemoFallback(
+    async () => unwrap(await api.get(`${API_PREFIX}/monitoring/visualization`)),
+    () => ({
+      stats: {
+        totalRequests: 0,
+        blockedRequests: 0,
+        attackSuccessRate: 0,
+        defenseSuccessRate: 0,
+      },
+      trends: { series: [] },
+      radar: { items: [] },
+      topology: { nodes: [], links: [] },
+      _demo_mode: true,
+    })
+  )
+}
+
 export async function getAnomalies() {
   return withDemoFallback(
     async () => unwrap(await api.get(`${API_PREFIX}/monitoring/anomalies`)),
@@ -201,6 +282,46 @@ export async function getModels() {
 
 export async function getAttackTemplates() {
   return unwrap(await api.get(`${API_PREFIX}/templates`))
+}
+
+export const autoRedteamApi = {
+  start: async (data) => unwrap(await api.post(`${API_PREFIX}/auto-redteam/start`, data)),
+  stop: async (taskId) => unwrap(await api.delete(`${API_PREFIX}/auto-redteam/${taskId}`)),
+  getStatus: async (taskId) => unwrap(await api.get(`${API_PREFIX}/auto-redteam/${taskId}`)),
+  streamUrl: (taskId) => buildApiUrl(`${API_PREFIX}/auto-redteam/${taskId}/stream`),
+}
+
+export const canvasApi = {
+  deploy: async (dag) => unwrap(await api.post(`${API_PREFIX}/canvas/deploy`, dag)),
+  getRun: async (runId) => unwrap(await api.get(`${API_PREFIX}/canvas/runs/${runId}`)),
+  listRuns: async (limit = 20) => unwrap(await api.get(`${API_PREFIX}/canvas/runs`, { params: { limit } })),
+}
+
+export const tasksApi = {
+  list: async () => unwrap(await api.get(`${API_PREFIX}/tasks`)),
+}
+
+export const auditApi = {
+  getLogs: async (params) => unwrap(await api.get(`${API_PREFIX}/audit/logs`, { params })),
+}
+
+export const platformApi = {
+  safetyCardsRecent: async () => unwrap(await api.get(`${API_PREFIX}/safety-cards/recent`)),
+  safetyCardsGenerate: async (data) => unwrap(await api.post(`${API_PREFIX}/safety-cards/generate`, data)),
+  ollamaStatus: async (data) => unwrap(await api.post(`${API_PREFIX}/ollama/status`, data)),
+}
+
+/** @deprecated Use attackApi / platformApi — v2 compat only */
+export const v2Api = {
+  agentAttack: attackApi.agentAttack,
+  multimodalAttack: attackApi.multimodalAttack,
+  safetyCardsRecent: platformApi.safetyCardsRecent,
+  safetyCardsGenerate: platformApi.safetyCardsGenerate,
+}
+
+export const evaluationApi = {
+  biasDetect: async (data) => unwrap(await api.post(`${API_PREFIX}/bias/detect`, data)),
+  codeSecurity: async (data) => unwrap(await api.post(`${API_PREFIX}/code/security`, data)),
 }
 
 export const attackLoopApi = {

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react'
-import { motion } from 'framer-motion'
+import { Link } from 'react-router-dom'
+import { AnimatePresence, motion } from 'framer-motion'
 import toast from 'react-hot-toast'
 import {
   AlertTriangle,
@@ -13,16 +14,24 @@ import {
   Shield,
   Trash2,
   Zap,
-  History
+  History,
+  Eye,
+  ArrowRight,
+  FileText,
 } from 'lucide-react'
+import { buildGovernanceReportLink } from '../api'
+import { useReportDetail } from '../hooks/useReportDetail'
+import { extractReportId, normalizeHistoryResponse } from '../utils/historyRecords'
 import {
   MetricCard,
   MetricCardSkeleton,
-  PageHeader,
+
   PanelHeader,
   TableMobileFallback,
   Skeleton
 } from '../components/ui/AppFrame'
+import { HubPanelIntro } from '../context/HubContext'
+import { FOCUSABLE_ROW_CLASS, handleRowKeyDown } from '../utils/a11y'
 import { useAttackHistory, useDefenseHistory } from '../hooks/queries'
 import { useQueryClient } from '@tanstack/react-query'
 
@@ -61,6 +70,7 @@ export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState('attack')
   const [searchTerm, setSearchTerm] = useState('')
   const [sortBy, setSortBy] = useState('newest')
+  const [selectedRecord, setSelectedRecord] = useState(null)
   
   const queryClient = useQueryClient()
   const attackQuery = useAttackHistory({ limit: 50 })
@@ -72,8 +82,19 @@ export default function HistoryPage() {
   
   // Fallbacks for demo if queries fail, handled by our api layer already so `data` will be correct
   const currentRaw = useMemo(() => {
-    return (isAttack ? attackQuery.data?.data : defenseQuery.data?.data) || []
-  }, [isAttack, attackQuery.data?.data, defenseQuery.data?.data])
+    const response = isAttack ? attackQuery.data : defenseQuery.data
+    return normalizeHistoryResponse(response, isAttack ? 'attack' : 'defense')
+  }, [isAttack, attackQuery.data, defenseQuery.data])
+
+  const linkedReportId = useMemo(
+    () => (selectedRecord ? extractReportId(selectedRecord) : null),
+    [selectedRecord]
+  )
+  const linkedReport = useMemo(
+    () => (linkedReportId ? { id: linkedReportId } : null),
+    [linkedReportId]
+  )
+  const { detailLoading: reportDetailLoading, detailContent: reportDetail } = useReportDetail(linkedReport)
 
   const filtered = useMemo(() => {
     const search = searchTerm.trim().toLowerCase()
@@ -111,9 +132,9 @@ export default function HistoryPage() {
   const clearHistory = () => {
     // Optimistically update query client cache
     if (isAttack) {
-      queryClient.setQueryData(['attack', 'history', { limit: 50 }], { data: [] })
+      queryClient.setQueryData(['attack', 'history', { limit: 50 }], { records: [] })
     } else {
-      queryClient.setQueryData(['defense', 'history', { limit: 50 }], { data: [] })
+      queryClient.setQueryData(['defense', 'history', { limit: 50 }], { records: [] })
     }
     toast.success('已清空当前页签记录。')
   }
@@ -137,13 +158,7 @@ export default function HistoryPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="HISTORY CENTER"
-          title="历史记录中心"
-          description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端降级浏览。"
-        />
-      </motion.div>
+      <HubPanelIntro description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端浏览。" />
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         {loading ? (
@@ -184,7 +199,10 @@ export default function HistoryPage() {
                 <button
                   key={tab.id}
                   type="button"
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => {
+                    setActiveTab(tab.id)
+                    setSelectedRecord(null)
+                  }}
                   className={`flex items-center gap-2 rounded-lg px-4 py-2 text-sm font-bold transition-all duration-300 ${active ? 'bg-cyan-500 text-white shadow-soft' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--bg-glass)]'}`}
                 >
                   <Icon className="h-4 w-4" />
@@ -232,6 +250,7 @@ export default function HistoryPage() {
         </div>
       </motion.section>
 
+      <div className="grid gap-6 xl:grid-cols-[1.1fr_0.9fr]">
       <motion.section variants={itemVariants} className="card overflow-hidden">
         <div className="border-b border-[var(--border-glass)] bg-[var(--bg-glass-strong)] px-5 py-4">
           <h2 className="text-lg font-bold font-display text-[var(--text-main)]">{isAttack ? '攻击记录列表' : '防御记录列表'}</h2>
@@ -243,6 +262,10 @@ export default function HistoryPage() {
         {!loading && filtered.length > 0 && (
           <TableMobileFallback
             items={filtered}
+            onItemActivate={setSelectedRecord}
+            getCardClassName={(item) =>
+              selectedRecord?.id === item.id ? 'border-l-2 border-l-cyan-500 bg-[var(--bg-glass-strong)]' : ''
+            }
             renderTitle={(item) =>
               isAttack
                 ? ATTACK_LABELS[item.attack_type] || item.attack_type
@@ -307,12 +330,19 @@ export default function HistoryPage() {
                         : DEFENSE_LABELS[item.defense_type] || item.defense_type
                     const score = isAttack ? item.success_score || 0 : item.confidence || 0
 
+                    const isSelected = selectedRecord?.id === item.id
                     return (
-                      <motion.tr 
+                      <motion.tr
                         key={item.id}
+                        tabIndex={0}
+                        role="button"
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
-                        className="hover:bg-[var(--bg-glass)] transition-colors"
+                        className={`hover:bg-[var(--bg-glass)] transition-colors cursor-pointer ${FOCUSABLE_ROW_CLASS} ${
+                          isSelected ? 'bg-[var(--bg-glass-strong)] border-l-2 border-l-cyan-500' : ''
+                        }`}
+                        onClick={() => setSelectedRecord(item)}
+                        onKeyDown={(event) => handleRowKeyDown(event, () => setSelectedRecord(item))}
                       >
                         <td className="px-6 py-4 whitespace-nowrap font-mono text-[var(--text-muted)]">{formatDate(item.created_at)}</td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -360,6 +390,130 @@ export default function HistoryPage() {
           )}
         </div>
       </motion.section>
+
+      <motion.section variants={itemVariants} className="card bg-[var(--bg-glass-strong)] border-cyan-500/10 h-fit lg:sticky lg:top-6">
+        <div className="border-b border-[var(--border-glass)] px-5 py-4">
+          <h2 className="text-lg font-bold font-display text-[var(--text-main)] flex items-center gap-2">
+            <Eye className="h-5 w-5 text-cyan-500" />
+            记录详情
+          </h2>
+          <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">选中列表中的记录查看完整上下文。</p>
+        </div>
+
+        <AnimatePresence mode="wait">
+          {selectedRecord ? (
+            <motion.div
+              key={selectedRecord.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="space-y-4 p-5"
+            >
+              <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4">
+                <div className="flex flex-wrap items-center gap-2 mb-3">
+                  <span className="badge badge-neutral bg-[var(--bg-glass-strong)] border-[var(--border-glass)]">
+                    {isAttack
+                      ? ATTACK_LABELS[selectedRecord.attack_type] || selectedRecord.attack_type
+                      : DEFENSE_LABELS[selectedRecord.defense_type] || selectedRecord.defense_type}
+                  </span>
+                  <span className="badge badge-neutral font-mono">{selectedRecord.model_name}</span>
+                  <span className={`badge ${
+                    isAttack
+                      ? badgeForAttackResult(selectedRecord.result)
+                      : badgeForDefenseResult(selectedRecord.is_malicious)
+                  }`}>
+                    {isAttack
+                      ? selectedRecord.result === 'success' ? '突破成功' : '已拦截'
+                      : selectedRecord.is_malicious ? '发现威胁' : '内容合规'}
+                  </span>
+                </div>
+                <p className="text-xs font-mono text-[var(--text-muted)]">{formatDate(selectedRecord.created_at)}</p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 text-center">
+                  <p className="text-2xl font-mono font-bold text-[var(--text-main)]">
+                    {Math.round((isAttack ? selectedRecord.success_score || 0 : selectedRecord.confidence || 0) * 100)}%
+                  </p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                    {isAttack ? '漏洞分值' : '判定置信度'}
+                  </p>
+                </div>
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-4 text-center">
+                  <p className="text-sm font-mono font-bold text-[var(--text-main)]">#{selectedRecord.id}</p>
+                  <p className="mt-1 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">记录 ID</p>
+                </div>
+              </div>
+
+              {(selectedRecord.prompt || selectedRecord.text || selectedRecord.input) && (
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-main)]/40 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">
+                    {isAttack ? '攻击提示词' : '扫描文本'}
+                  </p>
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words text-xs font-mono text-[var(--text-main)]">
+                    {selectedRecord.prompt || selectedRecord.text || selectedRecord.input}
+                  </pre>
+                </div>
+              )}
+
+              {isAttack && selectedRecord.model_response && (
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-main)]/40 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">模型响应</p>
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words text-xs font-mono text-[var(--text-main)]">
+                    {selectedRecord.model_response}
+                  </pre>
+                </div>
+              )}
+
+              {!isAttack && selectedRecord.output_text && (
+                <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-main)]/40 p-4">
+                  <p className="mb-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">过滤输出</p>
+                  <pre className="max-h-40 overflow-auto whitespace-pre-wrap break-words text-xs font-mono text-[var(--text-main)]">
+                    {selectedRecord.output_text}
+                  </pre>
+                </div>
+              )}
+
+              {linkedReportId ? (
+                <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/5 p-4 space-y-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="text-xs font-bold uppercase tracking-widest text-cyan-500 flex items-center gap-1.5">
+                      <FileText className="h-3.5 w-3.5" />
+                      关联报告 #{linkedReportId}
+                    </p>
+                    <Link
+                      to={buildGovernanceReportLink(linkedReportId)}
+                      className="btn-secondary inline-flex items-center gap-1 px-2 py-1 text-xs font-bold text-cyan-500"
+                    >
+                      查看报告
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                  {reportDetailLoading ? (
+                    <Skeleton className="h-[120px] w-full" />
+                  ) : reportDetail ? (
+                    <pre className="max-h-[160px] overflow-auto whitespace-pre-wrap break-words text-xs font-mono text-[var(--text-main)]">
+                      {JSON.stringify(reportDetail, null, 2)}
+                    </pre>
+                  ) : null}
+                </div>
+              ) : null}
+            </motion.div>
+          ) : (
+            <motion.div
+              key="empty"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="flex min-h-[280px] flex-col items-center justify-center p-8 text-center"
+            >
+              <History className="mb-4 h-10 w-10 text-[var(--text-muted)] opacity-50" />
+              <p className="text-sm font-bold text-[var(--text-muted)]">从左侧列表选择一条记录查看详情。</p>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.section>
+      </div>
     </motion.div>
   )
 }

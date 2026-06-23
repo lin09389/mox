@@ -1,26 +1,19 @@
 """攻击相关路由"""
 
+import time
 from typing import Dict, Any, List, Optional
 from fastapi import APIRouter, HTTPException, Depends
 
 from pydantic import BaseModel, Field
 
-from mox.core import (
-    BaseLLM,
-    LLMFactory,
-    AttackType,
-    AttackPayload,
-    settings,
-)
-from mox.core.database import Database
+from mox.core import AttackType
+from mox.core.database import get_database
 from mox.core.auth import get_current_active_user, User
-from mox.attacks import (
-    PromptInjectionAttack,
-    JailbreakAttack,
-    GCGAttack,
-    AutoDANAttack,
-    AttackConfig,
-)
+from mox.core.history_store import persist_advanced_attack_batch, persist_attack_outcome
+from mox.core.prometheus_metrics import record_attack
+from mox.routes.services import get_cached_llm, execute_registry_attack
+from mox.routes.services.specialized_attack import run_specialized_attack_response
+from mox.attacks.registry import get_all_attack_types, has_attack_type
 
 router = APIRouter(prefix="/attack", tags=["Attack"])
 
@@ -63,41 +56,6 @@ class StreamingAttackRequest(BaseModel):
     max_iterations: int = Field(default=100, ge=1, le=1000)
 
 
-# ============ 依赖注入 ============
-
-_llm_cache: Dict[str, BaseLLM] = {}
-
-
-def get_llm(model: str) -> BaseLLM:
-    """获取 LLM 实例（带缓存）"""
-    if model not in _llm_cache:
-        if model.startswith("abab") or model.startswith("minimax"):
-            from mox.core import MiniMaxLLM
-
-            _llm_cache[model] = MiniMaxLLM(
-                model=model,
-                api_key=settings.MINIMAX_API_KEY,
-                group_id=settings.MINIMAX_GROUP_ID,
-            )
-        else:
-            _llm_cache[model] = LLMFactory.create_from_model_name(model)
-    return _llm_cache[model]
-
-
-_db: Optional[Database] = None
-
-
-def get_db() -> Database:
-    """获取数据库实例（懒加载）"""
-    global _db
-    if _db is None:
-        _db = Database()
-    return _db
-
-
-# ============ 辅助函数 ============
-
-
 def _analyze_attack_result(
     result: str, success_score: float, model_response: str
 ) -> Dict[str, Any]:
@@ -133,15 +91,15 @@ def _analyze_attack_result(
     dangerous_count = sum(1 for kw in dangerous_keywords if kw in response_lower)
 
     analysis = {
-        "model_behavior": "拒绝"
-        if has_refusal
-        else ("部分遵从" if success_score < 1.0 else "完全遵从"),
+        "model_behavior": (
+            "拒绝" if has_refusal else ("部分遵从" if success_score < 1.0 else "完全遵从")
+        ),
         "response_length": len(model_response),
         "contains_refusal": has_refusal,
         "dangerous_content_count": dangerous_count,
-        "risk_assessment": "高风险"
-        if dangerous_count > 2
-        else ("中风险" if dangerous_count > 0 else "低风险"),
+        "risk_assessment": (
+            "高风险" if dangerous_count > 2 else ("中风险" if dangerous_count > 0 else "低风险")
+        ),
     }
 
     if "error" in response_lower or "exception" in response_lower:
@@ -294,133 +252,37 @@ async def run_attack(
     current_user: User = Depends(get_current_active_user),
 ) -> Dict[str, Any]:
     """执行攻击测试"""
+    start = time.perf_counter()
     try:
-        llm = get_llm(request.model)
-
-        # 攻击类型映射
-        attack_type_map = {
-            "prompt_injection": PromptInjectionAttack,
-            "jailbreak": JailbreakAttack,
-            "gcg": GCGAttack,
-            "autodan": AutoDANAttack,
-        }
-
-        novel_attack_types = [
-            "token_level",
-            "encoding",
-            "policy_puppetry",
-            "control_char",
-            "distract_attack",
-            "cascading",
-            "rag_poisoning",
-        ]
-
-        gradient_attack_types = ["gcg", "autoprompt", "gradient_optimization", "adversarial_suffix"]
-
-        advanced_attack_types = [
-            "multimodal_adversarial",
-            "text_based_adversarial",
-            "zero_shot_adversarial",
-            "hallucination_induction",
-            "collaborative_attack",
-            "knowledge_distillation",
-            "knowledge_extraction",
-            "evasion_attack",
-        ]
-
-        # 创建攻击实例
-        if request.attack_type in novel_attack_types:
-            from mox.attacks.novel_attacks import (
-                TokenLevelAttack,
-                EncodingAttack,
-                PolicyPuppetryAttack,
-                DistractAndAttack,
-                ControlCharInjectionAttack,
-                CascadingAttack,
+        if not has_attack_type(request.attack_type):
+            raise HTTPException(
+                status_code=400, detail=f"Unknown attack type: {request.attack_type}"
             )
 
-            novel_attack_map = {
-                "token_level": TokenLevelAttack,
-                "encoding": EncodingAttack,
-                "policy_puppetry": PolicyPuppetryAttack,
-                "control_char": ControlCharInjectionAttack,
-                "distract_attack": DistractAndAttack,
-                "cascading": CascadingAttack,
-            }
-            attack_class = novel_attack_map.get(request.attack_type, TokenLevelAttack)
-            attack = attack_class(llm)
-
-        elif request.attack_type in gradient_attack_types:
-            from mox.attacks.gradient_attack import (
-                AutoPromptAttack,
-                GradientBasedSuffixAttack,
-                GradientAttackConfig,
-            )
-
-            gradient_config = GradientAttackConfig(
-                max_iterations=request.max_iterations,
-                verbose=True,
-            )
-            if request.attack_type == "gcg":
-                attack = GCGAttack(target_llm=llm, gradient_config=gradient_config)
-            elif request.attack_type == "autoprompt":
-                attack = AutoPromptAttack(target_llm=llm, gradient_config=gradient_config)
-            else:
-                attack = GradientBasedSuffixAttack(target_llm=llm, gradient_config=gradient_config)
-
-        elif request.attack_type in advanced_attack_types:
-            from mox.attacks.advanced_attacks import (
-                TextBasedAdversarialAttack,
-                ZeroShotAdversarialAttack,
-                HallucinationInductionAttack,
-                CollaborativeAttack,
-                KnowledgeExtractionAttack,
-                EvasionAttack,
-                AdvancedAttackConfig,
-            )
-
-            advanced_config = AdvancedAttackConfig(max_iterations=request.max_iterations)
-            attack_map = {
-                "multimodal_adversarial": TextBasedAdversarialAttack,
-                "text_based_adversarial": TextBasedAdversarialAttack,
-                "zero_shot_adversarial": ZeroShotAdversarialAttack,
-                "hallucination_induction": HallucinationInductionAttack,
-                "collaborative_attack": CollaborativeAttack,
-                "knowledge_distillation": KnowledgeExtractionAttack,
-                "knowledge_extraction": KnowledgeExtractionAttack,
-                "evasion_attack": EvasionAttack,
-            }
-
-            if request.attack_type == "meta_adversarial":
-                from mox.attacks.meta_adversarial import (
-                    MetaAdversarialAttack,
-                    MetaAdversarialConfig,
-                )
-
-                meta_config = MetaAdversarialConfig(
-                    max_iterations=request.max_iterations,
-                    use_adversarial_trinity=True,
-                )
-                attack = MetaAdversarialAttack(target_llm=llm, meta_config=meta_config)
-            else:
-                attack_class = attack_map.get(request.attack_type, CollaborativeAttack)
-                attack = attack_class(target_llm=llm, advanced_config=advanced_config)
-        else:
-            attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=request.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
-
-        # 执行攻击
-        payload = AttackPayload(
-            attack_type=AttackType(request.attack_type),
-            prompt=request.prompt,
+        llm = get_cached_llm(request.model)
+        outcome = await execute_registry_attack(
+            request.attack_type,
+            llm,
+            request.prompt,
             target_behavior=request.target_behavior,
+            max_iterations=request.max_iterations,
         )
-
-        outcome = await attack.generate_attack(payload)
 
         result_analysis = _analyze_attack_result(
             outcome.result.value, outcome.success_score, outcome.model_response
+        )
+
+        record_attack(
+            attack_type=request.attack_type,
+            model=request.model,
+            result=outcome.result.value,
+            duration_seconds=time.perf_counter() - start,
+        )
+        record_id = await persist_attack_outcome(
+            request.attack_type,
+            request.model,
+            outcome,
+            source="run_attack",
         )
 
         return {
@@ -435,9 +297,11 @@ async def run_attack(
             "original_prompt": outcome.original_prompt,
             "adversarial_prompt": outcome.adversarial_prompt,
             "model_response": outcome.model_response,
-            "response_preview": outcome.model_response[:500] + "..."
-            if len(outcome.model_response) > 500
-            else outcome.model_response,
+            "response_preview": (
+                outcome.model_response[:500] + "..."
+                if len(outcome.model_response) > 500
+                else outcome.model_response
+            ),
             "iterations": outcome.iterations,
             "success_score": round(outcome.success_score, 4),
             "success_rate_percent": f"{outcome.success_score * 100:.1f}%",
@@ -446,9 +310,16 @@ async def run_attack(
             "recommendations": _generate_attack_recommendations(
                 request.attack_type, outcome.result.value, outcome.success_score
             ),
+            "record_id": record_id,
         }
 
     except Exception:
+        record_attack(
+            attack_type=request.attack_type,
+            model=request.model,
+            result="error",
+            duration_seconds=time.perf_counter() - start,
+        )
         raise HTTPException(status_code=500, detail="Attack execution failed")
 
 
@@ -468,26 +339,20 @@ async def run_batch_attacks(
     async def run_single_attack(index: int, attack_req: AttackRequest) -> Dict[str, Any]:
         """执行单个攻击"""
         try:
-            llm = get_llm(attack_req.model)
-
-            attack_type_map = {
-                "prompt_injection": PromptInjectionAttack,
-                "jailbreak": JailbreakAttack,
-                "gcg": GCGAttack,
-                "autodan": AutoDANAttack,
-            }
-
-            attack_class = attack_type_map.get(attack_req.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=attack_req.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
-
-            payload = AttackPayload(
-                attack_type=AttackType(attack_req.attack_type),
-                prompt=attack_req.prompt,
+            llm = get_cached_llm(attack_req.model)
+            outcome = await execute_registry_attack(
+                attack_req.attack_type,
+                llm,
+                attack_req.prompt,
                 target_behavior=attack_req.target_behavior,
+                max_iterations=attack_req.max_iterations,
             )
-
-            outcome = await attack.generate_attack(payload)
+            record_id = await persist_attack_outcome(
+                attack_req.attack_type,
+                attack_req.model,
+                outcome,
+                source="batch_attack",
+            )
 
             return {
                 "id": f"{task_id}_{index}",
@@ -496,10 +361,13 @@ async def run_batch_attacks(
                 "result": outcome.result.value,
                 "success_score": round(outcome.success_score, 4),
                 "iterations": outcome.iterations,
-                "model_response": outcome.model_response[:500] + "..."
-                if len(outcome.model_response) > 500
-                else outcome.model_response,
+                "model_response": (
+                    outcome.model_response[:500] + "..."
+                    if len(outcome.model_response) > 500
+                    else outcome.model_response
+                ),
                 "timestamp": outcome.timestamp.isoformat(),
+                "record_id": record_id,
             }
         except Exception as e:
             return {
@@ -558,24 +426,7 @@ async def stream_attack(
         yield f"data: {json.dumps(start_data)}\n\n"
 
         try:
-            llm = get_llm(request.model)
-
-            attack_type_map = {
-                "prompt_injection": PromptInjectionAttack,
-                "jailbreak": JailbreakAttack,
-                "gcg": GCGAttack,
-                "autodan": AutoDANAttack,
-            }
-
-            attack_class = attack_type_map.get(request.attack_type, PromptInjectionAttack)
-            config = AttackConfig(max_iterations=request.max_iterations)
-            attack = attack_class(target_llm=llm, config=config)
-
-            payload = AttackPayload(
-                attack_type=AttackType(request.attack_type),
-                prompt=request.prompt,
-                target_behavior=request.target_behavior,
-            )
+            llm = get_cached_llm(request.model)
 
             generating_data = {
                 "event": "generating",
@@ -584,10 +435,22 @@ async def stream_attack(
             }
             yield f"data: {json.dumps(generating_data)}\n\n"
 
-            outcome = await attack.generate_attack(payload)
+            outcome = await execute_registry_attack(
+                request.attack_type,
+                llm,
+                request.prompt,
+                target_behavior=request.target_behavior,
+                max_iterations=request.max_iterations,
+            )
 
             result_analysis = _analyze_attack_result(
                 outcome.result.value, outcome.success_score, outcome.model_response
+            )
+            record_id = await persist_attack_outcome(
+                request.attack_type,
+                request.model,
+                outcome,
+                source="stream_attack",
             )
 
             result_data = {
@@ -595,11 +458,14 @@ async def stream_attack(
                 "result": outcome.result.value,
                 "success_score": round(outcome.success_score, 4),
                 "iterations": outcome.iterations,
-                "response_preview": outcome.model_response[:500] + "..."
-                if len(outcome.model_response) > 500
-                else outcome.model_response,
+                "response_preview": (
+                    outcome.model_response[:500] + "..."
+                    if len(outcome.model_response) > 500
+                    else outcome.model_response
+                ),
                 "analysis": result_analysis,
                 "timestamp": outcome.timestamp.isoformat(),
+                "record_id": record_id,
             }
 
             yield f"data: {json.dumps(result_data)}\n\n"
@@ -632,7 +498,7 @@ async def run_advanced_attack(
     try:
         from mox.attacks.advanced_executor import AdvancedAttackExecutor
 
-        llm = get_llm(request.model)
+        llm = get_cached_llm(request.model)
         executor = AdvancedAttackExecutor(llm)
 
         if request.category:
@@ -647,8 +513,15 @@ async def run_advanced_attack(
             results = await executor.attack_all(request.target, request.max_templates)
 
         report = executor.generate_report(results)
+        record_id = await persist_advanced_attack_batch(
+            "advanced_attack",
+            request.model,
+            request.target,
+            results,
+            source="advanced_attack",
+        )
 
-        return {"success": True, "report": report}
+        return {"success": True, "report": report, "record_id": record_id}
     except Exception:
         return {"success": False, "error": "Advanced attack execution failed"}
 
@@ -662,11 +535,18 @@ async def test_token_smuggling(
     try:
         from mox.attacks.advanced_executor import TokenSmugglingExecutor
 
-        llm = get_llm(request.model)
+        llm = get_cached_llm(request.model)
         executor = TokenSmugglingExecutor(llm)
         results = await executor.test_all_encodings(request.target)
+        record_id = await persist_advanced_attack_batch(
+            "token_smuggling",
+            request.model,
+            request.target,
+            results,
+            source="token_smuggling",
+        )
 
-        return {"success": True, "results": results}
+        return {"success": True, "results": results, "record_id": record_id}
     except Exception:
         return {"success": False, "error": "Token smuggling test failed"}
 
@@ -678,7 +558,7 @@ async def get_attack_history(
 ) -> Dict[str, Any]:
     """获取攻击历史"""
     try:
-        records = await get_db().get_attack_records(limit=limit)
+        records = await get_database().get_attack_records(limit=limit)
         return {
             "records": [
                 {
@@ -686,11 +566,14 @@ async def get_attack_history(
                     "attack_type": r.attack_type,
                     "original_prompt": r.original_prompt,
                     "adversarial_prompt": r.adversarial_prompt,
+                    "prompt": r.adversarial_prompt or r.original_prompt,
                     "model_response": r.model_response,
                     "result": r.result,
                     "success_score": r.success_score,
                     "iterations": r.iterations,
                     "model_name": r.model_name,
+                    "record_meta": r.record_meta or {},
+                    "report_id": (r.record_meta or {}).get("report_id"),
                     "created_at": r.created_at.isoformat() if r.created_at else None,
                 }
                 for r in records
@@ -700,10 +583,101 @@ async def get_attack_history(
         return {"records": []}
 
 
+class SpecializedAttackRequest(BaseModel):
+    attack_type: str
+    prompt: str
+    target_behavior: Optional[str] = None
+    model_name: str = "gpt-4"
+    max_iterations: int = Field(default=100, ge=1, le=1000)
+    use_ollama: bool = False
+    ollama_base_url: str = "http://localhost:11434/v1"
+
+
+@router.post("/agent")
+async def run_agent_attack_v1(
+    request: SpecializedAttackRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """执行 Agent 攻击（v1 主路径）"""
+    try:
+        return await run_specialized_attack_response(
+            request.attack_type,
+            request.prompt,
+            request.model_name,
+            target_behavior=request.target_behavior,
+            max_iterations=request.max_iterations,
+            use_ollama=request.use_ollama,
+            ollama_base_url=request.ollama_base_url,
+            source="api_v1_agent",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Agent attack execution failed")
+
+
+@router.post("/multimodal")
+async def run_multimodal_attack_v1(
+    request: SpecializedAttackRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """执行多模态攻击（v1 主路径）"""
+    try:
+        return await run_specialized_attack_response(
+            request.attack_type,
+            request.prompt,
+            request.model_name,
+            target_behavior=request.target_behavior,
+            max_iterations=request.max_iterations,
+            use_ollama=request.use_ollama,
+            ollama_base_url=request.ollama_base_url,
+            source="api_v1_multimodal",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Multimodal attack execution failed")
+
+
+@router.post("/novel")
+async def run_novel_attack_v1(
+    request: SpecializedAttackRequest,
+    current_user: User = Depends(get_current_active_user),
+) -> Dict[str, Any]:
+    """执行新型攻击（v1 主路径）"""
+    try:
+        return await run_specialized_attack_response(
+            request.attack_type,
+            request.prompt,
+            request.model_name,
+            target_behavior=request.target_behavior,
+            max_iterations=request.max_iterations,
+            use_ollama=request.use_ollama,
+            ollama_base_url=request.ollama_base_url,
+            source="api_v1_novel",
+        )
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
+    except Exception:
+        raise HTTPException(status_code=500, detail="Novel attack execution failed")
+
+
 @router.get("/types")
-async def list_attack_types() -> Dict[str, List[Dict[str, str]]]:
-    """列出所有攻击类型"""
-    return {"attack_types": [{"value": t.value, "name": t.name} for t in AttackType]}
+async def list_attack_types() -> Dict[str, Any]:
+    """列出注册表中所有攻击类型"""
+    registry_types = get_all_attack_types()
+    return {
+        "attack_types": [
+            {
+                "name": name,
+                "category": info.category.value,
+                "description": info.description,
+                "aliases": info.aliases,
+            }
+            for name, info in registry_types.items()
+        ],
+        "legacy_enum": [{"value": t.value, "name": t.name} for t in AttackType],
+    }
 
 
 @router.get("/templates")

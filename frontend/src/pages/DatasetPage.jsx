@@ -1,8 +1,9 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Database, UploadCloud, Search, Filter, Trash2, Download, Play, FileJson } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { PageHeader } from '../components/ui/AppFrame'
+import { datasetApi, isDemoModeEnabled } from '../api'
+import { HubPanelIntro } from '../context/HubContext'
 
 const MOCK_DATASETS = [
   { id: '1', name: 'AdvBench', type: 'text', size: '1.2 MB', samples: 520, tags: ['safety', 'jailbreak'], date: '2026-06-12' },
@@ -13,35 +14,98 @@ const MOCK_DATASETS = [
 import { containerVariants, itemVariants } from '../utils/animations'
 
 export default function DatasetPage() {
-  const [datasets, setDatasets] = useState(MOCK_DATASETS)
+  const [datasets, setDatasets] = useState([])
   const [searchQuery, setSearchQuery] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [demoMode, setDemoMode] = useState(false)
 
-  const handleUpload = () => {
-    toast.error('上传功能正在开发中', { id: 'upload-wip' })
+  useEffect(() => {
+    let cancelled = false
+    async function loadDatasets() {
+      try {
+        const data = await datasetApi.list()
+        if (cancelled) return
+        const items = data?.datasets || (Array.isArray(data) ? data : [])
+        setDemoMode(false)
+        setDatasets(items)
+      } catch {
+        if (cancelled) return
+        if (isDemoModeEnabled) {
+          const demoItems = MOCK_DATASETS.map((item) => ({ ...item, _demo_mode: true }))
+          setDemoMode(true)
+          setDatasets(demoItems)
+          toast('后端不可用，已展示演示数据集。', { icon: '⚠️' })
+        } else {
+          toast.error('数据集加载失败，请检查后端连接与登录状态。')
+          setDemoMode(false)
+          setDatasets([])
+        }
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    loadDatasets()
+    return () => { cancelled = true }
+  }, [])
+
+  const handleUpload = async () => {
+    if (demoMode) {
+      toast.error('演示模式下无法上传，请连接后端后重试。')
+      return
+    }
+    try {
+      await datasetApi.upload(new FormData())
+    } catch (error) {
+      const detail = error?.response?.data?.detail || error?.response?.data?.message
+      toast.error(detail || '上传功能尚未实现。', { id: 'upload-wip' })
+    }
   }
 
-  const handleDelete = (id) => {
-    setDatasets((prev) => prev.filter((d) => d.id !== id))
-    toast.success('数据集已移除')
+  const handleDelete = async (dataset) => {
+    if (dataset._demo_mode) {
+      setDatasets((prev) => prev.filter((d) => d.id !== dataset.id))
+      toast.success('演示数据集已移除。')
+      return
+    }
+    try {
+      await datasetApi.delete(dataset.id)
+      setDatasets((prev) => prev.filter((d) => d.id !== dataset.id))
+      toast.success('数据集已移除')
+    } catch (error) {
+      const detail = error?.response?.data?.detail || error?.response?.data?.message
+      toast.error(detail || '无法删除该数据集。')
+    }
   }
 
   const filteredDatasets = datasets.filter((d) => d.name.toLowerCase().includes(searchQuery.toLowerCase()))
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants} className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
-        <PageHeader
-          eyebrow="DATASET MANAGER"
-          title="评测数据集管理"
-          description="统一管理系统所有红队样本库，支持文件加载、多维度过滤与抽样配置。"
-        />
-        <div className="flex items-center gap-3 pb-6">
-          <button onClick={handleUpload} className="btn-primary py-2.5 px-5 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold">
+      <HubPanelIntro
+        description={
+          demoMode
+            ? '当前展示演示数据集。连接后端后将显示 AdvBench、HarmBench 等内置样本库。'
+            : '统一管理系统所有红队样本库，支持文件加载、多维度过滤与抽样配置。'
+        }
+        badge={
+          demoMode ? (
+            <span className="badge badge-info bg-amber-500/10 border-amber-500/30 text-amber-500 text-xs">
+              演示数据
+            </span>
+          ) : null
+        }
+        action={
+          <button
+            type="button"
+            onClick={handleUpload}
+            disabled={demoMode}
+            className="btn-primary py-2.5 px-5 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.3)] font-bold disabled:opacity-50"
+          >
             <UploadCloud className="h-4 w-4 mr-2" />
             上传数据集
           </button>
-        </div>
-      </motion.div>
+        }
+      />
 
       <motion.div variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] overflow-hidden">
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
@@ -60,6 +124,10 @@ export default function DatasetPage() {
             条件筛选
           </button>
         </div>
+
+        {loading && (
+          <p className="mb-4 text-sm font-medium text-[var(--text-muted)]">正在从后端加载数据集列表…</p>
+        )}
 
         <div className="overflow-x-auto rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)]">
           <table className="w-full text-left text-sm text-[var(--text-main)]">
@@ -96,7 +164,7 @@ export default function DatasetPage() {
                     <td className="px-5 py-4 font-mono font-medium text-[var(--text-muted)]">{dataset.size}</td>
                     <td className="px-5 py-4">
                       <div className="flex flex-wrap gap-2">
-                        {dataset.tags.map((tag) => (
+                        {(dataset.tags || []).map((tag) => (
                           <span
                             key={tag}
                             className="badge border text-[10px] uppercase font-bold tracking-widest px-2 py-1 bg-[var(--bg-main)]/50 border-[var(--border-glass-strong)] text-[var(--text-muted)] group-hover:border-cyan-500/30 group-hover:text-cyan-500 transition-colors"
@@ -116,7 +184,7 @@ export default function DatasetPage() {
                           <Download className="h-4 w-4" />
                         </button>
                         <button
-                          onClick={() => handleDelete(dataset.id)}
+                          onClick={() => handleDelete(dataset)}
                           className="btn-ghost p-2 text-[var(--text-muted)] hover:text-rose-500 hover:bg-rose-500/10 rounded-lg transition-colors"
                           title="销毁"
                         >
@@ -128,7 +196,7 @@ export default function DatasetPage() {
                 ))}
               </AnimatePresence>
 
-              {filteredDatasets.length === 0 && (
+              {filteredDatasets.length === 0 && !loading && (
                 <tr>
                   <td colSpan={6} className="px-5 py-24">
                     <motion.div

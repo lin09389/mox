@@ -1,10 +1,18 @@
 """Core type definitions for Pydantic v2."""
 
-from typing import List, Dict, Any, Optional
+from typing import Any, Dict, List, Optional
 from enum import Enum
 from datetime import datetime
 
-from pydantic import BaseModel, Field, ConfigDict, field_validator, computed_field
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    Field,
+    ConfigDict,
+    computed_field,
+    field_validator,
+    model_validator,
+)
 
 
 class AttackType(str, Enum):
@@ -215,13 +223,28 @@ class AttackOutcome(BaseModel):
 
     result: AttackResult
     success_score: float = Field(..., ge=0.0, le=1.0)
-    response: Optional[str] = None
+    response: Optional[str] = Field(
+        default=None,
+        validation_alias=AliasChoices("response", "model_response"),
+    )
     adversarial_prompt: Optional[str] = None
     original_prompt: Optional[str] = None
     error: Optional[str] = None
     iterations: int = Field(default=1, ge=1)
     timestamp: datetime = Field(default_factory=datetime.now)
     metadata: Dict[str, Any] = Field(default_factory=dict)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_response_alias(cls, data: Any) -> Any:
+        if isinstance(data, dict) and data.get("model_response") and not data.get("response"):
+            data = {**data, "response": data["model_response"]}
+        return data
+
+    @property
+    def model_response(self) -> Optional[str]:
+        """Backward-compatible alias used by routes and legacy attack code."""
+        return self.response
 
     @computed_field
     @property

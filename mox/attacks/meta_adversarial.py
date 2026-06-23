@@ -406,9 +406,11 @@ Output the final optimized prompt:"""
             score = await self.evaluate_success(model_response.content, payload.target_behavior)
 
             return self._create_outcome(
-                result=AttackResult.SUCCESS
-                if score >= self.config.success_threshold
-                else AttackResult.FAILURE,
+                result=(
+                    AttackResult.SUCCESS
+                    if score >= self.config.success_threshold
+                    else AttackResult.FAILURE
+                ),
                 original_prompt=payload.prompt,
                 adversarial_prompt=final_prompt,
                 model_response=model_response.content,

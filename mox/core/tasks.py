@@ -186,6 +186,10 @@ class TaskQueue:
             "total_tasks": len(self._tasks),
         }
 
+    def list_tasks(self) -> Dict[str, Task]:
+        """返回所有已提交任务的快照"""
+        return dict(self._tasks)
+
 
 _task_queue: Optional[TaskQueue] = None
 

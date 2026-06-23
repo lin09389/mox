@@ -8,7 +8,7 @@
 """
 
 import re
-from typing import Optional, List, Dict, Tuple
+from typing import Optional, List, Dict, Tuple, Any
 from dataclasses import dataclass
 from enum import Enum
 
@@ -71,7 +71,7 @@ class SensitiveDetection:
 
 @dataclass
 class OutputValidationResult:
-    """输出验证结果"""
+    """输出验证结果 — 兼容 DefenseResult 字段，便于与 output_filter 统一处理。"""
 
     is_safe: bool
     pii_detections: List[PIIDetection]
@@ -79,6 +79,68 @@ class OutputValidationResult:
     sanitized_output: str
     risk_score: float
     recommendations: List[str]
+
+    @property
+    def is_malicious(self) -> bool:
+        return not self.is_safe
+
+    @property
+    def is_valid(self) -> bool:
+        return self.is_safe
+
+    @property
+    def confidence(self) -> float:
+        return self.risk_score
+
+    @property
+    def detected_patterns(self) -> List[str]:
+        return [f"PII:{d.category.value}" for d in self.pii_detections] + [
+            f"Sensitive:{d.category.value}" for d in self.sensitive_detections
+        ]
+
+    @property
+    def sanitized_input(self) -> str:
+        return self.sanitized_output
+
+    @property
+    def warnings(self) -> List[str]:
+        return self.recommendations
+
+    @property
+    def metadata(self) -> Dict[str, Any]:
+        return {
+            "has_pii": bool(self.pii_detections),
+            "has_sensitive": bool(self.sensitive_detections),
+            "pii_types": list({d.category.value for d in self.pii_detections}),
+            "sensitive_types": list({d.category.value for d in self.sensitive_detections}),
+            "risk_score": self.risk_score,
+            "pii_count": len(self.pii_detections),
+            "sensitive_count": len(self.sensitive_detections),
+            "recommendations": self.recommendations,
+        }
+
+    def to_defense_result(self) -> DefenseResult:
+        return DefenseResult(
+            is_malicious=self.is_malicious,
+            confidence=self.confidence,
+            detected_patterns=self.detected_patterns,
+            sanitized_input=self.sanitized_output,
+            metadata={
+                **self.metadata,
+                "pii_details": [
+                    {"category": d.category.value, "confidence": d.confidence}
+                    for d in self.pii_detections
+                ],
+                "sensitive_details": [
+                    {
+                        "category": d.category.value,
+                        "risk_level": d.risk_level,
+                        "description": d.description,
+                    }
+                    for d in self.sensitive_detections
+                ],
+            },
+        )
 
 
 class PIIDetector:
@@ -440,6 +502,10 @@ class OutputValidator(BaseDefense):
                 recommendations.append("检测到高风险敏感内容，建议人工审核")
 
         return recommendations
+
+    async def detect_as_validation(self, input_text: str) -> OutputValidationResult:
+        """检测并返回完整验证结果（与 validate 等价，供 API 细粒度字段使用）。"""
+        return await self.validate(input_text)
 
 
 class OutputSanitizer:

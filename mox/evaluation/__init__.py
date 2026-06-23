@@ -1,84 +1,29 @@
 """
 评估模块
 
-提供攻击效果评估、困惑度计算、LLM Judge、基准测试等功能
+三层评估架构:
+- 基础指标层 (evaluator.py): BasicAttackEvaluator, DefenseEvaluator, RobustnessEvaluator
+- 增强评估层 (attack_evaluator.py): AttackEvaluator — 多维度语义/LLM 评分
+- 统一编排层 (framework.py): UnifiedEvaluator — 场景编排与报告生成
 """
 
-# 从原有评估器导入
+# --- 基础指标层 ---
 from mox.evaluation.evaluator import (
     EvaluationMetrics,
     AttackTypeMetrics,
+    BasicAttackEvaluator,
     DefenseEvaluator,
     RobustnessEvaluator,
     BenchmarkRunner,
 )
 
-# 从基准测试导入
+# --- 基准测试 (v1 legacy + v2 canonical) ---
 from mox.evaluation.benchmarks import (
-    BenchmarkCase,
+    LegacyBenchmarkCase as BenchmarkCase,
     HarmBenchCase,
     BenchmarkDataset,
     ADVBENCH_CASES,
     HARMBENCH_CASES,
-)
-
-# 从可视化导入
-from mox.evaluation.visualization import (
-    ChartData,
-    ReportGenerator,
-    create_quick_report,
-)
-
-# 新增：改进的攻击评估器
-from mox.evaluation.attack_evaluator import (
-    AttackEvaluator as EnhancedAttackEvaluator,
-    LLMAttackEvaluator,
-    AdaptiveEvaluator,
-    EvaluationResult,
-    EvaluationConfig,
-    EvaluationDimension,
-    create_evaluator,
-)
-
-# 新增：困惑度和 LLM Judge
-from mox.evaluation.perplexity_judge import (
-    AccuratePerplexityCalculator,
-    PerplexityConfig,
-    PerplexityResult,
-    StableLLMJudge,
-    LLMJudgeConfig,
-    JudgeEvaluation,
-    ComprehensiveEvaluator,
-)
-
-# 新增：LLM Judge 评判器
-from mox.evaluation.judge import (
-    LLMJudge,
-    MultiDimensionJudge,
-    JudgeConfig,
-    JudgeResult,
-    JudgeMode,
-)
-
-# 新增：红队模块
-from mox.evaluation.redteam import (
-    RedTeamOrchestrator,
-    RedTeamScenario,
-    RedTeamResult,
-    RedTeamReportGenerator,
-    AttackTechnique,
-)
-
-# 新增：统一评估框架
-from mox.evaluation.framework import (
-    UnifiedEvaluator,
-    EvaluationScenario,
-    EvaluationType,
-    EvaluationStatus,
-)
-
-# 新增：最新评估基准 (2025)
-from mox.evaluation.benchmarks_v2 import (
     BenchmarkType,
     HarmCategory,
     Severity,
@@ -95,7 +40,72 @@ from mox.evaluation.benchmarks_v2 import (
     BenchmarkEvaluator,
 )
 
-# 新增：模型安全卡片
+# --- 可视化 ---
+from mox.evaluation.visualization import (
+    ChartData,
+    ReportGenerator,
+    create_quick_report,
+)
+
+# --- 增强评估层 ---
+from mox.evaluation.attack_evaluator import (
+    AttackEvaluator as EnhancedAttackEvaluator,
+    LLMAttackEvaluator,
+    AdaptiveEvaluator,
+    AttackEvaluationResult,
+    AttackEvaluationConfig,
+    EvaluationDimension,
+    create_evaluator,
+)
+
+# --- 攻击成功率评估（canonical types）---
+from mox.evaluation.attack_success import (
+    AttackSuccessResult,
+    AttackSuccessEvaluator,
+    KeywordOverlapEvaluator as AttackSuccessKeywordEvaluator,
+    evaluate_attack_success,
+    is_attack_successful,
+)
+
+# --- 困惑度和 LLM Judge ---
+from mox.evaluation.perplexity_judge import (
+    AccuratePerplexityCalculator,
+    PerplexityConfig,
+    PerplexityResult,
+    StableLLMJudge,
+    LLMJudgeConfig,
+    JudgeEvaluation,
+    ComprehensiveEvaluator,
+)
+
+from mox.evaluation.judge import (
+    LLMJudge,
+    MultiDimensionJudge,
+    JudgeConfig,
+    JudgeResult,
+    JudgeMode,
+)
+
+# --- 红队 ---
+from mox.evaluation.redteam import (
+    RedTeamOrchestrator,
+    RedTeamScenario,
+    RedTeamResult,
+    RedTeamReportGenerator,
+    AttackTechnique,
+)
+
+# --- 统一编排层（canonical types in types.py）---
+from mox.evaluation.types import (
+    EvaluationType,
+    EvaluationStatus,
+    EvaluationConfig,
+    EvaluationScenario,
+    EvaluationResult,
+)
+from mox.evaluation.framework import UnifiedEvaluator
+
+# --- 模型安全卡片 ---
 from mox.evaluation.safety_card import (
     RiskLevel,
     SafetyCategory,
@@ -107,7 +117,7 @@ from mox.evaluation.safety_card import (
     SafetyCardGenerator,
 )
 
-# 新增：数据集管理
+# --- 数据集管理 ---
 from mox.evaluation.datasets import (
     DatasetFormat,
     DatasetMetadata,
@@ -122,13 +132,14 @@ from mox.evaluation.datasets import (
     get_dataset_statistics,
 )
 
-# 为了向后兼容，使用原有的名称
+# Public API: AttackEvaluator 指向增强评估层
 AttackEvaluator = EnhancedAttackEvaluator
 
 __all__ = [
-    # 原有评估器
+    # 基础指标层
     "EvaluationMetrics",
     "AttackTypeMetrics",
+    "BasicAttackEvaluator",
     "DefenseEvaluator",
     "RobustnessEvaluator",
     "BenchmarkRunner",
@@ -138,46 +149,6 @@ __all__ = [
     "BenchmarkDataset",
     "ADVBENCH_CASES",
     "HARMBENCH_CASES",
-    # 可视化
-    "ChartData",
-    "ReportGenerator",
-    "create_quick_report",
-    # 改进的攻击评估
-    "AttackEvaluator",
-    "LLMAttackEvaluator",
-    "AdaptiveEvaluator",
-    "EvaluationResult",
-    "EvaluationConfig",
-    "EvaluationDimension",
-    "create_evaluator",
-    # 困惑度和 Judge
-    "AccuratePerplexityCalculator",
-    "PerplexityConfig",
-    "PerplexityResult",
-    "StableLLMJudge",
-    "LLMJudgeConfig",
-    "JudgeEvaluation",
-    "ComprehensiveEvaluator",
-    # LLM Judge 评判器
-    "LLMJudge",
-    "MultiDimensionJudge",
-    "JudgeConfig",
-    "JudgeResult",
-    "JudgeMode",
-    # 红队模块
-    "RedTeamOrchestrator",
-    "RedTeamScenario",
-    "RedTeamResult",
-    "RedTeamReportGenerator",
-    "AttackTechnique",
-    # 统一评估框架
-    "UnifiedEvaluator",
-    "EvaluationConfig",
-    "EvaluationScenario",
-    "EvaluationResult",
-    "EvaluationType",
-    "EvaluationStatus",
-    # 最新评估基准 (2025)
     "BenchmarkType",
     "HarmCategory",
     "Severity",
@@ -192,6 +163,44 @@ __all__ = [
     "RED_TEAM_BENCH_CASES",
     "BenchmarkRunnerV2",
     "BenchmarkEvaluator",
+    # 可视化
+    "ChartData",
+    "ReportGenerator",
+    "create_quick_report",
+    # 增强评估层
+    "AttackEvaluator",
+    "LLMAttackEvaluator",
+    "AdaptiveEvaluator",
+    "AttackEvaluationResult",
+    "AttackEvaluationConfig",
+    "EvaluationDimension",
+    "create_evaluator",
+    # 困惑度和 Judge
+    "AccuratePerplexityCalculator",
+    "PerplexityConfig",
+    "PerplexityResult",
+    "StableLLMJudge",
+    "LLMJudgeConfig",
+    "JudgeEvaluation",
+    "ComprehensiveEvaluator",
+    "LLMJudge",
+    "MultiDimensionJudge",
+    "JudgeConfig",
+    "JudgeResult",
+    "JudgeMode",
+    # 红队
+    "RedTeamOrchestrator",
+    "RedTeamScenario",
+    "RedTeamResult",
+    "RedTeamReportGenerator",
+    "AttackTechnique",
+    # 统一编排层
+    "UnifiedEvaluator",
+    "EvaluationScenario",
+    "EvaluationType",
+    "EvaluationStatus",
+    "EvaluationConfig",
+    "EvaluationResult",
     # 模型安全卡片
     "RiskLevel",
     "SafetyCategory",

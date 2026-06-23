@@ -13,6 +13,7 @@ services:
       - MOX_HOST=0.0.0.0
       - MOX_PORT=8000
       - MOX_DEBUG=false
+      - MOX_DATA_DIR=/data
       - MOX_DATABASE_URL=sqlite+aiosqlite:///data/mox.db
       - MOX_REDIS_URL=redis://redis:6379
       - MOX_REDIS_ENABLED=true
@@ -30,8 +31,24 @@ services:
     networks:
       - mox-network
 
-  # Mox Web UI
+  # React Frontend
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: mox-frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+    networks:
+      - mox-network
+
+  # Mox Web UI (Gradio - 已弃用，仅调试时启用: docker compose --profile gradio up ui)
   ui:
+    profiles:
+      - gradio
     build:
       context: .
       dockerfile: Dockerfile
@@ -93,7 +110,7 @@ services:
     profiles:
       - monitoring
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
       - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:?Set GRAFANA_ADMIN_PASSWORD in your .env}

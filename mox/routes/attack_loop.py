@@ -19,7 +19,7 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 from pathlib import Path
 from fastapi import APIRouter, HTTPException, BackgroundTasks, UploadFile, File, Form
-from fastapi.responses import JSONResponse, StreamingResponse
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from mox.attack_loop import (
@@ -30,8 +30,6 @@ from mox.attack_loop import (
     ReportGenerator,
     AttackTestResult,
 )
-from mox.core import settings
-
 
 router = APIRouter(prefix="/attack-loop", tags=["Attack Loop"])
 logger = logging.getLogger(__name__)
@@ -41,8 +39,10 @@ logger = logging.getLogger(__name__)
 # 数据模型
 # ============================================================
 
+
 class AttackLoopConfig(BaseModel):
     """攻击循环配置"""
+
     models: List[str] = Field(..., min_length=1, description="模型列表")
     attack_types: List[str] = Field(..., min_length=1, description="攻击类型列表")
     prompts: List[str] = Field(default_factory=list, description="测试提示列表")
@@ -58,7 +58,9 @@ class AttackLoopConfig(BaseModel):
 
     # 随机提示配置
     random_prompts: bool = Field(default=False, description="是否启用随机提示生成")
-    random_prompt_templates: List[str] = Field(default_factory=list, description="自定义随机提示模板（留空使用内置模板）")
+    random_prompt_templates: List[str] = Field(
+        default_factory=list, description="自定义随机提示模板（留空使用内置模板）"
+    )
     random_prompt_count: int = Field(default=10, ge=1, le=1000, description="随机提示生成数量")
 
     # 检查点配置
@@ -72,6 +74,7 @@ class AttackLoopConfig(BaseModel):
 
 class AttackLoopProgress(BaseModel):
     """攻击循环进度"""
+
     task_id: str
     status: str  # pending, running, paused, completed, failed, stopped
     total: int
@@ -86,11 +89,13 @@ class AttackLoopProgress(BaseModel):
     resumed_from_checkpoint: bool = False
     results: Optional[Dict[str, Any]] = None
     reports: Optional[Dict[str, str]] = None
+    report_id: Optional[int] = None
     error: Optional[str] = None
 
 
 class StartFromConfigResponse(BaseModel):
     """从配置文件启动响应"""
+
     task_id: str
     status: str
     config_summary: Dict[str, Any]
@@ -101,6 +106,7 @@ class StartFromConfigResponse(BaseModel):
 # ============================================================
 # 任务管理
 # ============================================================
+
 
 class AttackLoopTask:
     """攻击循环任务"""
@@ -118,6 +124,7 @@ class AttackLoopTask:
         self.end_time = None
         self.results: List[AttackTestResult] = []
         self.reports: Dict[str, str] = {}
+        self.report_id: Optional[int] = None
         self.error: Optional[str] = None
         self.resumed_from_checkpoint = False
 
@@ -166,6 +173,109 @@ def _pydantic_to_loopconfig(pydantic_config: AttackLoopConfig) -> LoopConfig:
 # 任务执行
 # ============================================================
 
+
+def _sync_task_store(task: AttackLoopTask) -> None:
+    from mox.core.task_store import get_task_store
+
+    progress = int((task.completed / task.total) * 100) if task.total else 0
+    get_task_store().update(
+        task.task_id,
+        status=task.status,
+        progress=progress,
+        total=task.total,
+        completed=task.completed,
+        failed=task.failed,
+        source="attack_loop",
+        name=f"攻击循环 ({task.task_id})",
+        report_id=task.report_id,
+    )
+
+
+async def _persist_attack_loop_report(task: AttackLoopTask) -> Optional[int]:
+    """Save completed attack-loop stats as an evaluation report."""
+    if not task.results:
+        return None
+    try:
+        from mox.core.database import get_extended_database
+
+        stats = TestStatistics.calculate(task.results)
+        stats_dict = stats.to_dict()
+        total = stats.total_tests or 1
+        attack_rate = round(stats.successful_tests / total, 4)
+        defense_rate = round(1 - attack_rate, 4)
+        models_label = ", ".join(task.config.models[:3])
+        if len(task.config.models) > 3:
+            models_label += "..."
+
+        report_id = await get_extended_database().save_report(
+            {
+                "report_name": f"攻击循环报告 ({task.task_id})",
+                "report_type": "evaluation",
+                "model_name": models_label,
+                "format": "json",
+                "content": json.dumps(stats_dict, ensure_ascii=False, default=str),
+                "summary": {
+                    "attack_success_rate": attack_rate,
+                    "defense_success_rate": defense_rate,
+                    "task_id": task.task_id,
+                    "total_tests": stats.total_tests,
+                },
+                "created_by": "attack_loop",
+            }
+        )
+        try:
+            from mox.core.audit import get_audit_logger
+
+            await get_audit_logger().log(
+                action="report_create",
+                resource=f"report:{report_id}",
+                context=get_audit_logger().create_context(
+                    endpoint="/api/v1/attack-loop",
+                    method="POST",
+                ),
+                request_body={
+                    "task_id": task.task_id,
+                    "report_id": report_id,
+                    "source": "attack_loop",
+                },
+                response_status=200,
+            )
+        except Exception:
+            pass
+        return report_id
+    except Exception as exc:
+        logger.warning(f"保存攻击循环报告失败: {exc}")
+    return None
+
+
+def _notify_ws_progress(task: AttackLoopTask) -> None:
+    """Push progress updates to WebSocket listeners (best-effort)."""
+    try:
+        from mox.routes.websocket import manager
+
+        elapsed = (datetime.now() - task.start_time).total_seconds() if task.start_time else 0
+        rate = task.completed / elapsed if elapsed > 0 else 0
+        eta = (task.total - task.completed) / rate if rate > 0 else 0
+        progress_percent = (task.completed / task.total * 100) if task.total > 0 else 0
+
+        payload = {
+            "status": task.status,
+            "total": task.total,
+            "completed": task.completed,
+            "successful": task.successful,
+            "failed": task.failed,
+            "errors": task.errors,
+            "progress_percent": round(progress_percent, 1),
+            "elapsed_seconds": round(elapsed, 1),
+            "rate_per_second": round(rate, 2),
+            "eta_seconds": round(eta, 0),
+        }
+        loop = asyncio.get_running_loop()
+        loop.create_task(manager.notify_task_update(task.task_id, payload))
+    except Exception:
+        pass
+
+
 async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
     """执行攻击循环（异步后台任务）"""
     try:
@@ -186,6 +296,8 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
             task.successful = successful
             task.failed = failed
             task.errors = errors
+            _sync_task_store(task)
+            _notify_ws_progress(task)
 
         runner.set_progress_callback(_progress_callback)
 
@@ -197,17 +309,22 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
         task.reports = {k: str(v) for k, v in result.get("reports", {}).items()}
         task.status = "completed"
         task.end_time = datetime.now()
+        _sync_task_store(task)
+        _notify_ws_progress(task)
+        report_id = await _persist_attack_loop_report(task)
+        if report_id is not None:
+            task.report_id = report_id
+            _sync_task_store(task)
 
     except asyncio.CancelledError:
         task.status = "stopped"
         task.end_time = datetime.now()
+        _sync_task_store(task)
         if task._runner:
             # 保存检查点
             if task.config.checkpoint_enabled and task.results:
                 try:
-                    cp_mgr = CheckpointManager(
-                        str(Path(task.config.output_dir) / "checkpoints")
-                    )
+                    cp_mgr = CheckpointManager(str(Path(task.config.output_dir) / "checkpoints"))
                     cp_mgr.save(
                         [r.test_id for r in task.results],
                         task.results,
@@ -218,12 +335,12 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
         task.status = "failed"
         task.error = str(e)
         task.end_time = datetime.now()
+        _sync_task_store(task)
+        _notify_ws_progress(task)
         # 出错时也尝试保存检查点
         if task.config.checkpoint_enabled and task.results:
             try:
-                cp_mgr = CheckpointManager(
-                    str(Path(task.config.output_dir) / "checkpoints")
-                )
+                cp_mgr = CheckpointManager(str(Path(task.config.output_dir) / "checkpoints"))
                 cp_mgr.save(
                     [r.test_id for r in task.results],
                     task.results,
@@ -236,6 +353,7 @@ async def _run_attack_loop(task: AttackLoopTask, resume: bool = True):
 # API 端点
 # ============================================================
 
+
 @router.post("/start")
 async def start_attack_loop(config: AttackLoopConfig, background_tasks: BackgroundTasks):
     """启动攻击循环测试
@@ -243,9 +361,24 @@ async def start_attack_loop(config: AttackLoopConfig, background_tasks: Backgrou
     使用 JSON 配置启动一个新的攻击循环任务。
     如果启用了检查点且存在有效检查点，将自动续跑。
     """
+    from mox.core.task_store import get_task_store
+
     task_id = str(uuid.uuid4())[:8]
     task = AttackLoopTask(task_id, config)
     tasks[task_id] = task
+    get_task_store().set(
+        task_id,
+        {
+            "id": task_id,
+            "source": "attack_loop",
+            "name": f"攻击循环 ({task_id})",
+            "status": "running",
+            "progress": 0,
+            "total": 0,
+            "completed": 0,
+            "failed": 0,
+        },
+    )
 
     # 检查是否有可续跑的检查点
     if config.checkpoint_enabled:
@@ -259,7 +392,11 @@ async def start_attack_loop(config: AttackLoopConfig, background_tasks: Backgrou
     run_coro = _run_attack_loop(task, resume=True)
     task._run_task = loop.create_task(run_coro)
 
-    return {"task_id": task_id, "status": "started", "resumed_from_checkpoint": task.resumed_from_checkpoint}
+    return {
+        "task_id": task_id,
+        "status": "started",
+        "resumed_from_checkpoint": task.resumed_from_checkpoint,
+    }
 
 
 @router.post("/start-from-config")
@@ -279,7 +416,7 @@ async def start_from_config_file(
         raise HTTPException(status_code=400, detail="请提供配置文件名")
 
     # 检查文件扩展名
-    if not (config_file.filename.endswith('.yaml') or config_file.filename.endswith('.yml')):
+    if not (config_file.filename.endswith(".yaml") or config_file.filename.endswith(".yml")):
         raise HTTPException(status_code=400, detail="仅支持 .yaml 或 .yml 格式的配置文件")
 
     # 读取文件内容
@@ -290,10 +427,9 @@ async def start_from_config_file(
 
     # 保存到临时文件以使用 LoopConfig.from_yaml
     import tempfile
+
     try:
-        with tempfile.NamedTemporaryFile(
-            mode='wb', suffix='.yaml', delete=False
-        ) as tmp:
+        with tempfile.NamedTemporaryFile(mode="wb", suffix=".yaml", delete=False) as tmp:
             tmp.write(content)
             tmp_path = tmp.name
     except Exception as e:
@@ -325,8 +461,7 @@ async def start_from_config_file(
     # 验证 prompts：如果既没有 prompts 也没开 random_prompts，报错
     if not loop_config.prompts and not loop_config.random_prompts:
         raise HTTPException(
-            status_code=400,
-            detail="配置错误: 必须提供 prompts 或启用 random_prompts"
+            status_code=400, detail="配置错误: 必须提供 prompts 或启用 random_prompts"
         )
 
     # 转换为 Pydantic 配置（供 API 层使用）
@@ -389,7 +524,10 @@ async def start_from_config_file(
         "estimated_total": (
             len(loop_config.models)
             * len(loop_config.attack_types)
-            * (len(loop_config.prompts) + (loop_config.random_prompt_count if loop_config.random_prompts else 0))
+            * (
+                len(loop_config.prompts)
+                + (loop_config.random_prompt_count if loop_config.random_prompts else 0)
+            )
             * loop_config.iterations_per_combo
         ),
     }
@@ -435,6 +573,7 @@ async def get_progress(task_id: str) -> AttackLoopProgress:
         resumed_from_checkpoint=task.resumed_from_checkpoint,
         results=results_stats,
         reports=task.reports if task.status == "completed" else None,
+        report_id=task.report_id,
         error=task.error,
     )
 
@@ -592,7 +731,7 @@ async def download_results(task_id: str, format: str = "json"):
     return StreamingResponse(
         io.BytesIO(content.encode("utf-8")),
         media_type=media_type,
-        headers={"Content-Disposition": f"attachment; filename={filename}"}
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 
@@ -601,43 +740,61 @@ async def get_history(limit: int = 10, offset: int = 0):
     """获取任务历史"""
     history = []
     all_tasks = list(tasks.items())
-    for task_id, task in all_tasks[offset:offset + limit]:
-        history.append({
-            "task_id": task_id,
-            "status": task.status,
-            "total": task.total,
-            "completed": task.completed,
-            "successful": task.successful,
-            "failed": task.failed,
-            "errors": task.errors,
-            "created_at": task.start_time.isoformat() if task.start_time else None,
-            "finished_at": task.end_time.isoformat() if task.end_time else None,
-            "config": {
-                "models_count": len(task.config.models),
-                "attack_types_count": len(task.config.attack_types),
-                "prompts_count": len(task.config.prompts),
-                "checkpoint_enabled": task.config.checkpoint_enabled,
-            },
-            "reports": task.reports if task.status == "completed" else None,
-            "resumed_from_checkpoint": task.resumed_from_checkpoint,
-        })
+    for task_id, task in all_tasks[offset : offset + limit]:
+        history.append(
+            {
+                "task_id": task_id,
+                "status": task.status,
+                "total": task.total,
+                "completed": task.completed,
+                "successful": task.successful,
+                "failed": task.failed,
+                "errors": task.errors,
+                "created_at": task.start_time.isoformat() if task.start_time else None,
+                "finished_at": task.end_time.isoformat() if task.end_time else None,
+                "config": {
+                    "models_count": len(task.config.models),
+                    "attack_types_count": len(task.config.attack_types),
+                    "prompts_count": len(task.config.prompts),
+                    "checkpoint_enabled": task.config.checkpoint_enabled,
+                },
+                "reports": task.reports if task.status == "completed" else None,
+                "resumed_from_checkpoint": task.resumed_from_checkpoint,
+            }
+        )
 
     return {"history": history, "total": len(tasks)}
 
 
-@router.get("/attack-types")
-async def get_available_attack_types():
-    """获取可用的攻击类型列表（来自全局主注册表）"""
+def _build_attack_types_response() -> Dict[str, Any]:
+    """Build attack type list from the global registry."""
     from mox.attacks.registry import get_all_attack_types
 
     all_types = get_all_attack_types()
     attack_types = []
     for key, info in all_types.items():
-        attack_types.append({
-            "key": key,
-            "name": info.name,
-            "category": info.category.value if hasattr(info.category, "value") else str(info.category),
-            "description": info.description,
-        })
+        attack_types.append(
+            {
+                "key": key,
+                "value": key,
+                "name": info.name,
+                "category": (
+                    info.category.value if hasattr(info.category, "value") else str(info.category)
+                ),
+                "description": info.description,
+            }
+        )
 
     return {"attack_types": attack_types, "total": len(attack_types)}
+
+
+@router.get("/attack-types")
+async def get_available_attack_types():
+    """获取可用的攻击类型列表（来自全局主注册表）"""
+    return _build_attack_types_response()
+
+
+@router.get("/types")
+async def get_attack_types_alias():
+    """兼容前端 /attack-loop/types 路径"""
+    return _build_attack_types_response()

@@ -15,69 +15,16 @@ import csv
 import io
 import time
 from typing import Any, Dict, List, Optional, Callable, Union
-from dataclasses import dataclass, field
-from enum import Enum
 from pathlib import Path
+from mox.evaluation.types import (
+    EvaluationType,
+    EvaluationStatus,
+    EvaluationConfig,
+    EvaluationScenario,
+    EvaluationResult,
+)
 from mox.evaluation.redteam import RedTeamOrchestrator
 from mox.defense.orchestrator import DefenseOrchestrator
-
-
-class EvaluationType(Enum):
-    """评估类型"""
-
-    ATTACK = "attack"
-    DEFENSE = "defense"
-    REDTEAM = "redteam"
-    BENCHMARK = "benchmark"
-    JUDGE = "judge"
-
-
-class EvaluationStatus(Enum):
-    """评估状态"""
-
-    PENDING = "pending"
-    RUNNING = "running"
-    COMPLETED = "completed"
-    FAILED = "failed"
-
-
-@dataclass
-class EvaluationConfig:
-    """评估配置"""
-
-    evaluation_type: EvaluationType = EvaluationType.ATTACK
-    parallel: bool = True
-    max_concurrency: int = 5
-    judge_mode: str = "pattern"
-    generate_reports: bool = True
-    output_format: str = "markdown"
-
-
-@dataclass
-class EvaluationScenario:
-    """评估场景"""
-
-    scenario_id: str
-    name: str
-    description: str
-    evaluation_type: EvaluationType
-    target: str  # 攻击目标或防御目标
-    payload: str
-    expected_result: str
-    difficulty: str = "medium"
-    category: str = "general"
-
-
-@dataclass
-class EvaluationResult:
-    """评估结果"""
-
-    scenario: EvaluationScenario
-    success: bool
-    score: float
-    details: Dict[str, Any] = field(default_factory=dict)
-    execution_time_ms: float = 0.0
-    timestamp: str = ""
 
 
 class UnifiedEvaluator:
@@ -487,9 +434,9 @@ class UnifiedEvaluator:
             "summary": {
                 "total": len(results),
                 "successful": sum(1 for r in results if r.success),
-                "success_rate": sum(1 for r in results if r.success) / len(results)
-                if results
-                else 0,
+                "success_rate": (
+                    sum(1 for r in results if r.success) / len(results) if results else 0
+                ),
             },
             "results": [
                 {

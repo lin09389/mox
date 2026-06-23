@@ -409,9 +409,9 @@ class AdaptiveSearchController:
         return {
             "best_score": max(self._score_history),
             "avg_score": sum(self._score_history) / len(self._score_history),
-            "improvement_trend": sum(self._improvement_history[-10:])
-            if self._improvement_history
-            else 0,
+            "improvement_trend": (
+                sum(self._improvement_history[-10:]) if self._improvement_history else 0
+            ),
             "current_mutation_rate": self.mutation_rate,
             "current_exploration_factor": self.exploration_factor,
         }
@@ -856,9 +856,11 @@ class TransferGCGAttack(ImprovedGCGAttack):
                 if score > best_score:
                     best_score = score
                     best_outcome = self._create_outcome(
-                        result=AttackResult.SUCCESS
-                        if score >= self.config.success_threshold
-                        else AttackResult.FAILURE,
+                        result=(
+                            AttackResult.SUCCESS
+                            if score >= self.config.success_threshold
+                            else AttackResult.FAILURE
+                        ),
                         original_prompt=payload.prompt,
                         adversarial_prompt=adversarial_prompt,
                         model_response=response.content,

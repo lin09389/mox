@@ -12,7 +12,7 @@ import asyncio
 # os.environ["MINIMAX_GROUP_ID"] = "..."
 
 from mox.core import LLMFactory, AttackPayload, AttackType
-from mox.attacks.agent_attacks_v2 import (
+from mox.attacks.agent_attacks import (
     ToolChainingAttack,
     IndirectToolInjection,
     PrivilegeEscalationAttack,

@@ -55,6 +55,7 @@ class Settings(BaseSettings):
     LOG_LEVEL: str = "INFO"
 
     # ============ 数据库配置 ============
+    DATA_DIR: str = "data"
     DATABASE_URL: str = "sqlite+aiosqlite:///data/mox.db"
     DB_POOL_SIZE: int = 10
     DB_MAX_OVERFLOW: int = 20

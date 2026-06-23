@@ -38,16 +38,23 @@ export function TaskTray() {
               </div>
             </div>
             <div className="p-4 space-y-4 max-h-[240px] overflow-y-auto">
-              {tasks.map(task => (
-                <div key={task.id} className="space-y-2">
-                  <div className="flex justify-between items-center text-xs">
-                    <span className="font-bold text-[var(--text-main)] truncate max-w-[200px]">{task.name}</span>
-                    <span className="font-mono text-cyan-500 font-bold">{task.progress}%</span>
+              {tasks.map((task) => (
+                <Link
+                  key={task.id}
+                  to={task.href || '/tasks'}
+                  className="block space-y-2 rounded-lg border border-transparent p-2 -mx-2 transition-colors hover:border-cyan-500/20 hover:bg-cyan-500/5"
+                >
+                  <div className="flex justify-between items-center text-xs gap-2">
+                    <span className="font-bold text-[var(--text-main)] truncate">{task.name}</span>
+                    <span className="font-mono text-cyan-500 font-bold shrink-0">{task.progress ?? 0}%</span>
                   </div>
                   <div className="h-1.5 w-full bg-[var(--bg-glass)] rounded-full overflow-hidden border border-[var(--border-glass)]">
-                    <div className="h-full bg-gradient-to-r from-cyan-400 to-cyan-600 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(6,182,212,0.5)]" style={{ width: `${task.progress}%` }} />
+                    <div
+                      className="h-full bg-gradient-to-r from-cyan-400 to-cyan-600 transition-all duration-1000 ease-linear shadow-[0_0_10px_rgba(6,182,212,0.5)]"
+                      style={{ width: `${task.progress ?? 0}%` }}
+                    />
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
             <Link to="/tasks" className="block text-center border-t border-[var(--border-glass)] py-2.5 text-[10px] text-[var(--text-muted)] hover:text-cyan-500 hover:bg-[var(--bg-glass)] transition-colors uppercase font-bold tracking-widest">

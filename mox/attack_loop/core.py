@@ -27,17 +27,18 @@ from mox.core import LLMFactory, AttackPayload, AttackType
 from mox.attacks.registry import (
     get_attack_type,
     create_attack_instance,
-    get_all_attack_types,
     AttackTypeInfo,
     AttackCategory,
 )
-
 
 # ============================================================
 # 日志配置
 # ============================================================
 
-def setup_logger(name: str, log_file: Optional[str] = None, level: int = logging.INFO) -> logging.Logger:
+
+def setup_logger(
+    name: str, log_file: Optional[str] = None, level: int = logging.INFO
+) -> logging.Logger:
     """配置日志系统"""
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -49,7 +50,7 @@ def setup_logger(name: str, log_file: Optional[str] = None, level: int = logging
     # 控制台处理器
     console_handler = logging.StreamHandler()
     console_handler.setLevel(level)
-    console_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+    console_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
     console_handler.setFormatter(console_format)
     logger.addHandler(console_handler)
 
@@ -57,9 +58,9 @@ def setup_logger(name: str, log_file: Optional[str] = None, level: int = logging
     if log_file:
         log_path = Path(log_file)
         log_path.parent.mkdir(parents=True, exist_ok=True)
-        file_handler = logging.FileHandler(log_file, encoding='utf-8')
+        file_handler = logging.FileHandler(log_file, encoding="utf-8")
         file_handler.setLevel(level)
-        file_format = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+        file_format = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
         file_handler.setFormatter(file_format)
         logger.addHandler(file_handler)
 
@@ -78,9 +79,11 @@ def setup_logger(name: str, log_file: Optional[str] = None, level: int = logging
 # 数据结构
 # ============================================================
 
+
 @dataclass
 class AttackTestResult:
     """攻击测试结果"""
+
     test_id: str
     timestamp: str
     model: str
@@ -101,7 +104,7 @@ class AttackTestResult:
         return asdict(self)
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'AttackTestResult':
+    def from_dict(cls, data: Dict[str, Any]) -> "AttackTestResult":
         """从字典创建"""
         return cls(**data)
 
@@ -112,6 +115,7 @@ class LoopConfig:
 
     支持从 YAML/JSON 加载和保存。
     """
+
     # 核心配置
     models: List[str]
     attack_types: List[str]
@@ -152,13 +156,13 @@ class LoopConfig:
     # ============================================================
 
     @classmethod
-    def from_yaml(cls, yaml_path: str) -> 'LoopConfig':
+    def from_yaml(cls, yaml_path: str) -> "LoopConfig":
         """从YAML文件加载配置
 
         对缺失字段提供清晰的字段级错误提示。
         """
         try:
-            with open(yaml_path, 'r', encoding='utf-8') as f:
+            with open(yaml_path, "r", encoding="utf-8") as f:
                 data = yaml.safe_load(f)
         except FileNotFoundError:
             raise ValueError(f"配置文件不存在: {yaml_path}")
@@ -171,10 +175,10 @@ class LoopConfig:
         return cls._from_dict(data, source=f"YAML文件 {yaml_path}")
 
     @classmethod
-    def from_json(cls, json_path: str) -> 'LoopConfig':
+    def from_json(cls, json_path: str) -> "LoopConfig":
         """从JSON文件加载配置"""
         try:
-            with open(json_path, 'r', encoding='utf-8') as f:
+            with open(json_path, "r", encoding="utf-8") as f:
                 data = json.load(f)
         except FileNotFoundError:
             raise ValueError(f"配置文件不存在: {json_path}")
@@ -187,15 +191,15 @@ class LoopConfig:
         return cls._from_dict(data, source=f"JSON文件 {json_path}")
 
     @classmethod
-    def from_dict(cls, data: Dict[str, Any]) -> 'LoopConfig':
+    def from_dict(cls, data: Dict[str, Any]) -> "LoopConfig":
         """从字典创建配置（带字段级错误提示）"""
         return cls._from_dict(data, source="字典")
 
     @classmethod
-    def _from_dict(cls, data: Dict[str, Any], source: str = "") -> 'LoopConfig':
+    def _from_dict(cls, data: Dict[str, Any], source: str = "") -> "LoopConfig":
         """从字典创建配置，提供字段级错误提示"""
         # 检查必填字段
-        required_fields = ['models', 'attack_types']
+        required_fields = ["models", "attack_types"]
         missing_required = []
         for field_name in required_fields:
             if field_name not in data or data[field_name] is None:
@@ -203,13 +207,12 @@ class LoopConfig:
 
         if missing_required:
             raise ValueError(
-                f"配置缺少必填字段: {', '.join(missing_required)} "
-                f"(来源: {source})"
+                f"配置缺少必填字段: {', '.join(missing_required)} " f"(来源: {source})"
             )
 
         # 检查 prompts - 如果没有提供 prompts 但开启了 random_prompts，则可以接受
-        has_prompts = 'prompts' in data and data['prompts']
-        random_enabled = data.get('random_prompts', False)
+        has_prompts = "prompts" in data and data["prompts"]
+        random_enabled = data.get("random_prompts", False)
         if not has_prompts and not random_enabled:
             raise ValueError(
                 "配置缺少 prompts 字段，且未启用 random_prompts。"
@@ -220,42 +223,44 @@ class LoopConfig:
         # 验证字段类型
         type_errors = []
 
-        if not isinstance(data['models'], list) or len(data['models']) == 0:
+        if not isinstance(data["models"], list) or len(data["models"]) == 0:
             type_errors.append("models 必须是非空列表")
 
-        if not isinstance(data['attack_types'], list) or len(data['attack_types']) == 0:
+        if not isinstance(data["attack_types"], list) or len(data["attack_types"]) == 0:
             type_errors.append("attack_types 必须是非空列表")
 
-        if 'prompts' in data and data['prompts'] is not None:
-            if not isinstance(data['prompts'], list):
+        if "prompts" in data and data["prompts"] is not None:
+            if not isinstance(data["prompts"], list):
                 type_errors.append("prompts 必须是列表")
 
-        if 'iterations_per_combo' in data:
-            if not isinstance(data['iterations_per_combo'], int) or data['iterations_per_combo'] < 1:
+        if "iterations_per_combo" in data:
+            if (
+                not isinstance(data["iterations_per_combo"], int)
+                or data["iterations_per_combo"] < 1
+            ):
                 type_errors.append("iterations_per_combo 必须是正整数")
 
-        if 'max_concurrency' in data:
-            if not isinstance(data['max_concurrency'], int) or data['max_concurrency'] < 1:
+        if "max_concurrency" in data:
+            if not isinstance(data["max_concurrency"], int) or data["max_concurrency"] < 1:
                 type_errors.append("max_concurrency 必须是正整数")
 
-        if 'checkpoint_interval' in data:
-            if not isinstance(data['checkpoint_interval'], int) or data['checkpoint_interval'] < 1:
+        if "checkpoint_interval" in data:
+            if not isinstance(data["checkpoint_interval"], int) or data["checkpoint_interval"] < 1:
                 type_errors.append("checkpoint_interval 必须是正整数")
 
-        if 'random_prompt_count' in data:
-            if not isinstance(data['random_prompt_count'], int) or data['random_prompt_count'] < 1:
+        if "random_prompt_count" in data:
+            if not isinstance(data["random_prompt_count"], int) or data["random_prompt_count"] < 1:
                 type_errors.append("random_prompt_count 必须是正整数")
 
         if type_errors:
             raise ValueError(
-                "配置字段类型错误:\n  - " + "\n  - ".join(type_errors) +
-                f"\n(来源: {source})"
+                "配置字段类型错误:\n  - " + "\n  - ".join(type_errors) + f"\n(来源: {source})"
             )
 
         # 如果没有 prompts 但启用了 random_prompts，初始化空列表
         if not has_prompts and random_enabled:
             data = dict(data)
-            data['prompts'] = []
+            data["prompts"] = []
 
         # 过滤掉 dataclass 不支持的额外字段（发出警告但不崩溃）
         valid_fields = {f.name for f in cls.__dataclass_fields__.values()}
@@ -263,9 +268,8 @@ class LoopConfig:
         if extra_fields:
             # 记录警告，但继续执行
             import warnings
-            warnings.warn(
-                f"配置包含未知字段（将被忽略）: {', '.join(extra_fields)}"
-            )
+
+            warnings.warn(f"配置包含未知字段（将被忽略）: {', '.join(extra_fields)}")
 
         # 只使用有效字段
         filtered_data = {k: v for k, v in data.items() if k in valid_fields}
@@ -279,14 +283,14 @@ class LoopConfig:
         """保存配置到YAML文件"""
         path = Path(yaml_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             yaml.dump(asdict(self), f, allow_unicode=True, default_flow_style=False)
 
     def to_json(self, json_path: str):
         """保存配置到JSON文件"""
         path = Path(json_path)
         path.parent.mkdir(parents=True, exist_ok=True)
-        with open(path, 'w', encoding='utf-8') as f:
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(asdict(self), f, ensure_ascii=False, indent=2)
 
     def config_hash(self) -> str:
@@ -296,26 +300,28 @@ class LoopConfig:
         等核心配置，确保相同配置可以续跑。
         """
         core_config = {
-            'models': sorted(self.models),
-            'attack_types': sorted(self.attack_types),
-            'prompts': self.prompts,
-            'iterations_per_combo': self.iterations_per_combo,
-            'success_threshold': self.success_threshold,
-            'max_iterations': self.max_iterations,
-            'random_prompts': self.random_prompts,
-            'random_prompt_count': self.random_prompt_count if self.random_prompts else 0,
+            "models": sorted(self.models),
+            "attack_types": sorted(self.attack_types),
+            "prompts": self.prompts,
+            "iterations_per_combo": self.iterations_per_combo,
+            "success_threshold": self.success_threshold,
+            "max_iterations": self.max_iterations,
+            "random_prompts": self.random_prompts,
+            "random_prompt_count": self.random_prompt_count if self.random_prompts else 0,
         }
         config_str = json.dumps(core_config, sort_keys=True, ensure_ascii=False)
-        return hashlib.md5(config_str.encode('utf-8')).hexdigest()[:16]
+        return hashlib.md5(config_str.encode("utf-8")).hexdigest()[:16]
 
 
 # ============================================================
 # 统计信息
 # ============================================================
 
+
 @dataclass
 class TestStatistics:
     """测试统计信息"""
+
     total_tests: int = 0
     successful_tests: int = 0
     failed_tests: int = 0
@@ -337,7 +343,7 @@ class TestStatistics:
     time_distribution: Dict[str, int] = field(default_factory=dict)
 
     @classmethod
-    def calculate(cls, results: List[AttackTestResult]) -> 'TestStatistics':
+    def calculate(cls, results: List[AttackTestResult]) -> "TestStatistics":
         """从测试结果计算统计信息"""
         if not results:
             return cls()
@@ -363,7 +369,7 @@ class TestStatistics:
                 "failed": len(model_results) - model_success,
                 "success_rate": model_success / len(model_results) * 100,
                 "avg_score": model_avg,
-                "avg_duration": sum(r.duration for r in model_results) / len(model_results)
+                "avg_duration": sum(r.duration for r in model_results) / len(model_results),
             }
 
         # 按攻击类型统计
@@ -380,22 +386,22 @@ class TestStatistics:
                 "failed": len(attack_results) - attack_success,
                 "success_rate": attack_success / len(attack_results) * 100,
                 "avg_score": attack_avg,
-                "avg_duration": sum(r.duration for r in attack_results) / len(attack_results)
+                "avg_duration": sum(r.duration for r in attack_results) / len(attack_results),
             }
 
         # 最危险的攻击
         attack_danger_list = []
         for attack_type, attack_info in stats.attack_stats.items():
-            attack_danger_list.append({
-                "type": attack_type,
-                "name": attack_info["name"],
-                "success_rate": attack_info["success_rate"],
-                "avg_score": attack_info["avg_score"]
-            })
+            attack_danger_list.append(
+                {
+                    "type": attack_type,
+                    "name": attack_info["name"],
+                    "success_rate": attack_info["success_rate"],
+                    "avg_score": attack_info["avg_score"],
+                }
+            )
         stats.top_dangerous_attacks = sorted(
-            attack_danger_list,
-            key=lambda x: x["success_rate"],
-            reverse=True
+            attack_danger_list, key=lambda x: x["success_rate"], reverse=True
         )[:5]
 
         # 时间分布（按小时）
@@ -416,6 +422,7 @@ class TestStatistics:
 # ============================================================
 # 攻击执行器
 # ============================================================
+
 
 class AttackExecutor:
     """攻击执行器"""
@@ -446,11 +453,7 @@ class AttackExecutor:
         return get_attack_type(attack_type)
 
     async def execute_single(
-        self,
-        model: str,
-        attack_type: str,
-        prompt: str,
-        test_id: str
+        self, model: str, attack_type: str, prompt: str, test_id: str
     ) -> AttackTestResult:
         """执行单次攻击测试"""
         start_time = time.time()
@@ -471,7 +474,7 @@ class AttackExecutor:
                 adversarial_prompt=None,
                 model_response=None,
                 error=f"未知的攻击类型: {attack_type}",
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
             )
 
         # 创建 LLM 实例
@@ -495,7 +498,7 @@ class AttackExecutor:
                 adversarial_prompt=None,
                 model_response=None,
                 error=f"LLM创建失败: {e}",
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
             )
 
         # 通过主注册表工厂函数创建攻击实例，无需手动处理各攻击的配置类
@@ -519,7 +522,7 @@ class AttackExecutor:
                 adversarial_prompt=None,
                 model_response=None,
                 error=f"攻击实例创建失败: {e}",
-                duration=time.time() - start_time
+                duration=time.time() - start_time,
             )
 
         # 构建攻击载荷
@@ -545,13 +548,19 @@ class AttackExecutor:
                     success_score=outcome.success_score,
                     iterations=outcome.iterations,
                     adversarial_prompt=outcome.adversarial_prompt,
-                    model_response=outcome.model_response if hasattr(outcome, 'model_response') else outcome.response,
+                    model_response=(
+                        outcome.model_response
+                        if hasattr(outcome, "model_response")
+                        else outcome.response
+                    ),
                     error=None,
                     duration=time.time() - start_time,
-                    metadata={"attempt": attempt + 1}
+                    metadata={"attempt": attempt + 1},
                 )
             except Exception as e:
-                self.logger.warning(f"攻击执行失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}")
+                self.logger.warning(
+                    f"攻击执行失败 (尝试 {attempt + 1}/{self.config.max_retries}): {e}"
+                )
                 if attempt == self.config.max_retries - 1:
                     return AttackTestResult(
                         test_id=test_id,
@@ -567,14 +576,11 @@ class AttackExecutor:
                         model_response=None,
                         error=f"攻击执行失败 (尝试 {attempt + 1}): {e}",
                         duration=time.time() - start_time,
-                        metadata={"attempt": attempt + 1}
+                        metadata={"attempt": attempt + 1},
                     )
                 await asyncio.sleep(self.config.retry_delay)
 
-    async def execute_batch(
-        self,
-        test_cases: List[Dict[str, Any]]
-    ) -> List[AttackTestResult]:
+    async def execute_batch(self, test_cases: List[Dict[str, Any]]) -> List[AttackTestResult]:
         """并行执行一批测试"""
         tasks = []
         for test in test_cases:
@@ -582,7 +588,7 @@ class AttackExecutor:
                 model=test["model"],
                 attack_type=test["attack_type"],
                 prompt=test["prompt"],
-                test_id=test["test_id"]
+                test_id=test["test_id"],
             )
             tasks.append(task)
 
@@ -593,21 +599,23 @@ class AttackExecutor:
         for i, result in enumerate(results):
             if isinstance(result, Exception):
                 attack_info = self.get_attack_info(test_cases[i]["attack_type"])
-                processed_results.append(AttackTestResult(
-                    test_id=test_cases[i]["test_id"],
-                    timestamp=datetime.now().isoformat(),
-                    model=test_cases[i]["model"],
-                    attack_type=test_cases[i]["attack_type"],
-                    attack_name=attack_info.name if attack_info else "未知",
-                    prompt=test_cases[i]["prompt"],
-                    success=False,
-                    success_score=0.0,
-                    iterations=0,
-                    adversarial_prompt=None,
-                    model_response=None,
-                    error=f"任务异常: {result}",
-                    duration=0.0
-                ))
+                processed_results.append(
+                    AttackTestResult(
+                        test_id=test_cases[i]["test_id"],
+                        timestamp=datetime.now().isoformat(),
+                        model=test_cases[i]["model"],
+                        attack_type=test_cases[i]["attack_type"],
+                        attack_name=attack_info.name if attack_info else "未知",
+                        prompt=test_cases[i]["prompt"],
+                        success=False,
+                        success_score=0.0,
+                        iterations=0,
+                        adversarial_prompt=None,
+                        model_response=None,
+                        error=f"任务异常: {result}",
+                        duration=0.0,
+                    )
+                )
             else:
                 processed_results.append(result)
 
@@ -617,6 +625,7 @@ class AttackExecutor:
 # ============================================================
 # 报告生成器
 # ============================================================
+
 
 class ReportGenerator:
     """报告生成器 - 支持 JSON/CSV/TXT/HTML 多种格式"""
@@ -659,7 +668,7 @@ class ReportGenerator:
         results: List[AttackTestResult],
         stats: TestStatistics,
         config: LoopConfig,
-        filename: Optional[str] = None
+        filename: Optional[str] = None,
     ) -> Path:
         """保存文本报告"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -677,7 +686,9 @@ class ReportGenerator:
             f.write("测试配置:\n")
             f.write(f"  模型: {', '.join(config.models)}\n")
             f.write(f"  攻击类型: {', '.join(config.attack_types)}\n")
-            f.write(f"  测试提示数: {len(config.prompts) if not config.random_prompts else '随机生成'}\n")
+            f.write(
+                f"  测试提示数: {len(config.prompts) if not config.random_prompts else '随机生成'}\n"
+            )
             f.write(f"  每组合迭代: {config.iterations_per_combo}\n")
             f.write(f"  并发数: {config.max_concurrency}\n")
             f.write(f"  成功阈值: {config.success_threshold}\n\n")
@@ -688,7 +699,11 @@ class ReportGenerator:
             f.write(f"  成功数: {stats.successful_tests}\n")
             f.write(f"  失败数: {stats.failed_tests}\n")
             f.write(f"  错误数: {stats.error_tests}\n")
-            f.write(f"  成功率: {stats.successful_tests/stats.total_tests*100:.1f}%\n") if stats.total_tests > 0 else None
+            (
+                f.write(f"  成功率: {stats.successful_tests/stats.total_tests*100:.1f}%\n")
+                if stats.total_tests > 0
+                else None
+            )
             f.write(f"  平均分数: {stats.avg_score:.2f}\n")
             f.write(f"  平均耗时: {stats.avg_duration:.1f}s\n")
             f.write(f"  总耗时: {stats.total_duration:.1f}s\n\n")
@@ -742,7 +757,7 @@ class ReportGenerator:
         results: List[AttackTestResult],
         stats: TestStatistics,
         config: LoopConfig,
-        filename: Optional[str] = None
+        filename: Optional[str] = None,
     ) -> Path:
         """保存HTML报告"""
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -759,10 +774,7 @@ class ReportGenerator:
         return html_path
 
     def _generate_html_content(
-        self,
-        results: List[AttackTestResult],
-        stats: TestStatistics,
-        config: LoopConfig
+        self, results: List[AttackTestResult], stats: TestStatistics, config: LoopConfig
     ) -> str:
         """生成HTML报告内容"""
 
@@ -811,7 +823,9 @@ class ReportGenerator:
                     <td>{r.error[:30] + '...' if r.error and len(r.error) > 30 else r.error or '-'}</td>
                 </tr>"""
 
-        success_rate = stats.successful_tests / stats.total_tests * 100 if stats.total_tests > 0 else 0
+        success_rate = (
+            stats.successful_tests / stats.total_tests * 100 if stats.total_tests > 0 else 0
+        )
 
         return f"""
 <!DOCTYPE html>
@@ -1004,6 +1018,7 @@ class ReportGenerator:
 # 检查点管理器
 # ============================================================
 
+
 class CheckpointManager:
     """检查点管理器 - 支持断点续跑
 
@@ -1067,12 +1082,17 @@ class CheckpointManager:
             # 原子写入：先写临时文件，再重命名
             temp_file = cp_file.with_suffix(".tmp")
             with open(temp_file, "w", encoding="utf-8") as f:
-                json.dump({
-                    "completed_tests": completed_tests,
-                    "results": [r.to_dict() for r in results],
-                    "timestamp": datetime.now().isoformat(),
-                    "results_count": len(results)
-                }, f, ensure_ascii=False, indent=2)
+                json.dump(
+                    {
+                        "completed_tests": completed_tests,
+                        "results": [r.to_dict() for r in results],
+                        "timestamp": datetime.now().isoformat(),
+                        "results_count": len(results),
+                    },
+                    f,
+                    ensure_ascii=False,
+                    indent=2,
+                )
             temp_file.replace(cp_file)
 
             self.logger.debug(f"检查点已保存: {len(completed_tests)} 个已完成测试")
@@ -1101,12 +1121,14 @@ class CheckpointManager:
             try:
                 with open(f, "r", encoding="utf-8") as fp:
                     data = json.load(fp)
-                    checkpoints.append({
-                        "name": f.name,
-                        "timestamp": data.get("timestamp"),
-                        "completed_count": len(data.get("completed_tests", [])),
-                        "results_count": data.get("results_count", 0),
-                    })
+                    checkpoints.append(
+                        {
+                            "name": f.name,
+                            "timestamp": data.get("timestamp"),
+                            "completed_count": len(data.get("completed_tests", [])),
+                            "results_count": data.get("results_count", 0),
+                        }
+                    )
             except Exception as e:
                 logging.getLogger(__name__).debug(f"跳过损坏的检查点文件 {f}: {e}")
         return sorted(checkpoints, key=lambda x: x.get("timestamp", ""), reverse=True)
@@ -1115,6 +1137,7 @@ class CheckpointManager:
 # ============================================================
 # 提示生成器
 # ============================================================
+
 
 class PromptGenerator:
     """提示生成器 - 基于模板生成随机对抗提示"""
@@ -1183,7 +1206,6 @@ class PromptGenerator:
         Returns:
             不重复的提示列表（可能少于 count，如果唯一组合有限）
         """
-        import random
 
         prompts = set()
         max_attempts = count * 10
@@ -1201,6 +1223,7 @@ class PromptGenerator:
 # 统一运行器 - 整合所有组件
 # ============================================================
 
+
 class AttackLoopRunner:
     """攻击循环统一运行器
 
@@ -1217,14 +1240,13 @@ class AttackLoopRunner:
         self.logger = logger or setup_logger(
             "AttackLoopRunner",
             log_file=config.log_file,
-            level=getattr(logging, config.log_level.upper(), logging.INFO)
+            level=getattr(logging, config.log_level.upper(), logging.INFO),
         )
 
         # 初始化组件
         self.executor = AttackExecutor(config, self.logger)
         self.checkpoint_mgr = CheckpointManager(
-            str(Path(config.output_dir) / "checkpoints"),
-            self.logger
+            str(Path(config.output_dir) / "checkpoints"), self.logger
         )
         self.report_gen = ReportGenerator(config.output_dir, self.logger)
         self.prompt_gen = PromptGenerator(config.random_prompt_templates)
@@ -1289,12 +1311,14 @@ class AttackLoopRunner:
                     for iter_idx in range(self.config.iterations_per_combo):
                         test_idx += 1
                         test_id = f"test_{test_idx:06d}_{model}_{attack_type}_iter{iter_idx+1}"
-                        test_cases.append({
-                            "test_id": test_id,
-                            "model": model,
-                            "attack_type": attack_type,
-                            "prompt": prompt,
-                        })
+                        test_cases.append(
+                            {
+                                "test_id": test_id,
+                                "model": model,
+                                "attack_type": attack_type,
+                                "prompt": prompt,
+                            }
+                        )
 
         return test_cases
 
@@ -1334,10 +1358,7 @@ class AttackLoopRunner:
                     )
 
             # 3. 计算剩余测试
-            remaining_tests = [
-                tc for tc in all_test_cases
-                if tc["test_id"] not in completed_tests
-            ]
+            remaining_tests = [tc for tc in all_test_cases if tc["test_id"] not in completed_tests]
             self.logger.info(f"剩余待执行: {len(remaining_tests)} 个测试")
 
             if not remaining_tests:
@@ -1352,17 +1373,14 @@ class AttackLoopRunner:
                 # 检查停止
                 if self._stop_event.is_set():
                     self.logger.info("收到停止信号，保存检查点后退出")
-                    self._save_checkpoint(
-                        list(completed_tests),
-                        results
-                    )
+                    self._save_checkpoint(list(completed_tests), results)
                     break
 
                 # 检查暂停
                 await self._pause_event.wait()
 
                 # 获取当前批次
-                batch = remaining_tests[i:i+batch_size]
+                batch = remaining_tests[i : i + batch_size]
 
                 # 执行批次
                 batch_results = await self.executor.execute_batch(batch)
@@ -1394,13 +1412,12 @@ class AttackLoopRunner:
 
                 # 按间隔保存检查点
                 completed_count = len(results) - tests_completed_before
-                if (self.config.checkpoint_enabled and
-                    completed_count > 0 and
-                    completed_count % self.config.checkpoint_interval == 0):
-                    self._save_checkpoint(
-                        list(completed_tests),
-                        results
-                    )
+                if (
+                    self.config.checkpoint_enabled
+                    and completed_count > 0
+                    and completed_count % self.config.checkpoint_interval == 0
+                ):
+                    self._save_checkpoint(list(completed_tests), results)
 
                 # 批次间延迟
                 if i + batch_size < len(remaining_tests) and self.config.delay_between_tests > 0:
@@ -1408,10 +1425,7 @@ class AttackLoopRunner:
 
             # 5. 最终保存检查点
             if self.config.checkpoint_enabled:
-                self._save_checkpoint(
-                    list(completed_tests),
-                    results
-                )
+                self._save_checkpoint(list(completed_tests), results)
 
             # 6. 生成报告
             return self._finalize(results)
@@ -1479,6 +1493,7 @@ class AttackLoopRunner:
 # 便捷函数
 # ============================================================
 
+
 def create_config_from_args(args) -> LoopConfig:
     """从命令行参数创建配置"""
     config = LoopConfig(
@@ -1493,10 +1508,12 @@ def create_config_from_args(args) -> LoopConfig:
         base_url=args.base_url or "http://localhost:11434/v1",
         success_threshold=args.threshold or 0.6,
         max_iterations=args.max_iterations or 5,
-        random_prompts=args.random_prompts if hasattr(args, 'random_prompts') else False,
-        random_prompt_count=args.random_prompt_count if hasattr(args, 'random_prompt_count') else 10,
-        checkpoint_enabled=not getattr(args, 'no_checkpoint', False),
-        checkpoint_interval=getattr(args, 'checkpoint_interval', 10) or 10,
+        random_prompts=args.random_prompts if hasattr(args, "random_prompts") else False,
+        random_prompt_count=(
+            args.random_prompt_count if hasattr(args, "random_prompt_count") else 10
+        ),
+        checkpoint_enabled=not getattr(args, "no_checkpoint", False),
+        checkpoint_interval=getattr(args, "checkpoint_interval", 10) or 10,
     )
     return config
 
@@ -1507,24 +1524,30 @@ def print_statistics(stats: TestStatistics):
     print("📈 测试统计")
     print("=" * 60)
 
-    print(f"\n总体结果:")
+    print("\n总体结果:")
     print(f"   总测试数: {stats.total_tests}")
     if stats.total_tests > 0:
-        print(f"   成功: {stats.successful_tests} ({stats.successful_tests/stats.total_tests*100:.1f}%)")
+        print(
+            f"   成功: {stats.successful_tests} ({stats.successful_tests/stats.total_tests*100:.1f}%)"
+        )
         print(f"   失败: {stats.failed_tests} ({stats.failed_tests/stats.total_tests*100:.1f}%)")
         print(f"   错误: {stats.error_tests} ({stats.error_tests/stats.total_tests*100:.1f}%)")
         print(f"   平均分数: {stats.avg_score:.2f}")
         print(f"   平均耗时: {stats.avg_duration:.1f}s")
         print(f"   总耗时: {stats.total_duration:.1f}s")
 
-    print(f"\n按模型统计:")
+    print("\n按模型统计:")
     for model, model_info in stats.model_stats.items():
-        print(f"   {model}: {model_info['successful']}/{model_info['total']} 成功, 平均分: {model_info['avg_score']:.2f}")
+        print(
+            f"   {model}: {model_info['successful']}/{model_info['total']} 成功, 平均分: {model_info['avg_score']:.2f}"
+        )
 
-    print(f"\n按攻击类型统计:")
+    print("\n按攻击类型统计:")
     for attack_type, attack_info in stats.attack_stats.items():
-        print(f"   {attack_info['name']}: {attack_info['successful']}/{attack_info['total']} 成功, 平均分: {attack_info['avg_score']:.2f}")
+        print(
+            f"   {attack_info['name']}: {attack_info['successful']}/{attack_info['total']} 成功, 平均分: {attack_info['avg_score']:.2f}"
+        )
 
-    print(f"\n最危险的攻击 (成功率最高):")
+    print("\n最危险的攻击 (成功率最高):")
     for i, attack in enumerate(stats.top_dangerous_attacks[:3], 1):
         print(f"   {i}. {attack['name']}: {attack['success_rate']:.1f}% 成功率")

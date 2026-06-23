@@ -411,9 +411,11 @@ class RealPerplexityFilter(BaseDefense):
                     "perplexity": perplexity,
                     "threshold": self.perplexity_threshold,
                     "detection_reason": detection_reason,
-                    "z_score": (perplexity - self._mean_ppl) / self._std_ppl
-                    if self._mean_ppl and self._std_ppl
-                    else None,
+                    "z_score": (
+                        (perplexity - self._mean_ppl) / self._std_ppl
+                        if self._mean_ppl and self._std_ppl
+                        else None
+                    ),
                 },
             )
 

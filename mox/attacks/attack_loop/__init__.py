@@ -1,29 +1,39 @@
-"""攻击循环测试模块
+"""Deprecated shim — use ``mox.attack_loop`` instead."""
 
-提供完整的攻击循环测试能力，包括：
-- 配置管理（AttackLoopConfig，支持 YAML/JSON 加载）
-- 攻击执行器（AttackExecutor，基于统一攻击注册表）
-- 检查点管理（CheckpointManager，支持断点续跑）
-- 随机提示生成（PromptGenerator）
-- 报告生成（ReportGenerator，支持 JSON/CSV/TXT/HTML）
-- 运行器（AttackLoopRunner，完整编排）
+import warnings
 
-基本用法::
+warnings.warn(
+    "mox.attacks.attack_loop is deprecated; use mox.attack_loop instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
-    from mox.attacks.attack_loop import AttackLoopConfig, AttackLoopRunner
+from mox.attack_loop import (
+    LoopConfig as AttackLoopConfig,
+    AttackTestResult,
+    TestStatistics,
+    AttackExecutor,
+    CheckpointManager,
+    PromptGenerator,
+    ReportGenerator,
+    AttackLoopRunner,
+    setup_logger,
+    create_config_from_args,
+    print_statistics,
+)
 
-    config = AttackLoopConfig.from_yaml("config.yaml")
+
+async def run_attack_loop_async(config: AttackLoopConfig):
     runner = AttackLoopRunner(config)
     result = await runner.run()
-"""
+    return result.get("results", [])
 
-from .config import AttackLoopConfig
-from .result import AttackTestResult, TestStatistics
-from .executor import AttackExecutor
-from .checkpoint import CheckpointManager
-from .prompt_generator import PromptGenerator
-from .report import ReportGenerator
-from .runner import AttackLoopRunner, run_attack_loop, run_attack_loop_async
+
+def run_attack_loop(config: AttackLoopConfig):
+    import asyncio
+
+    return asyncio.run(run_attack_loop_async(config))
+
 
 __all__ = [
     "AttackLoopConfig",
@@ -36,4 +46,7 @@ __all__ = [
     "AttackLoopRunner",
     "run_attack_loop",
     "run_attack_loop_async",
+    "setup_logger",
+    "create_config_from_args",
+    "print_statistics",
 ]

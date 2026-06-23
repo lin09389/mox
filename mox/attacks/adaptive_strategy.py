@@ -710,9 +710,11 @@ class AdaptiveAttackStrategy(BaseAttack):
             score = eval_result.overall_score
 
             return self._create_outcome(
-                result=AttackResult.SUCCESS
-                if score >= self.config.success_threshold
-                else AttackResult.FAILURE,
+                result=(
+                    AttackResult.SUCCESS
+                    if score >= self.config.success_threshold
+                    else AttackResult.FAILURE
+                ),
                 original_prompt=payload.prompt,
                 adversarial_prompt=attack_prompt,
                 model_response=response_content,

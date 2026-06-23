@@ -1,15 +1,13 @@
-"""Attacks Module - 统一攻击框架
+"""Deprecated attack orchestrator — use ``mox.evaluation.redteam.RedTeamOrchestrator``."""
 
-整合所有攻击技术:
-1. Prompt Injection
-2. Jailbreak
-3. LLM-Driven Attacks (TAP, PAIR, Crescendo)
-4. Agent Attacks (Tool Abuse, Memory Injection)
-5. GCG Gradient Attack
-6. RAG Attacks
-7. Code Security Attacks
-8. Meta Adversarial Attacks
-"""
+import warnings
+
+warnings.warn(
+    "mox.attacks.orchestrator.AttackOrchestrator is deprecated; "
+    "use mox.evaluation.redteam.RedTeamOrchestrator instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import asyncio
 import json
@@ -706,9 +704,9 @@ class AttackReportGenerator:
             "summary": {
                 "total": len(results),
                 "successful": sum(1 for r in results if r.success),
-                "success_rate": sum(1 for r in results if r.success) / len(results)
-                if results
-                else 0,
+                "success_rate": (
+                    sum(1 for r in results if r.success) / len(results) if results else 0
+                ),
             },
             "results": [
                 {

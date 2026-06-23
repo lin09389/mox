@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import api, { 
+import { 
   getStats, 
   getRecentAttacks, 
   getDefenseLogs, 
@@ -7,7 +7,9 @@ import api, {
   defenseApi,
   getModels, 
   authApi, 
-  getAttackTemplates 
+  getAttackTemplates,
+  getMonitoringVisualization,
+  auditApi,
 } from '../api'
 
 // Query Keys Centralization
@@ -17,6 +19,9 @@ export const queryKeys = {
   defenseLogs: ['defenseLogs'],
   models: ['models'],
   templates: ['templates'],
+  monitoring: {
+    visualization: ['monitoring', 'visualization'],
+  },
   auth: {
     me: ['auth', 'me'],
   },
@@ -53,6 +58,14 @@ export function useDefenseLogs() {
   })
 }
 
+export function useMonitoringVisualization() {
+  return useQuery({
+    queryKey: queryKeys.monitoring.visualization,
+    queryFn: getMonitoringVisualization,
+    refetchInterval: 30000,
+  })
+}
+
 // History Hooks
 export function useAttackHistory(params) {
   return useQuery({
@@ -69,11 +82,12 @@ export function useDefenseHistory(params) {
 }
 
 // Audit Hooks
-export function useAuditLogs() {
+export function useAuditLogs(params = {}) {
+  const queryParams = params.action && params.action !== 'all' ? { action: params.action } : {}
   return useQuery({
-    queryKey: ['audit', 'logs'],
+    queryKey: ['audit', 'logs', queryParams],
     queryFn: async () => {
-      const { data } = await api.get('/api/audit/logs')
+      const data = await auditApi.getLogs(queryParams)
       return data?.logs || data || []
     },
   })
@@ -105,7 +119,7 @@ export function useLogin() {
 
 export function useRegister() {
   return useMutation({
-    mutationFn: (data) => authApi.register(data), // Assuming this exists or will just mock it
+    mutationFn: (data) => authApi.register(data),
   })
 }
 
@@ -117,6 +131,7 @@ export function useRunAttack() {
       // Invalidate recent attacks and stats when a new attack is run
       queryClient.invalidateQueries({ queryKey: queryKeys.recentAttacks })
       queryClient.invalidateQueries({ queryKey: queryKeys.stats })
+      queryClient.invalidateQueries({ queryKey: queryKeys.monitoring.visualization })
       queryClient.invalidateQueries({ queryKey: queryKeys.attack.history() })
     },
   })

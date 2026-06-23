@@ -63,7 +63,7 @@ export function useAttackLoopStream(taskId, { enabled = false, onProgress, onCom
         const data = await attackLoopApi.getProgress(taskId)
         cbRef.current.onProgress?.(data)
         if (data.status === 'completed') {
-          cbRef.current.onCompleted?.(data.results)
+          cbRef.current.onCompleted?.(data)
           stopPolling()
         } else if (data.status === 'failed') {
           cbRef.current.onFailed?.(data.error)
@@ -108,8 +108,8 @@ export function useAttackLoopStream(taskId, { enabled = false, onProgress, onCom
         ws.onopen = () => {
           if (cancelled) { ws.close(); return }
           setConnectionMode('ws')
-          // If we were polling, stop it – WS is live
-          stopPolling()
+          // Keep HTTP polling as a fallback in case WS misses updates
+          startPolling()
         }
 
         ws.onmessage = (event) => {
@@ -118,7 +118,7 @@ export function useAttackLoopStream(taskId, { enabled = false, onProgress, onCom
             if (msg.type === 'task_update' || msg.type === 'progress') {
               cbRef.current.onProgress?.(msg)
               if (msg.status === 'completed') {
-                cbRef.current.onCompleted?.(msg.results)
+                cbRef.current.onCompleted?.(msg)
               } else if (msg.status === 'failed') {
                 cbRef.current.onFailed?.(msg.error)
               }

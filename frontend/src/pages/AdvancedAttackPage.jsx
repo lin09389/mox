@@ -2,10 +2,13 @@ import { useMemo, useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { AlertTriangle, Bug, CheckCircle2, Globe, Layers, Lock, Play, Shield, Zap, Loader2 } from 'lucide-react'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import { HubPanelIntro } from '../context/HubContext'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { isDemoModeEnabled } from '../api'
 import { useRunAttack } from '../hooks/queries'
 
 const CATEGORIES = [
@@ -119,6 +122,10 @@ export default function AdvancedAttackPage() {
       setReport({ target: data.model, results })
       toast.success('高级攻击测试已完成。')
     } catch {
+      if (!isDemoModeEnabled) {
+        toast.error('高级攻击测试失败，请检查后端连接。')
+        return
+      }
       setTimeout(() => {
         setReport(buildDemoResults(selectedCategories, data.model))
         toast('后端不可用，已展示演示报告。', { icon: '⚠️' })
@@ -128,16 +135,10 @@ export default function AdvancedAttackPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="ADVANCED ATTACK"
-          title="高级别安全红队编排平台"
-          description="按高级攻击分类组合执行定向越狱、Token 走私及梯度攻击测试，统一输出防御纵深通过情况。"
-        />
-      </motion.div>
+      <HubPanelIntro description="按高级攻击分类组合执行定向越狱、Token 走私及梯度攻击测试。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="攻击向量编排" description="勾选攻击分类组、设置模型参数并挂载目标诱导提示词。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -175,7 +176,13 @@ export default function AdvancedAttackPage() {
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标靶场模型</label>
-                <input className={`input-field font-mono ${errors.model ? 'border-rose-500/50' : ''}`} {...register('model')} />
+                <Controller
+                  name="model"
+                  control={control}
+                  render={({ field }) => (
+                    <ModelSelect value={field.value} onChange={field.onChange} className={errors.model ? '[&_select]:border-rose-500/50' : ''} />
+                  )}
+                />
                 {errors.model && <p className="text-xs text-rose-500">{errors.model.message}</p>}
               </div>
               {(watchSelected.includes('gradient_gcg') || watchSelected.includes('knowledge_extraction')) && (

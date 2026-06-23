@@ -1,4 +1,17 @@
-"""Gradio Web 界面"""
+"""Gradio Web 界面
+
+.. deprecated:: 0.4.0
+    Gradio UI 已弃用，请使用 React 前端 (``frontend/``)。
+    运行方式: ``cd frontend && npm run dev`` 或 ``docker compose up frontend``。
+"""
+
+import warnings
+
+warnings.warn(
+    "mox.ui (Gradio) is deprecated; use the React frontend at frontend/ instead.",
+    DeprecationWarning,
+    stacklevel=2,
+)
 
 import gradio as gr
 from typing import Dict, Any
@@ -17,7 +30,7 @@ from mox.attacks import (
     AutoDANAttack,
     AttackConfig,
 )
-from mox.attacks.advanced_attacks_v2 import (
+from mox.attacks.advanced_attacks import (
     PAIRAttack,
     DeepInceptionAttack,
 )
@@ -44,12 +57,10 @@ def create_interface():
         title="Mox - 大模型对抗攻防平台",
         theme=gr.themes.Soft(),
     ) as demo:
-        gr.Markdown(
-            """
+        gr.Markdown("""
             # 🛡️ Mox - 大模型对抗攻防平台
             LLM Adversarial Attack & Defense Platform
-            """
-        )
+            """)
 
         with gr.Tabs():
             with gr.TabItem("⚔️ 攻击测试"):
@@ -398,8 +409,7 @@ def create_interface():
                     outputs=[wf_validation_result, wf_safety_report],
                 )
 
-        gr.Markdown(
-            """
+        gr.Markdown("""
             ---
             **使用说明:**
             - ⚔️ **攻击测试**: 选择攻击类型和目标模型，输入攻击提示词进行测试
@@ -414,8 +424,7 @@ def create_interface():
             - 🔐 **工作流安全**: Plan-then-Execute 工作流安全验证 (AST解析)
 
             ⚠️ **注意**: 本平台仅供安全研究和教育目的使用
-            """
-        )
+            """)
 
     return demo
 
@@ -468,12 +477,14 @@ async def _run_attack(
             "结果": outcome.result.value,
             "成功分数": f"{outcome.success_score:.2f}",
             "迭代次数": outcome.iterations,
-            "对抗提示词": outcome.adversarial_prompt[:200] + "..."
-            if len(outcome.adversarial_prompt) > 200
-            else outcome.adversarial_prompt,
-            "模型响应": outcome.response[:300] + "..."
-            if len(outcome.response) > 300
-            else outcome.response,
+            "对抗提示词": (
+                outcome.adversarial_prompt[:200] + "..."
+                if len(outcome.adversarial_prompt) > 200
+                else outcome.adversarial_prompt
+            ),
+            "模型响应": (
+                outcome.response[:300] + "..." if len(outcome.response) > 300 else outcome.response
+            ),
         }
     except Exception as e:
         return {"错误": str(e)}
@@ -589,9 +600,11 @@ def load_test_cases(dataset):
             [
                 case.id,
                 case.category,
-                case.payload.prompt[:50] + "..."
-                if len(case.payload.prompt) > 50
-                else case.payload.prompt,
+                (
+                    case.payload.prompt[:50] + "..."
+                    if len(case.payload.prompt) > 50
+                    else case.payload.prompt
+                ),
                 case.severity,
             ]
         )
@@ -681,7 +694,7 @@ async def _run_gateway_validation(text: str, use_judge: bool):
             "置信度": f"{result.confidence:.2f}",
             "原因": result.reason,
             "匹配的规则": result.matched_rules,
-        }, result.sanitized_input if result.sanitized_input else text
+        }, (result.sanitized_input if result.sanitized_input else text)
     except Exception as e:
         return {"错误": str(e)}, text
 

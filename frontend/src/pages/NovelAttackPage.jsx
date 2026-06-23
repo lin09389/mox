@@ -2,10 +2,12 @@ import { useMemo, useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import toast from 'react-hot-toast'
 import { Check, Copy, Lock, Sparkles, Target, Type, Zap, Loader2 } from 'lucide-react'
-import { attackApi } from '../api'
+import { attackApi, isDemoModeEnabled } from '../api'
 import { useCopyToClipboard } from '../hooks/useCommon'
-import { MetricCard, PageHeader, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
-import { useForm } from 'react-hook-form'
+import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
+import ModelSelect from '../components/ui/ModelSelect'
+import { HubPanelIntro } from '../context/HubContext'
+import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useMutation } from '@tanstack/react-query'
@@ -62,7 +64,7 @@ export default function NovelAttackPage() {
     }
   })
 
-  const { register, handleSubmit, watch, setValue, formState: { errors, isSubmitting } } = useForm({
+  const { register, handleSubmit, control, watch, setValue, formState: { errors, isSubmitting } } = useForm({
     resolver: zodResolver(novelSchema),
     defaultValues: {
       attackType: 'token_level',
@@ -95,6 +97,10 @@ export default function NovelAttackPage() {
       setResult(responseData)
       toast.success('新型攻击测试完成。')
     } catch {
+      if (!isDemoModeEnabled) {
+        toast.error('新型攻击测试失败，请检查后端连接。')
+        return
+      }
       setTimeout(() => {
         setResult(buildDemoResult(data.attackType))
         toast('后端不可用，已显示演示结果。', { icon: '⚠️' })
@@ -104,16 +110,10 @@ export default function NovelAttackPage() {
 
   return (
     <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants}>
-        <PageHeader
-          eyebrow="NOVEL ATTACK"
-          title="前沿对抗样本实验室"
-          description="深度利用 tokenizer 缺陷、控制字符与隐写编码等新型旁路攻击策略，探查底层模型防线脆弱点。"
-        />
-      </motion.div>
+      <HubPanelIntro description="利用 tokenizer 缺陷、控制字符与隐写编码等新型旁路攻击策略探查模型防线。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit sticky top-6">
+        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
           <PanelHeader title="零日攻击配置" description="选择特定攻击向量模型并重组对抗载荷。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -162,7 +162,13 @@ export default function NovelAttackPage() {
               </div>
               <div className="space-y-2">
                 <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">靶标模型</label>
-                <input className={`input-field font-mono ${errors.model ? 'border-rose-500/50' : ''}`} {...register('model')} />
+                <Controller
+                  name="model"
+                  control={control}
+                  render={({ field }) => (
+                    <ModelSelect value={field.value} onChange={field.onChange} className={errors.model ? '[&_select]:border-rose-500/50' : ''} />
+                  )}
+                />
                 {errors.model && <p className="text-xs text-rose-500">{errors.model.message}</p>}
               </div>
             </div>

@@ -1,6 +1,14 @@
-"""Defense module exports"""
+"""Defense module exports
+
+输入检测分工:
+- input_filter: 入口级通用检测 (正则/关键词/困惑度/编码)
+- injection_detector: Prompt Injection 语义与多层编码检测
+- semantic_firewall: 意图分类与风险评分 (语义级)
+"""
 
 from .base import BaseDefense, DefenseConfig
+
+# 入口级通用输入过滤
 from .input_filter import (
     InputFilter,
     PerplexityFilter,
@@ -38,6 +46,8 @@ from .hallucination import (
     BiasDetector,
     BiasResult,
 )
+
+# Prompt Injection 专项检测
 from .injection_detector import (
     PromptInjectionDetector,
     MultiLayerInjectionDetector,
@@ -63,7 +73,7 @@ from .constitutional_ai import (
     DEFAULT_PRINCIPLES,
 )
 
-# 新增：语义防火墙
+# 语义级意图分类与风险评分
 from .semantic_firewall import (
     SemanticFirewall,
     IntentClassifier,
@@ -75,7 +85,7 @@ from .semantic_firewall import (
     RiskAssessment,
 )
 
-# 新增：输出验证器
+# 输出检测：output_filter (快速正则) + output_validator (PII/敏感信息精细检测)
 from .output_validator import (
     OutputValidator,
     OutputSanitizer,
