@@ -3,6 +3,7 @@ import toast from 'react-hot-toast'
 import { BookText, RefreshCw, ShieldAlert, Sparkles, Wand2, AlertCircle } from 'lucide-react'
 import { ADVANCED_ATTACK_TYPES, ATTACK_TYPES, DEFAULT_MODELS, GRADIENT_ATTACK_TYPES } from './constants'
 import { PanelHeader, StatusPill } from '../ui/AppFrame'
+import { AttackConfigPanel, AttackRunButton, AttackTypeCard } from './AttackTheme'
 
 export default function AttackForm({
   form,
@@ -34,7 +35,7 @@ export default function AttackForm({
   }
 
   return (
-    <section className="card card-glow h-full flex flex-col">
+    <AttackConfigPanel className="card-glow h-full flex flex-col lg:static lg:top-auto">
       <PanelHeader
         title="攻击测试配置"
         description="选择攻击类型、目标模型与期望行为，快速发起一轮安全测试。"
@@ -82,22 +83,15 @@ export default function AttackForm({
             {ATTACK_TYPES.map((type) => {
               const active = currentType === type.value
               return (
-                <label
-                  key={type.value}
-                  className={`cursor-pointer rounded-[20px] border px-4 py-4 text-left transition-all duration-200 ${
-                    active
-                      ? 'border-[var(--accent-primary)] bg-cyan-500/10 shadow-[0_0_15px_rgba(6,182,212,0.15)]'
-                      : 'border-[var(--border-glass-strong)] bg-[var(--bg-glass-strong)] hover:border-[var(--border-glass)] hover:bg-[var(--bg-glass)]'
-                  }`}
-                >
+                <label key={type.value} className="block cursor-pointer">
                   <input type="radio" value={type.value} {...register('attack_type')} className="hidden" />
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-[var(--text-main)]">{type.label}</p>
-                      <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">{type.desc}</p>
-                    </div>
-                    <span className={`badge ${active ? 'badge-success' : 'badge-neutral bg-[var(--bg-glass)] border-[var(--border-glass)]'}`}>{type.tag}</span>
-                  </div>
+                  <AttackTypeCard
+                    active={active}
+                    title={type.label}
+                    description={type.desc}
+                    meta={type.tag}
+                    type="div"
+                  />
                 </label>
               )
             })}
@@ -222,21 +216,11 @@ export default function AttackForm({
         </AnimatePresence>
 
         <div className="mt-auto pt-5">
-          <button type="submit" disabled={loading} className="btn-primary w-full justify-center py-3">
-            {loading ? (
-              <>
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                正在执行攻击测试
-              </>
-            ) : (
-              <>
-                <ShieldAlert className="h-5 w-5" />
-                发起攻击测试
-              </>
-            )}
-          </button>
+          <AttackRunButton loading={loading} icon={ShieldAlert} loadingText="正在执行攻击测试">
+            发起攻击测试
+          </AttackRunButton>
         </div>
       </form>
-    </section>
+    </AttackConfigPanel>
   )
 }

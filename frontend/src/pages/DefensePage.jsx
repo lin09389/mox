@@ -19,6 +19,7 @@ import { defenseApi, isDemoModeEnabled } from '../api'
 import { useApiStatus } from '../hooks/useApiStatus'
 import { useCopyToClipboard, useLocalStorage } from '../hooks/useCommon'
 import { PanelHeader, StatusPill } from '../components/ui/AppFrame'
+import { WorkspacePanelIntro } from '../components/workspace'
 
 const SAMPLE_TEXTS = [
   { label: '正常请求', text: '你好，今天有什么可以帮你的？' },
@@ -69,7 +70,8 @@ function normalizeResult(payload) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function DefensePage() {
   const [loading, setLoading] = useState(false)
@@ -180,14 +182,13 @@ export default function DefensePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <motion.div variants={itemVariants} className="mb-4 flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="space-y-2 max-w-2xl">
-          <p className="text-sm font-medium text-[var(--text-muted)]">
-            在输入与输出阶段检测恶意注入、越狱意图和敏感信息，支持一键脱敏与历史回溯。
-          </p>
-          <StatusPill online={apiConnected} onlineLabel="Live API 正常" offlineLabel="演示模式运行中" />
-        </div>
+    <WorkspacePageShell theme="defense">
+      <motion.div variants={itemVariants}>
+        <WorkspacePanelIntro
+          theme="defense"
+          description="在输入与输出阶段检测恶意注入、越狱意图和敏感信息，支持一键脱敏与历史回溯。"
+          badge={<StatusPill online={apiConnected} onlineLabel="Live API 正常" offlineLabel="演示模式运行中" />}
+        />
       </motion.div>
 
       <motion.div variants={itemVariants} className="flex flex-wrap w-fit gap-2 p-1.5 rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass-strong)] shadow-sm backdrop-blur-md">
@@ -463,6 +464,6 @@ export default function DefensePage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

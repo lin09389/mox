@@ -39,7 +39,7 @@ class RedTeamAgent:
         commander = commander_model_name or settings.DEFAULT_MODEL
         self.commander_llm = LLMFactory.create_from_model_name(commander)
 
-        self.tools = AttackTools(self.target_llm)
+        self.tools = AttackTools(self.target_llm, attacker_llm=self.commander_llm)
         self.state = RedTeamTask(
             task_id=task_id, target_model=target_model_name, max_steps=max_steps
         )
@@ -151,32 +151,45 @@ class RedTeamAgent:
                     yield self.state.model_dump()
                     break
 
-                elif action_type == "execute_attack":
-                    attack_key = action_json.get("attack_key")
+                elif action_type in ("execute_attack", "execute_chain"):
+                    attack_key = action_json.get("attack_key", "attack_chain")
                     target_prompt = action_json.get("target_prompt")
+                    chain_types = action_json.get("chain_types")
 
-                    step_log.action_name = attack_key
-                    step_log.action_input = {"target_prompt": target_prompt}
+                    step_log.action_name = attack_key if action_type == "execute_attack" else "attack_chain"
+                    step_log.action_input = {
+                        "target_prompt": target_prompt,
+                        "chain_types": chain_types,
+                    }
                     step_log.state = AgentState.OBSERVING
                     yield self.state.model_dump()
 
-                    # 2. OBSERVATION (Execute Tool)
                     self.history.append({"role": "assistant", "content": commander_response})
 
-                    result = await self.tools.execute_attack(attack_key, target_prompt)
+                    if action_type == "execute_chain":
+                        result = await self.tools.execute_chain(
+                            target_prompt, chain_types=chain_types
+                        )
+                    else:
+                        result = await self.tools.execute_attack(attack_key, target_prompt)
 
-                    obs_text = f"Attack '{attack_key}' execution result:\n"
+                    obs_text = f"Attack '{step_log.action_name}' execution result:\n"
                     obs_text += f"Success: {result['success']}\n"
                     if result.get("error"):
                         obs_text += f"Error: {result['error']}\n"
                     else:
                         obs_text += f"Score: {result.get('success_score')}\n"
                         obs_text += f"Target Response: {result.get('model_response')}\n"
+                        if result.get("agent_runtime"):
+                            ar = result["agent_runtime"]
+                            obs_text += (
+                                f"Tool calls: {ar.get('tool_calls_detected', 0)}, "
+                                f"Blocked: {ar.get('any_tool_blocked', False)}\n"
+                            )
 
                     step_log.observation = obs_text
                     self.history.append({"role": "user", "content": f"OBSERVATION:\n{obs_text}"})
 
-                    # 如果攻击成功，记录漏洞
                     if result.get("success_score", 0) >= self.success_threshold:
                         vuln = DiscoveredVulnerability(
                             id=f"vuln_{self.state.current_step}",

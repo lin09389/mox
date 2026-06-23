@@ -27,7 +27,8 @@ const severityBadge = {
   medium: 'bg-cyan-500/10 text-cyan-500 border-cyan-500/20',
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspaceRunButton } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function OWASPPage() {
   const [results, setResults] = useState([])
@@ -60,7 +61,7 @@ export default function OWASPPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用 OWASP LLM Top 10 标准类目评估模型在关键风险域的通过率。" />
 
       <div className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -72,15 +73,16 @@ export default function OWASPPage() {
               <ModelSelect value={model} onChange={setModel} />
             </div>
             
-            <button 
-              type="button" 
-              onClick={handleRun} 
-              disabled={running} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={handleRun}
+              disabled={running}
+              loading={running}
+              icon={Play}
+              loadingText="套件执行中..."
             >
-              {running ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              {running ? '套件执行中...' : '运行 OWASP 测试'}
-            </button>
+              运行 OWASP 测试
+            </WorkspaceRunButton>
             
             <div className="space-y-3 pt-4 border-t border-[var(--border-glass)]">
               {CATEGORIES.map((category) => (
@@ -170,6 +172,6 @@ export default function OWASPPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

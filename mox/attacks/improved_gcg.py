@@ -484,6 +484,19 @@ class ImprovedGCGAttack(BaseAttack):
         self._best_score = 0.0
         self._best_response = ""
 
+        if (
+            self.gradient_optimizer
+            and getattr(self.gradient_optimizer, "_device", "cpu") == "cuda"
+            and self.gcg_config.max_concurrent < 16
+        ):
+            self.gcg_config.max_concurrent = 16
+
+    def get_profile(self) -> Dict[str, Any]:
+        """返回 GCG 配置与硬件剖析（供 benchmark API 使用）"""
+        from mox.attacks.gcg_benchmark import profile_gcg_config
+
+        return profile_gcg_config(self.gcg_config)
+
     def _init_candidate_tokens(self) -> List[str]:
         """初始化候选 token 池"""
         tokens = []

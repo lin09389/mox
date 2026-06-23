@@ -42,10 +42,16 @@ class RAGContextInjectionAttack(BaseAttack):
         target_llm: BaseLLM,
         retriever_func: Optional[Callable] = None,
         config: Optional[RAGAttackConfig] = None,
+        use_vector_store: bool = True,
     ):
         super().__init__(target_llm, config or RAGAttackConfig())
         self.cfg: RAGAttackConfig = self.config
         self.retriever_func = retriever_func
+        if self.retriever_func is None and use_vector_store:
+            from mox.attacks.rag_retriever import create_default_rag_store
+
+            store = create_default_rag_store()
+            self.retriever_func = store.retriever_func(top_k=self.cfg.inject_docs)
 
     def _generate_poisoned_context(self, target_behavior: str) -> str:
         """生成投毒上下文"""

@@ -28,7 +28,8 @@ const DIMENSIONS = [
   { id: 'coherence', label: '连贯性' },
 ]
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspaceRunButton, WorkspaceTypeCard } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function RedTeamPage() {
   const [results, setResults] = useState([])
@@ -79,7 +80,7 @@ export default function RedTeamPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="按攻击技术组合进行红队压力测试，快速定位高风险能力缺口。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
@@ -105,19 +106,13 @@ export default function RedTeamPage() {
                 {TECHNIQUES.map((technique) => {
                   const active = selected.includes(technique.id)
                   return (
-                    <button
+                    <WorkspaceTypeCard
                       key={technique.id}
-                      type="button"
+                      active={active}
                       onClick={() => toggle(technique.id)}
-                      className={`relative overflow-hidden rounded-xl border p-3 text-left transition-all duration-300 ${
-                        active
-                          ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]'
-                          : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <p className={`relative z-10 text-sm font-bold font-display transition-colors mb-1 ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{technique.name}</p>
-                      <p className={`relative z-10 text-xs font-medium transition-colors ${active ? 'text-cyan-500/70' : 'text-[var(--text-muted)]'}`}>{technique.description}</p>
-                    </button>
+                      title={technique.name}
+                      description={technique.description}
+                    />
                   )
                 })}
               </div>
@@ -157,15 +152,16 @@ export default function RedTeamPage() {
               </div>
             </div>
 
-            <button 
-              type="button" 
-              onClick={handleRun} 
-              disabled={running || selected.length === 0} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={handleRun}
+              disabled={running || selected.length === 0}
+              loading={running}
+              icon={Play}
+              loadingText="正在执行红队演练..."
             >
-              {running ? <Loader2 className="h-5 w-5 animate-spin" /> : <Play className="h-5 w-5" />}
-              {running ? '正在执行红队演练...' : '启动演练'}
-            </button>
+              启动演练
+            </WorkspaceRunButton>
           </div>
         </motion.section>
 
@@ -240,6 +236,6 @@ export default function RedTeamPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

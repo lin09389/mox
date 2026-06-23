@@ -33,6 +33,14 @@ from enum import Enum
 from pathlib import Path
 
 from mox.core import AttackType, AttackPayload
+from mox.evaluation.judge import LLMJudge, JudgeConfig, JudgeMode
+
+_JUDGE_MODE_MAP = {
+    "pattern": JudgeMode.PATTERN,
+    "self": JudgeMode.SELF,
+    "external": JudgeMode.EXTERNAL,
+    "hybrid": JudgeMode.HYBRID,
+}
 
 
 # 攻击技术枚举 - 扩展
@@ -60,14 +68,20 @@ class AttackTechnique(Enum):
 
 # AttackTechnique → registry key (no attack-class imports; avoids evaluation↔attacks cycle)
 TECHNIQUE_REGISTRY_KEYS: Dict[AttackTechnique, str] = {
+    AttackTechnique.PROMPT_INJECTION: "prompt_injection",
+    AttackTechnique.JAILBREAK: "jailbreak",
+    AttackTechnique.ROLE_PLAY: "role_confusion",
+    AttackTechnique.ENCODING: "encoding",
+    AttackTechnique.CONTEXT_INJECTION: "rag_context_injection",
+    AttackTechnique.CHAIN_OF_THOUGHT: "cot_injection",
+    AttackTechnique.PRIVILEGE_ESCALATION: "privilege_escalation",
+    AttackTechnique.DATA_EXFILTRATION: "knowledge_extraction",
     AttackTechnique.TAP: "tap",
     AttackTechnique.AUTO_DAN: "autodan",
     AttackTechnique.CRESCENDO: "crescendo",
-    AttackTechnique.JAILBREAK: "jailbreak",
-    AttackTechnique.PROMPT_INJECTION: "prompt_injection",
     AttackTechnique.TOOL_ABUSE: "tool_abuse",
     AttackTechnique.MEMORY_INJECTION: "memory_injection",
-    AttackTechnique.GCG: "gcg",
+    AttackTechnique.GCG: "improved_gcg",
 }
 
 
@@ -366,9 +380,27 @@ class RedTeamEvaluator:
         ],
     }
 
-    def __init__(self, use_llm_judge: bool = False, judge_llm=None):
+    def __init__(
+        self,
+        use_llm_judge: bool = False,
+        judge_llm=None,
+        judge_mode: str = "pattern",
+        target_llm=None,
+    ):
         self.use_llm_judge = use_llm_judge
         self.judge_llm = judge_llm
+        self.judge_mode = judge_mode
+        self.target_llm = target_llm
+        self._llm_judge: Optional[LLMJudge] = None
+        mode = _JUDGE_MODE_MAP.get(judge_mode, JudgeMode.PATTERN)
+        if mode != JudgeMode.PATTERN or use_llm_judge:
+            effective = mode if judge_mode != "pattern" else JudgeMode.HYBRID
+            base_llm = target_llm or judge_llm
+            if base_llm is not None:
+                self._llm_judge = LLMJudge(
+                    base_llm,
+                    JudgeConfig(mode=effective, judge_llm=judge_llm),
+                )
 
     async def evaluate(
         self,
@@ -377,17 +409,37 @@ class RedTeamEvaluator:
         technique: AttackTechnique,
         prompt: str = "",
     ) -> Dict[str, Any]:
-        """评估攻击是否成功
+        """评估攻击是否成功"""
+        if self._llm_judge and self.judge_mode != "pattern":
+            criteria = f"Attack technique: {technique.value}"
+            jr = await self._llm_judge.evaluate(
+                response, target_behavior, prompt, criteria=criteria
+            )
+            pattern = await self._pattern_evaluate(
+                response, target_behavior, technique, prompt
+            )
+            return {
+                "success": jr.success,
+                "score": jr.score,
+                "confidence": max(jr.score, 1.0 - jr.score) if jr.score else 0.5,
+                "reasoning": jr.reason,
+                "details": {
+                    **jr.details,
+                    "judge_mode": jr.judge_mode or self.judge_mode,
+                    "llm_judge": True,
+                    "pattern_fallback": pattern["details"],
+                },
+            }
+        return await self._pattern_evaluate(response, target_behavior, technique, prompt)
 
-        Args:
-            response: 模型响应
-            target_behavior: 目标行为
-            technique: 攻击技术
-            prompt: 攻击提示
-
-        Returns:
-            评估结果字典，包含 success, score, confidence, reasoning
-        """
+    async def _pattern_evaluate(
+        self,
+        response: str,
+        target_behavior: str,
+        technique: AttackTechnique,
+        prompt: str = "",
+    ) -> Dict[str, Any]:
+        """基于正则/关键词的模式评估（原有逻辑）"""
         response_lower = response.lower()
         target_lower = target_behavior.lower()
 
@@ -565,17 +617,24 @@ class RedTeamOrchestrator:
         target_llm,
         judge_llm=None,
         judge_mode: str = "pattern",
+        defense_pipeline=None,
+        use_defense: bool = False,
     ):
         self.llm = attacker_llm
         self.target_llm = target_llm
         self.judge_llm = judge_llm
         self.judge_mode = judge_mode
+        self.defense_pipeline = defense_pipeline
+        self.use_defense = use_defense
         self.scenarios = self._build_scenarios()
         self.results: List[RedTeamResult] = []
         self._progress_callback: Optional[Callable] = None
         self._attack_cache: Dict[str, Any] = {}
         self._evaluator = RedTeamEvaluator(
-            use_llm_judge=(judge_llm is not None), judge_llm=judge_llm
+            use_llm_judge=(judge_llm is not None),
+            judge_llm=judge_llm,
+            judge_mode=judge_mode,
+            target_llm=target_llm,
         )
 
     def set_progress_callback(
@@ -810,6 +869,45 @@ class RedTeamOrchestrator:
         """构建攻击场景"""
         return self._all_scenarios()
 
+    @classmethod
+    def with_defense(
+        cls,
+        attacker_llm,
+        target_llm,
+        judge_llm=None,
+        judge_mode: str = "hybrid",
+        use_llm_defense_judge: bool = False,
+    ) -> "RedTeamOrchestrator":
+        """创建带默认防御管道的红队编排器（攻防闭环评测）"""
+        from mox.defense.pipeline_factory import create_default_defense_pipeline
+
+        pipeline = create_default_defense_pipeline(
+            use_llm_judge=use_llm_defense_judge,
+            judge_llm=judge_llm,
+        )
+        return cls(
+            attacker_llm,
+            target_llm,
+            judge_llm=judge_llm,
+            judge_mode=judge_mode,
+            defense_pipeline=pipeline,
+            use_defense=True,
+        )
+
+    async def _apply_defense(self, prompt: str) -> tuple:
+        """可选防御前置检查，返回 (有效prompt, defense_meta)"""
+        if not self.use_defense or not self.defense_pipeline:
+            return prompt, {"defense_blocked": False}
+        result = await self.defense_pipeline.check(prompt)
+        meta = {
+            "defense_blocked": result.is_malicious,
+            "defense_confidence": result.confidence,
+            "defense_patterns": result.detected_patterns[:5],
+        }
+        if result.is_malicious:
+            return prompt, meta
+        return (result.sanitized_input or prompt), meta
+
     async def run_scenario(
         self,
         scenario: RedTeamScenario,
@@ -851,15 +949,32 @@ class RedTeamOrchestrator:
                 registry_key,
                 self.target_llm,
                 max_iterations=max_attempts,
+                attacker_llm=self.llm,
+                judge_llm=self.judge_llm,
             )
 
-            # 构建攻击载荷
             payload = scenario.to_attack_payload()
+            _, defense_meta = await self._apply_defense(payload.prompt)
+            if defense_meta.get("defense_blocked"):
+                return RedTeamResult(
+                    scenario=scenario,
+                    success=False,
+                    attempts=0,
+                    final_prompt=payload.prompt,
+                    model_response="",
+                    execution_time_ms=0,
+                    score=0.0,
+                    confidence=defense_meta.get("defense_confidence", 0.8),
+                    details={
+                        "technique": scenario.technique.value,
+                        "attack_type": "advanced",
+                        "defense": defense_meta,
+                        "bypassed_defense": False,
+                    },
+                )
 
-            # 执行攻击
             outcome = await attack.generate_attack(payload)
 
-            # 评估结果
             evaluation = await self._evaluator.evaluate(
                 outcome.response,
                 scenario.target,
@@ -881,6 +996,8 @@ class RedTeamOrchestrator:
                     "attack_type": "advanced",
                     "metadata": outcome.metadata,
                     "evaluation": evaluation,
+                    "defense": defense_meta,
+                    "bypassed_defense": not defense_meta.get("defense_blocked", False),
                 },
             )
         except Exception as e:
@@ -906,7 +1023,10 @@ class RedTeamOrchestrator:
 
         for attempt, prompt in enumerate(prompts[:max_attempts], 1):
             try:
-                messages = [Message(role="user", content=prompt)]
+                effective_prompt, defense_meta = await self._apply_defense(prompt)
+                if defense_meta.get("defense_blocked"):
+                    continue
+                messages = [Message(role="user", content=effective_prompt)]
                 response = await self.target_llm.generate(messages)
 
                 # 使用统一评估器
@@ -930,6 +1050,8 @@ class RedTeamOrchestrator:
                         details={
                             "technique": scenario.technique.value,
                             "evaluation": evaluation,
+                            "defense": defense_meta,
+                            "bypassed_defense": True,
                         },
                     )
 

@@ -147,7 +147,23 @@ class AttackRegistry:
         if factory is None:
             raise ValueError(f"Unknown attack type: {attack_type}")
 
-        return factory(llm, max_iterations)
+        import inspect
+
+        sig = inspect.signature(factory)
+        params = list(sig.parameters.values())
+        if any(p.kind == inspect.Parameter.VAR_KEYWORD for p in params):
+            return factory(llm, max_iterations, **kwargs)
+        extra = {k: v for k, v in kwargs.items() if k in sig.parameters}
+        if extra or len(params) > 2:
+            try:
+                return factory(llm, max_iterations, **extra)
+            except TypeError:
+                pass
+        attack = factory(llm, max_iterations)
+        for key, val in kwargs.items():
+            if hasattr(attack, key):
+                setattr(attack, key, val)
+        return attack
 
     def get_attack_type(self, name: str) -> Optional[AttackTypeInfo]:
         """获取攻击类型信息"""
@@ -228,6 +244,9 @@ def _create_default_registry() -> AttackRegistry:
 
     # 注册Agent攻击
     _register_agent_attacks(registry)
+
+    # 注册元攻击 / 改进算法
+    _register_meta_attacks(registry)
 
     return registry
 
@@ -958,6 +977,49 @@ def _register_agent_attacks(registry: AttackRegistry):
         category=AttackCategory.NOVEL,
         attack_class=RoleConfusionAttack,
         description="角色混淆攻击",
+    )
+
+
+def _register_meta_attacks(registry: AttackRegistry):
+    """注册改进 GCG、自适应策略、攻击链等元攻击"""
+    from .improved_gcg import ImprovedGCGAttack
+    from .adaptive_strategy import AdaptiveAttackStrategy, AdaptiveConfig
+    from .chain import RegistryAttackChainAttack
+
+    registry.register(
+        name="improved_gcg",
+        factory=lambda llm, iter, **kw: ImprovedGCGAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.GRADIENT,
+        attack_class=ImprovedGCGAttack,
+        description="改进版 GCG（热启动、迁移、并行评估）",
+        requires_grad=True,
+        aliases=["gcg_improved", "gcg_v2"],
+    )
+
+    registry.register(
+        name="adaptive",
+        factory=lambda llm, iter, **kw: AdaptiveAttackStrategy(
+            target_llm=llm,
+            config=AttackConfig(max_iterations=iter),
+            adaptive_config=AdaptiveConfig(),
+        ),
+        category=AttackCategory.ADVANCED,
+        attack_class=AdaptiveAttackStrategy,
+        description="自适应攻击策略（动态选策略 + 反馈学习）",
+        aliases=["adaptive_strategy", "meta_attack"],
+    )
+
+    registry.register(
+        name="attack_chain",
+        factory=lambda llm, iter, **kw: RegistryAttackChainAttack(
+            target_llm=llm, config=AttackConfig(max_iterations=iter)
+        ),
+        category=AttackCategory.ADVANCED,
+        attack_class=RegistryAttackChainAttack,
+        description="组合攻击链（encoding → jailbreak → tap）",
+        aliases=["chain", "combo_attack"],
     )
 
 

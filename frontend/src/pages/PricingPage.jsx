@@ -40,7 +40,8 @@ const plans = [
   },
 ]
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspacePanelIntro } from '../components/workspace'
+import { hoverCardVariants, itemVariants } from '../utils/animations'
 
 export default function PricingPage() {
   const [selectedPlan, setSelectedPlan] = useState(null)
@@ -70,15 +71,16 @@ export default function PricingPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell theme="pricing">
       <motion.div variants={itemVariants} className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-amber-700 dark:text-amber-300">
         计费与订阅功能正在规划中。当前开源版本可免费使用攻击、防御、评估等核心能力。
       </motion.div>
-      <motion.div variants={itemVariants} className="mb-4 space-y-2 max-w-2xl">
-        <h1 className="text-2xl font-bold tracking-tight text-[var(--text-main)]">系统算力与配额订阅</h1>
-        <p className="text-sm font-medium text-[var(--text-muted)]">
-          从轻量级验证到企业级治理，为红蓝对抗场景提供可扩展的算力与专家支持方案。
-        </p>
+      <motion.div variants={itemVariants}>
+        <WorkspacePanelIntro
+          theme="pricing"
+          badgeLabel="订阅方案 · 算力配额"
+          description="从轻量级验证到企业级治理，为红蓝对抗场景提供可扩展的算力与专家支持方案。"
+        />
       </motion.div>
 
       <motion.section variants={itemVariants} className="card p-6 sm:p-8 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)] mb-8">
@@ -93,16 +95,16 @@ export default function PricingPage() {
             </p>
           </div>
           <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">架构保障</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">架构保障</p>
               <p className="text-sm font-bold text-[var(--text-main)]">金融级安全沙盒隔离</p>
             </div>
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">算力调度</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">算力调度</p>
               <p className="text-sm font-bold text-[var(--text-main)]">全球分布式边缘推理</p>
             </div>
-            <div className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] p-5 hover:border-cyan-500/30 transition-colors">
-              <p className="text-[10px] uppercase font-bold tracking-[0.2em] text-cyan-500 mb-2">合规标准</p>
+            <div className="ws-stat-mini">
+              <p className="ws-stat-mini-label">合规标准</p>
               <p className="text-sm font-bold text-[var(--text-main)]">满足 ISO 27001 与 SOC2</p>
             </div>
           </div>
@@ -114,17 +116,19 @@ export default function PricingPage() {
           const Icon = plan.icon
           const toneStyles = {
             graphite: 'border-[var(--border-glass-strong)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/20',
-            electric: 'border-cyan-500/50 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.1),0_10px_30px_rgba(6,182,212,0.1)] transform scale-[1.02] z-10',
+            electric: 'border-cyan-500/50 bg-cyan-500/5 shadow-[inset_0_0_20px_rgba(6,182,212,0.1),0_10px_30px_rgba(6,182,212,0.1)] z-10',
             lava: 'border-amber-500/30 bg-amber-500/5 hover:border-amber-500/50',
           }
 
           return (
             <motion.article
               key={plan.id}
+              variants={hoverCardVariants}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
+              whileHover="hover"
               transition={{ delay: 0.2 + index * 0.1, ease: [0.22, 1, 0.36, 1], duration: 0.5 }}
-              className={`relative rounded-[24px] border p-8 transition-all duration-300 flex flex-col ${toneStyles[plan.tone]}`}
+              className={`ws-pricing-tier ${plan.popular ? 'ws-pricing-tier--featured' : ''} relative border p-8 flex flex-col ${toneStyles[plan.tone]}`}
             >
               {plan.popular && (
                 <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 badge border text-[10px] uppercase font-bold tracking-widest bg-cyan-500 text-[var(--bg-main)] border-cyan-400 px-4 py-1.5 shadow-[0_0_15px_rgba(6,182,212,0.5)]">
@@ -260,6 +264,6 @@ export default function PricingPage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

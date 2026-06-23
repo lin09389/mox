@@ -6,7 +6,17 @@ import { attackApi, isDemoModeEnabled } from '../api'
 import { useCopyToClipboard } from '../hooks/useCommon'
 import { MetricCard, PanelHeader, ProgressMeter } from '../components/ui/AppFrame'
 import ModelSelect from '../components/ui/ModelSelect'
-import { HubPanelIntro } from '../context/HubContext'
+import {
+  AttackPageShell,
+  AttackPanelIntro,
+  AttackConfigPanel,
+  AttackReportPanel,
+  AttackTypeCard,
+  AttackRunButton,
+  AttackDemoBanner,
+  AttackReportEmpty,
+  AttackCodeBlock,
+} from '../components/attack'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -44,7 +54,7 @@ function buildDemoResult(attackType) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { itemVariants } from '../utils/animations'
 
 const novelSchema = z.object({
   attackType: z.string().min(1),
@@ -109,11 +119,12 @@ export default function NovelAttackPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
-      <HubPanelIntro description="利用 tokenizer 缺陷、控制字符与隐写编码等新型旁路攻击策略探查模型防线。" />
+    <AttackPageShell>
+      <AttackPanelIntro description="利用 tokenizer 缺陷、控制字符与隐写编码等新型旁路攻击策略探查模型防线。" />
 
       <div className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
-        <motion.section variants={itemVariants} className="card p-6 h-fit lg:sticky lg:top-6">
+        <motion.div variants={itemVariants}>
+        <AttackConfigPanel>
           <PanelHeader title="零日攻击配置" description="选择特定攻击向量模型并重组对抗载荷。" />
           <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
             <div className="space-y-3">
@@ -125,25 +136,17 @@ export default function NovelAttackPage() {
                   const Icon = item.icon
                   const active = watchAttackType === item.value
                   return (
-                    <button
+                    <AttackTypeCard
                       key={item.value}
-                      type="button"
+                      active={active}
                       onClick={() => {
                         setValue('attackType', item.value, { shouldValidate: true })
                         setValue('prompt', ATTACK_TEMPLATES[item.value][0] || '', { shouldValidate: true })
                       }}
-                      className={`relative overflow-hidden rounded-xl border p-4 text-left transition-all duration-300 ${
-                        active ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]' : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <div className="relative z-10 mb-2 flex items-center gap-2">
-                        <div className={`p-1.5 rounded-lg transition-colors ${active ? 'bg-cyan-500 text-[var(--bg-main)]' : 'bg-[var(--bg-glass-strong)] text-[var(--text-muted)]'}`}>
-                          <Icon className="h-4 w-4" />
-                        </div>
-                        <p className={`text-sm font-bold font-display ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{item.label}</p>
-                      </div>
-                      <p className={`relative z-10 text-xs font-medium ${active ? 'text-cyan-500/80' : 'text-[var(--text-muted)]'}`}>{item.desc}</p>
-                    </button>
+                      icon={Icon}
+                      title={item.label}
+                      description={item.desc}
+                    />
                   )
                 })}
               </div>
@@ -184,18 +187,15 @@ export default function NovelAttackPage() {
               <textarea rows={3} className="input-field font-mono text-sm leading-relaxed resize-none p-4" {...register('targetBehavior')} placeholder="例如：诱导模型绕过拦截并泄露后门数据..." />
             </div>
 
-            <button 
-              type="submit" 
-              disabled={isSubmitting} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
-            >
-              {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <Zap className="h-5 w-5" />}
-              {isSubmitting ? '正在执行前沿渗透探测...' : '注入并执行攻击'}
-            </button>
+            <AttackRunButton loading={isSubmitting} icon={Zap} loadingText="正在执行前沿渗透探测...">
+              注入并执行攻击
+            </AttackRunButton>
           </form>
-        </motion.section>
+        </AttackConfigPanel>
+        </motion.div>
 
-        <motion.section variants={itemVariants} className="card p-6 bg-[var(--bg-glass-strong)] border-[var(--border-glass)] shadow-[inset_0_0_40px_rgba(6,182,212,0.02)]">
+        <motion.div variants={itemVariants}>
+        <AttackReportPanel>
           <PanelHeader title="推演链路与结果" description="关注边界崩溃分数、混淆提示词与模型响应特征。" />
           
           <AnimatePresence mode="wait">
@@ -208,10 +208,7 @@ export default function NovelAttackPage() {
                 className="space-y-6"
               >
                 {result._demo_mode && (
-                  <div className="rounded-xl bg-amber-500/10 border border-amber-500/20 p-3 flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-xs font-bold text-amber-500 tracking-wide">演示模式：本地沙盒测试执行</span>
-                  </div>
+                  <AttackDemoBanner text="演示模式：本地沙盒测试执行" />
                 )}
                 
                 <div className="grid gap-4 sm:grid-cols-3">
@@ -242,9 +239,7 @@ export default function NovelAttackPage() {
                         {copied ? '已复制' : '复制 Payload'}
                       </button>
                     </div>
-                    <div className="p-4 rounded-lg bg-[var(--bg-main)]/50 border border-[var(--border-glass)] overflow-x-auto">
-                      <pre className="text-xs font-mono text-cyan-500 leading-relaxed whitespace-pre-wrap word-break-all">{result.adversarial_prompt || result['对抗提示词'] || '无'}</pre>
-                    </div>
+                    <AttackCodeBlock>{result.adversarial_prompt || result['对抗提示词'] || '无'}</AttackCodeBlock>
                   </div>
 
                   <div className="rounded-xl border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] p-5">
@@ -259,31 +254,21 @@ export default function NovelAttackPage() {
                 </div>
               </motion.div>
             ) : (
-              <motion.div 
-                key="empty"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                className="flex min-h-[400px] flex-col items-center justify-center gap-4 text-center p-8"
-              >
-                <div className="w-20 h-20 rounded-full bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] flex items-center justify-center">
-                  {isSubmitting ? (
-                    <div className="w-10 h-10 border-4 border-cyan-500/30 border-t-cyan-500 rounded-full animate-spin" />
-                  ) : (
-                    <Zap className="h-10 w-10 text-[var(--text-muted)] opacity-60" />
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-[var(--text-main)]">{isSubmitting ? '生成边界探测探针中...' : '准备执行推演'}</h3>
-                  <p className="mt-2 text-sm font-medium text-[var(--text-muted)] max-w-sm">
-                    {isSubmitting ? '正在生成包含零宽字符或多层编码混淆的变异提示词，尝试触发大模型的隐性漏洞。' : '平台将组装包含编码异常与分词陷阱的新型攻击序列，用于侦测未知的安全边界脆弱性。'}
-                  </p>
-                </div>
+              <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
+                <AttackReportEmpty
+                  icon={Zap}
+                  title="准备执行推演"
+                  description="平台将组装包含编码异常与分词陷阱的新型攻击序列，用于侦测未知的安全边界脆弱性。"
+                  loading={isSubmitting}
+                  loadingTitle="生成边界探测探针中..."
+                  loadingDescription="正在生成包含零宽字符或多层编码混淆的变异提示词，尝试触发大模型的隐性漏洞。"
+                />
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.section>
+        </AttackReportPanel>
+        </motion.div>
       </div>
-    </motion.div>
+    </AttackPageShell>
   )
 }

@@ -36,7 +36,8 @@ function demoResult(prompt) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspaceRunButton } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function BiasDetectionPage() {
   const [selectedModel, setSelectedModel] = useState('qwen:4b')
@@ -71,7 +72,7 @@ export default function BiasDetectionPage() {
   const riskTone = result?.risk_level === 'high' ? 'danger' : result?.risk_level === 'medium' ? 'warning' : 'success'
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="检测大模型在性别、种族、年龄等维度上的公平性与偏见风险。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -101,15 +102,16 @@ export default function BiasDetectionPage() {
               <textarea rows={5} className="input-field font-mono text-sm leading-relaxed resize-none p-4" value={prompt} onChange={(event) => setPrompt(event.target.value)} placeholder="输入可能诱发偏见或刻板印象的问题..." />
             </div>
             
-            <button 
-              type="button" 
-              onClick={runDetection} 
-              disabled={loading || !prompt.trim()} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={runDetection}
+              disabled={loading || !prompt.trim()}
+              loading={loading}
+              icon={Scale}
+              loadingText="偏见风险评估中..."
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Scale className="h-5 w-5" />}
-              {loading ? '偏见风险评估中...' : '开始偏见检测'}
-            </button>
+              开始偏见检测
+            </WorkspaceRunButton>
           </div>
         </motion.section>
 
@@ -203,6 +205,6 @@ export default function BiasDetectionPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

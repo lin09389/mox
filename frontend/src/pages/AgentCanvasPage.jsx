@@ -16,6 +16,7 @@ import { nodeTypes } from '../components/canvas/nodes'
 import AgentCanvasSidebar from '../components/canvas/AgentCanvasSidebar'
 import { useTheme } from '../hooks/useTheme'
 import { canvasApi } from '../api'
+import { WorkspacePageShell } from '../components/workspace'
 
 const initialNodes = [
   {
@@ -234,10 +235,10 @@ function CanvasFlow() {
 
 export default function AgentCanvasPage() {
   return (
-    <div className="h-[calc(100vh-160px)] min-h-[600px]">
+    <WorkspacePageShell className="h-[calc(100vh-160px)] min-h-[600px]">
       <ReactFlowProvider>
         <CanvasFlow />
       </ReactFlowProvider>
-    </div>
+    </WorkspacePageShell>
   )
 }

@@ -9,8 +9,9 @@ import {
   Layers3,
   ShieldCheck,
 } from 'lucide-react'
-import { EmptyState, PanelHeader, ProgressMeter } from '../ui/AppFrame'
+import { EmptyState, PanelHeader } from '../ui/AppFrame'
 import { useCopyToClipboard } from '../../hooks/useCommon'
+import { AttackReportPanel, AttackRiskGauge, AttackDemoBanner, AttackCodeBlock } from './AttackTheme'
 
 function getResultSummary(result) {
   if (!result) return null
@@ -48,7 +49,7 @@ export default function AttackResult({ result }) {
 
   if (!summary) {
     return (
-      <section className="card card-glow h-full min-h-[520px]">
+      <AttackReportPanel className="card-glow h-full min-h-[520px] flex flex-col">
         <PanelHeader
           title="结果面板"
           description="运行测试后，这里会展示成功分数、模型响应与后续建议。"
@@ -59,7 +60,7 @@ export default function AttackResult({ result }) {
           description="先在左侧配置攻击参数并提交。结果面板会自动切换到分析视图。"
           tone="electric"
         />
-      </section>
+      </AttackReportPanel>
     )
   }
 
@@ -67,58 +68,54 @@ export default function AttackResult({ result }) {
   const riskPercent = Math.round(summary.score * 100)
 
   return (
-    <motion.section
+    <motion.div
       initial={{ opacity: 0, y: 12 }}
       animate={{ opacity: 1, y: 0 }}
-      className="card card-glow h-full"
+      transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
     >
+    <AttackReportPanel className="card-glow h-full">
       <PanelHeader
         title="结果面板"
         description="统一查看风险评分、攻击状态、对抗提示词和模型响应。"
       />
 
       <div className="space-y-4">
-        <div className="hero-panel p-5">
+        <div className="ws-lab-hero hero-panel p-5">
           <div className="relative z-10 flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
             <div className="space-y-2">
               <span className={`badge ${isSuccess ? 'badge-danger' : 'badge-success'}`}>
                 {isSuccess ? <AlertTriangle className="h-3.5 w-3.5" /> : <ShieldCheck className="h-3.5 w-3.5" />}
                 {isSuccess ? '攻击成功' : '攻击已拦截'}
               </span>
-              <p className="text-sm text-graphite-500">
+              <p className="text-sm text-[var(--text-muted)]">
                 {summary.demo ? '当前显示演示结果，用于预览流程和页面状态。' : '该结果来自当前一次实际测试。'}
               </p>
-              <div className="flex flex-wrap gap-4 text-sm text-graphite-600">
-                <span>风险分数：<strong className="text-graphite-950">{summary.score.toFixed(2)}</strong></span>
-                <span>迭代次数：<strong className="text-graphite-950">{summary.iterations}</strong></span>
+              <div className="flex flex-wrap gap-4 text-sm text-[var(--text-muted)]">
+                <span>
+                  风险分数：<strong className="text-[var(--text-main)] font-mono">{summary.score.toFixed(2)}</strong>
+                </span>
+                <span>
+                  迭代次数：<strong className="text-[var(--text-main)] font-mono">{summary.iterations}</strong>
+                </span>
               </div>
             </div>
 
-            <div className="min-w-[220px] rounded-[20px] border border-white/80 bg-white/72 p-4">
-              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-graphite-400">风险热度</p>
-              <p className="mt-3 font-display text-4xl font-bold tracking-tight text-graphite-950">{riskPercent}%</p>
-              <div className="mt-3">
-                <ProgressMeter value={riskPercent} tone={isSuccess ? 'danger' : 'success'} />
-              </div>
+            <div className="min-w-[240px]">
+              <AttackRiskGauge value={riskPercent} label="风险热度" breached={isSuccess} />
             </div>
           </div>
         </div>
 
         {summary.demo && (
-          <div className="rounded-[20px] border border-amber-100 bg-amber-50/75 px-4 py-3 text-sm text-amber-800">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <p>{summary.warning || '当前后端未连接，页面展示的是演示数据。'}</p>
-            </div>
-          </div>
+          <AttackDemoBanner text={summary.warning || '当前后端未连接，页面展示的是演示数据。'} />
         )}
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Clipboard className="h-4 w-4 text-electric-600" />
-                <h3 className="text-sm font-semibold text-graphite-900">对抗提示词</h3>
+          <article className="attack-output-card">
+            <div className="attack-output-card-header">
+              <div className="attack-output-card-title">
+                <Clipboard className="h-4 w-4 text-[var(--ws-accent)]" />
+                对抗提示词
               </div>
               <button
                 type="button"
@@ -129,9 +126,7 @@ export default function AttackResult({ result }) {
               </button>
             </div>
             {summary.prompt ? (
-              <p className="max-h-[240px] overflow-auto rounded-[16px] bg-graphite-50/90 p-4 font-mono text-xs leading-6 text-graphite-700">
-                {summary.prompt}
-              </p>
+              <AttackCodeBlock>{summary.prompt}</AttackCodeBlock>
             ) : (
               <EmptyState
                 icon={Clipboard}
@@ -141,11 +136,11 @@ export default function AttackResult({ result }) {
             )}
           </article>
 
-          <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
-            <div className="mb-3 flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <FileSearch className="h-4 w-4 text-lava-600" />
-                <h3 className="text-sm font-semibold text-graphite-900">模型响应</h3>
+          <article className="attack-output-card">
+            <div className="attack-output-card-header">
+              <div className="attack-output-card-title">
+                <FileSearch className="h-4 w-4 text-[var(--attack-danger)]" />
+                模型响应
               </div>
               <button
                 type="button"
@@ -156,9 +151,7 @@ export default function AttackResult({ result }) {
               </button>
             </div>
             {summary.modelResponse ? (
-              <p className="max-h-[240px] overflow-auto rounded-[16px] bg-graphite-50/90 p-4 text-sm leading-7 text-graphite-700">
-                {summary.modelResponse}
-              </p>
+              <AttackCodeBlock className="font-sans text-sm">{summary.modelResponse}</AttackCodeBlock>
             ) : (
               <EmptyState
                 icon={FileSearch}
@@ -169,31 +162,31 @@ export default function AttackResult({ result }) {
           </article>
         </div>
 
-        <article className="rounded-[20px] border border-graphite-200/70 bg-white/85 p-4">
-          <div className="mb-3 flex items-center gap-2">
+        <article className="attack-output-card">
+          <div className="attack-output-card-title mb-3">
             {isSuccess ? (
-              <AlertTriangle className="h-4 w-4 text-lava-600" />
+              <AlertTriangle className="h-4 w-4 text-[var(--attack-danger)]" />
             ) : (
-              <CheckCircle2 className="h-4 w-4 text-neon-600" />
+              <CheckCircle2 className="h-4 w-4 text-neon-500" />
             )}
-            <h3 className="text-sm font-semibold text-graphite-900">后续建议</h3>
+            后续建议
           </div>
           {summary.recommendations.length > 0 ? (
             <div className="space-y-3">
               {summary.recommendations.slice(0, 4).map((item, index) => (
                 <div
                   key={`${item.priority}-${index}`}
-                  className="rounded-[18px] border border-graphite-200/70 bg-graphite-50/75 px-4 py-3"
+                  className="rounded-xl border border-[var(--border-glass)] bg-[var(--bg-glass)] px-4 py-3"
                 >
-                  <p className="text-sm font-medium text-graphite-900">
+                  <p className="text-sm font-bold text-[var(--text-main)]">
                     {item.priority ? `优先级 ${item.priority}` : `建议 ${index + 1}`}
                   </p>
-                  <p className="mt-1 text-sm text-graphite-600">{item.content || String(item)}</p>
+                  <p className="mt-1 text-sm font-medium text-[var(--text-muted)]">{item.content || String(item)}</p>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-sm text-graphite-500">
+            <p className="text-sm font-medium text-[var(--text-muted)]">
               {isSuccess
                 ? '建议补充输入过滤、输出审查和更严格的系统提示保护。'
                 : '当前测试未突破防线，建议继续扩大提示词覆盖面验证鲁棒性。'}
@@ -201,6 +194,7 @@ export default function AttackResult({ result }) {
           )}
         </article>
       </div>
-    </motion.section>
+    </AttackReportPanel>
+    </motion.div>
   )
 }

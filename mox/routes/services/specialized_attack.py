@@ -4,7 +4,7 @@ from typing import Any, Dict, Optional
 
 from mox.core.history_store import persist_attack_outcome
 from mox.routes.services import get_cached_llm, execute_registry_attack
-from mox.routes.services.attack_service import format_attack_outcome
+from mox.routes.services.attack_service import format_attack_outcome_enriched
 
 
 async def run_specialized_attack_response(
@@ -36,7 +36,7 @@ async def run_specialized_attack_response(
         outcome,
         source=source,
     )
-    payload = format_attack_outcome(outcome)
+    payload = await format_attack_outcome_enriched(outcome, attack_type)
     payload["model_used"] = model_name
     payload["ollama_mode"] = use_ollama
     payload["record_id"] = record_id

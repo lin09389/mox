@@ -64,7 +64,8 @@ function formatDate(dateStr) {
   return date.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function HistoryPage() {
   const [activeTab, setActiveTab] = useState('attack')
@@ -157,7 +158,7 @@ export default function HistoryPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="统一查看攻击与防御记录，支持搜索、排序、导出和移动端浏览。" />
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -514,6 +515,6 @@ export default function HistoryPage() {
         </AnimatePresence>
       </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

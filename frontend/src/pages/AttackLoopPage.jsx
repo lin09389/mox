@@ -77,7 +77,8 @@ const DEFAULT_PROMPTS = [
 
 const CHART_COLORS = ['#0ea5e9', '#f43f5e', '#10b981', '#f59e0b', '#8b5cf6', '#ec4899', '#14b8a6', '#f97316']
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 const ChartTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
@@ -324,7 +325,7 @@ export default function AttackLoopPage() {
   }, [results])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro
         description="配置并发测试任务，组合模型、攻击类型与诱导提示词，实现无人值守的安全漏洞挖掘。"
         action={(
@@ -761,6 +762,6 @@ export default function AttackLoopPage() {
           </div>
         </motion.div>
       )}
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

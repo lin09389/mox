@@ -100,7 +100,8 @@ function buildDemoResult(form) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspaceRunButton, WorkspaceTypeCard } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function BenchmarkPage() {
   const [loading, setLoading] = useState(false)
@@ -184,7 +185,7 @@ export default function BenchmarkPage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用标准数据集对目标模型执行自动化对抗评测与打分。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -197,49 +198,43 @@ export default function BenchmarkPage() {
                 {DATASETS.map((dataset) => {
                   const active = form.dataset === dataset.value
                   return (
-                    <button
+                    <WorkspaceTypeCard
                       key={dataset.value}
-                      type="button"
+                      active={active}
                       onClick={() => setForm((current) => ({ ...current, dataset: dataset.value }))}
-                      className={`rounded-xl border p-4 text-left transition-all duration-300 ${
-                        active
-                          ? 'border-cyan-500/50 bg-cyan-500/10 shadow-[inset_0_0_15px_rgba(6,182,212,0.1)] transform scale-[1.02]'
-                          : 'border-[var(--border-glass)] bg-[var(--bg-glass)] hover:bg-[var(--bg-glass-strong)] hover:border-cyan-500/30'
-                      }`}
-                    >
-                      <p className={`text-sm font-bold font-display mb-1 ${active ? 'text-cyan-500' : 'text-[var(--text-main)]'}`}>{dataset.label}</p>
-                      <p className={`text-xs font-medium mb-3 ${active ? 'text-cyan-500/70' : 'text-[var(--text-muted)]'}`}>{dataset.desc}</p>
-                      <p className="text-[10px] font-bold uppercase tracking-widest bg-[var(--bg-main)]/50 px-2 py-1 rounded inline-block text-[var(--text-muted)]">样本量 {dataset.count}</p>
-                    </button>
+                      title={dataset.label}
+                      description={dataset.desc}
+                      meta={`${dataset.count} 样本`}
+                    />
                   )
                 })}
               </div>
             </div>
 
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">攻击类型</label>
-                <select
-                  className="input-field appearance-none bg-no-repeat bg-[right_0.5rem_center] bg-[length:1.5em_1.5em]"
-                  value={form.attack_type}
-                  onChange={(event) =>
-                    setForm((current) => ({ ...current, attack_type: event.target.value }))
-                  }
-                >
-                  {ATTACK_TYPES.map((type) => (
-                    <option key={type.value} value={type.value}>
-                      {type.label}
-                    </option>
-                  ))}
-                </select>
+            <div className="space-y-3">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">攻击类型</label>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {ATTACK_TYPES.map((attackType) => {
+                  const active = form.attack_type === attackType.value
+                  return (
+                    <WorkspaceTypeCard
+                      key={attackType.value}
+                      active={active}
+                      onClick={() => setForm((current) => ({ ...current, attack_type: attackType.value }))}
+                      title={attackType.label}
+                      description={attackType.desc}
+                    />
+                  )
+                })}
               </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
-                <ModelSelect
-                  value={form.model}
-                  onChange={(model) => setForm((current) => ({ ...current, model }))}
-                />
-              </div>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">目标模型</label>
+              <ModelSelect
+                value={form.model}
+                onChange={(model) => setForm((current) => ({ ...current, model }))}
+              />
             </div>
 
             <div className="space-y-2">
@@ -262,19 +257,16 @@ export default function BenchmarkPage() {
               </div>
             </div>
 
-            <button type="button" onClick={handleRun} disabled={loading} className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none">
-              {loading ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin" />
-                  矩阵执行中 ({progress}%)
-                </>
-              ) : (
-                <>
-                  <Play className="h-5 w-5" />
-                  运行基准评测
-                </>
-              )}
-            </button>
+            <WorkspaceRunButton
+              type="button"
+              onClick={handleRun}
+              disabled={loading}
+              loading={loading}
+              icon={Play}
+              loadingText={`矩阵执行中 (${progress}%)`}
+            >
+              运行基准评测
+            </WorkspaceRunButton>
           </div>
         </motion.section>
 
@@ -365,6 +357,6 @@ export default function BenchmarkPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

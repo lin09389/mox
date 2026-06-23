@@ -14,7 +14,8 @@ const seedTemplates = [
 
 const blankForm = { name: '', attack_type: '', category: '', content: '' }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function TemplatePage() {
   const [templates, setTemplates] = useState([])
@@ -172,7 +173,7 @@ export default function TemplatePage() {
   }
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro
         description={
           demoMode
@@ -328,6 +329,6 @@ export default function TemplatePage() {
           </motion.div>
         )}
       </AnimatePresence>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

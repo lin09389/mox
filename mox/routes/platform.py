@@ -16,6 +16,8 @@ class OWASPRequest(BaseModel):
 class RedTeamRequest(BaseModel):
     model: str = "gpt-4"
     techniques: List[str] = []
+    use_defense: bool = False
+    judge_mode: str = "pattern"
 
 
 class CodeSecurityRequest(BaseModel):
@@ -261,7 +263,14 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
         from mox.evaluation.redteam import RedTeamOrchestrator
 
         llm = _create_llm(request.model)
-        orchestrator = RedTeamOrchestrator(llm, llm)
+        if request.use_defense:
+            orchestrator = RedTeamOrchestrator.with_defense(
+                llm, llm, judge_mode=request.judge_mode or "hybrid"
+            )
+        else:
+            orchestrator = RedTeamOrchestrator(
+                llm, llm, judge_mode=request.judge_mode or "pattern"
+            )
         scenarios = orchestrator.scenarios
         if request.techniques:
             allowed = set(request.techniques)

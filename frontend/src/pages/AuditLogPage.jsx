@@ -8,7 +8,8 @@ import { useAuditLogs } from '../hooks/queries'
 import { isDemoModeEnabled } from '../api'
 import { AUDIT_ACTION_OPTIONS } from '../constants/auditActions'
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function AuditLogPage() {
   const [searchParams, setSearchParams] = useSearchParams()
@@ -54,7 +55,7 @@ export default function AuditLogPage() {
   }, [logs])
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="统一监控平台接口行为、状态码和响应时延，便于追溯安全事件与异常请求。" />
 
       <motion.div variants={itemVariants} className="grid gap-4 md:grid-cols-3">
@@ -200,6 +201,6 @@ export default function AuditLogPage() {
           )}
         </div>
       </motion.section>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }

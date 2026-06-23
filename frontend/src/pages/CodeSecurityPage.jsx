@@ -30,7 +30,8 @@ function demoResult(text) {
   }
 }
 
-import { containerVariants, itemVariants } from '../utils/animations'
+import { WorkspacePageShell, WorkspaceRunButton } from '../components/workspace'
+import { itemVariants } from '../utils/animations'
 
 export default function CodeSecurityPage() {
   const [selectedModel, setSelectedModel] = useState('qwen:4b')
@@ -65,7 +66,7 @@ export default function CodeSecurityPage() {
   const criticalCount = vulnerabilities.filter((item) => item.severity === 'critical').length
 
   return (
-    <motion.div variants={containerVariants} initial="hidden" animate="show" className="page-shell">
+    <WorkspacePageShell>
       <HubPanelIntro description="使用 AI 引擎进行静态代码分析，快速识别常见 CWE 漏洞与注入风险。" />
 
       <div className="grid gap-6 xl:grid-cols-[1fr_1fr]">
@@ -93,15 +94,16 @@ export default function CodeSecurityPage() {
               </div>
             </div>
             
-            <button 
-              type="button" 
-              onClick={runSecurityTest} 
-              disabled={loading || !codePrompt.trim()} 
-              className="btn-primary w-full justify-center py-3 bg-cyan-500 hover:bg-cyan-600 border-cyan-500 text-white shadow-[0_0_20px_rgba(6,182,212,0.3)] text-base font-bold disabled:opacity-50 disabled:shadow-none"
+            <WorkspaceRunButton
+              type="button"
+              onClick={runSecurityTest}
+              disabled={loading || !codePrompt.trim()}
+              loading={loading}
+              icon={ShieldAlert}
+              loadingText="代码安全扫描中..."
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldAlert className="h-5 w-5" />}
-              {loading ? '代码安全扫描中...' : '运行安全检测'}
-            </button>
+              运行安全检测
+            </WorkspaceRunButton>
           </div>
         </motion.section>
 
@@ -194,6 +196,6 @@ export default function CodeSecurityPage() {
           </AnimatePresence>
         </motion.section>
       </div>
-    </motion.div>
+    </WorkspacePageShell>
   )
 }
