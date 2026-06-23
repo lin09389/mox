@@ -30,9 +30,17 @@ Mox 是 LLM 对抗攻防平台：FastAPI 后端 + React (React 19 + Vite 6 + Tai
 
 ## API 约定
 
-- 统一前缀：`/api/v1`（`/api` 为兼容层，带 Deprecation 头）
-- 扩展能力：`/api/v2`（Agent 攻击、多模态、安全卡片等）
-- 前端封装：`frontend/src/api/index.js`
+**Canonical 前缀：`/api/v1`** — 所有新代码与前端调用均应使用此路径。
+
+| 前缀 | 状态 | 说明 |
+|------|------|------|
+| `/api/v1` | ✅ 正式 | 攻击、防御、评估、平台、攻击循环、Agent/多模态等全部能力 |
+| `/api` | ⚠️ 兼容层 | 部分路由的临时别名，响应带 `Deprecation` / `Sunset: 2026-12-31` |
+| `/api/v2` | ⚠️ 已弃用 | 薄兼容层（`mox/routes/api_v2.py`），内部委托 v1 handler，计划移除 |
+
+- 路由装配：`mox/api.py`（v1 注册全部 router；`/api` 与 `/api/v2` 仅作迁移过渡）
+- 共享 handler：`mox/routes/services/`（`attack_service.py`、`specialized_attack.py`、`advanced_handlers.py`）
+- 前端封装：`frontend/src/api/index.js`（`API_PREFIX = '/api/v1'`，不调用 v2）
 - 环境变量：`VITE_API_URL`（生产部署时设置后端地址）
 
 ## 启动方式

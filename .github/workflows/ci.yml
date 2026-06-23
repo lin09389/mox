@@ -103,7 +103,7 @@ jobs:
         run: pip install -e ".[dev]"
 
       - name: Run tests
-        run: pytest tests/ -v --tb=short -x --timeout=60
+        run: pytest tests/ -v --tb=short -x --timeout=60 --cov=mox --cov-report=xml
         timeout-minutes: 30
 
       - name: Upload coverage
