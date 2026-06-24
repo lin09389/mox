@@ -114,6 +114,8 @@ export default function AttackLoopPage() {
     base_url: 'http://localhost:11434/v1',
     success_threshold: 0.6,
     max_iterations: 5,
+    agent_mode: 'langchain',
+    max_agent_steps: 5,
     random_prompts: false,
   })
 
@@ -484,6 +486,17 @@ export default function AttackLoopPage() {
                     <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">对抗深度</label>
                     <input type="number" min="1" max="100" value={config.max_iterations} onChange={e => setConfig(prev => ({ ...prev, max_iterations: parseInt(e.target.value) || 5 }))} className="input-field w-full" />
                   </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">Agent 模式</label>
+                    <select value={config.agent_mode} onChange={e => setConfig(prev => ({ ...prev, agent_mode: e.target.value }))} className="input-field w-full">
+                      <option value="langchain">LangChain 多步循环</option>
+                      <option value="prompt">单轮 Prompt</option>
+                    </select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-wider">工具步数</label>
+                    <input type="number" min="1" max="50" value={config.max_agent_steps} onChange={e => setConfig(prev => ({ ...prev, max_agent_steps: parseInt(e.target.value) || 5 }))} className="input-field w-full" />
+                  </div>
                 </div>
                 
                 <div className="mt-5">
@@ -699,6 +712,40 @@ export default function AttackLoopPage() {
                         <Radar name="风险分 (×100)" dataKey="avg_score" stroke="#0ea5e9" fill="#0ea5e9" fillOpacity={0.2} strokeWidth={2} />
                       </RadarChart>
                     </ResponsiveContainer>
+                  </div>
+                )}
+
+                {results.agent_execution_summary && (
+                  <div className="card p-6">
+                    <h3 className="mb-5 flex items-center gap-3 text-lg font-bold font-display text-[var(--text-main)]">
+                      <Activity className="h-5 w-5 text-cyan-500" /> Agent 工具执行摘要
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
+                      <div className="rounded-2xl bg-[var(--bg-glass-strong)] border border-[var(--border-glass)] p-5 text-center">
+                        <div className="text-3xl font-mono font-bold text-[var(--text-main)]">{results.agent_execution_summary.total_with_tools || 0}</div>
+                        <div className="mt-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">含工具调用</div>
+                      </div>
+                      <div className="rounded-2xl bg-[var(--bg-glass-strong)] border border-rose-500/20 p-5 text-center">
+                        <div className="text-3xl font-mono font-bold text-rose-500">{results.agent_execution_summary.policy_bypassed || 0}</div>
+                        <div className="mt-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">策略绕过</div>
+                      </div>
+                      <div className="rounded-2xl bg-[var(--bg-glass-strong)] border border-cyan-500/20 p-5 text-center">
+                        <div className="text-3xl font-mono font-bold text-cyan-500">{results.agent_execution_summary.langchain_runs || 0}</div>
+                        <div className="mt-2 text-xs font-bold uppercase tracking-widest text-[var(--text-muted)]">LangChain 运行</div>
+                      </div>
+                    </div>
+                    {results.agent_execution_runs?.length > 0 && (
+                      <div className="mt-5 space-y-2 max-h-64 overflow-y-auto">
+                        {results.agent_execution_runs.slice(0, 12).map((run) => (
+                          <div key={run.test_id} className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-[var(--border-glass-strong)] bg-[var(--bg-glass)] px-4 py-3 text-sm">
+                            <span className="font-mono text-[var(--text-main)]">{run.attack_name || run.attack_type}</span>
+                            <span className="text-xs text-[var(--text-muted)]">{run.model}</span>
+                            <span className="badge border font-mono text-xs bg-cyan-500/10 text-cyan-500 border-cyan-500/20">{run.agent_mode || '-'}</span>
+                            <span className="text-xs text-[var(--text-muted)]">{(run.tool_calls || []).join(', ') || '无工具'}</span>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 )}
 

@@ -15,6 +15,7 @@ import {
   AttackDemoBanner,
   AttackReportEmpty,
   AgentRuntimeCard,
+  AgentExecutionCard,
   AttackCodeBlock,
 } from '../components/attack'
 import { buildDemoAgentResult, normalizeAgentAttackResult } from '../utils/agentAttackResult'
@@ -48,6 +49,8 @@ const agentSchema = z.object({
   model: z.string().min(1, '模型名称不可为空'),
   target: z.string().min(1, '请输入目标任务描述'),
   selectedTools: z.array(z.string()).min(1, '请至少选择一个工具'),
+  agentMode: z.enum(['langchain', 'prompt']).default('langchain'),
+  maxAgentSteps: z.coerce.number().min(1).max(50).default(5),
 })
 
 export default function AgentAttackPage() {
@@ -66,6 +69,8 @@ export default function AgentAttackPage() {
       model: 'qwen3:4b',
       target: '',
       selectedTools: ['read_file', 'http_request'],
+      agentMode: 'langchain',
+      maxAgentSteps: 5,
     }
   })
 
@@ -91,6 +96,8 @@ export default function AgentAttackPage() {
         prompt: data.target,
         target_behavior: data.target,
         model_name: data.model,
+        agent_mode: data.agentMode,
+        max_agent_steps: data.maxAgentSteps,
       }
       const responseData = await runAttackMutation.mutateAsync(payload)
       setResult(normalizeAgentAttackResult(responseData))
@@ -131,6 +138,20 @@ export default function AgentAttackPage() {
                     />
                   )
                 })}
+              </div>
+            </div>
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">Agent 模式</label>
+                <select className="input-field" {...register('agentMode')}>
+                  <option value="langchain">LangChain 多步工具循环</option>
+                  <option value="prompt">单轮 Prompt 模拟</option>
+                </select>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold text-[var(--text-muted)] uppercase tracking-widest">最大工具步数</label>
+                <input type="number" min="1" max="50" className="input-field" {...register('maxAgentSteps')} />
               </div>
             </div>
 
@@ -221,6 +242,10 @@ export default function AgentAttackPage() {
                   <ProgressMeter value={riskPercent} tone={result.success ? 'danger' : 'success'} label="智能体暴露面风险指数" />
                 </div>
                 
+                {result.agent_execution && (
+                  <AgentExecutionCard execution={result.agent_execution} />
+                )}
+
                 {result.agent_runtime && (
                   <AgentRuntimeCard runtime={result.agent_runtime} />
                 )}

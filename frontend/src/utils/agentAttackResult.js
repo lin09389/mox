@@ -55,6 +55,20 @@ export function buildDemoAgentResult(type, tools) {
   }
 }
 
+function runtimeFromAgentExecution(agentExecution) {
+  if (!agentExecution) return null
+  const toolNames = agentExecution.tool_calls || []
+  const violations = agentExecution.policy_violations || []
+  return {
+    tool_calls_detected: toolNames.length,
+    tool_names: toolNames,
+    policy_violations: violations,
+    any_tool_blocked: Boolean(violations.length) || agentExecution.policy_bypassed === false,
+    agent_mode: agentExecution.agent_mode,
+    langchain_steps: agentExecution.langchain_steps,
+  }
+}
+
 export function normalizeAgentAttackResult(raw) {
   if (!raw) return null
 
@@ -64,12 +78,20 @@ export function normalizeAgentAttackResult(raw) {
   const apiSuccess = raw.result === 'success'
   const isSuccess = apiSuccess || raw.success === true
 
+  const agentExecution = raw.agent_execution ?? null
+  const runtimeFromExecution = runtimeFromAgentExecution(agentExecution)
+
   const runtimeRisky =
     raw.agent_runtime?.tool_results
       ?.filter((item) => item.blocked || (item.success && !item.blocked))
       .map((item) => item.tool) ?? []
 
-  const riskyTools = raw.risky_tools?.length ? raw.risky_tools : runtimeRisky
+  const executionRisky = agentExecution?.tool_calls || []
+  const riskyTools = raw.risky_tools?.length
+    ? raw.risky_tools
+    : executionRisky.length
+      ? executionRisky
+      : runtimeRisky
 
   const defaultSummary = isSuccess
     ? '检测到 Agent 在工具调用链路中存在可被利用的路径。'
@@ -83,6 +105,7 @@ export function normalizeAgentAttackResult(raw) {
     risky_tools: riskyTools,
     summary: raw.summary || defaultSummary,
     model_response: raw.model_response ?? '',
-    agent_runtime: raw.agent_runtime ?? null,
+    agent_execution: agentExecution,
+    agent_runtime: raw.agent_runtime ?? runtimeFromExecution,
   }
 }
