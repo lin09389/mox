@@ -55,6 +55,8 @@ class AttackLoopConfig(BaseModel):
     base_url: str = Field(default="http://localhost:11434/v1", description="Ollama服务地址")
     success_threshold: float = Field(default=0.6, ge=0, le=1, description="成功阈值")
     max_iterations: int = Field(default=5, ge=1, le=100, description="攻击最大迭代次数")
+    agent_mode: Optional[str] = Field(default="langchain", description="Agent 攻击模式")
+    max_agent_steps: int = Field(default=5, ge=1, le=50, description="LangChain 最大工具步数")
 
     # 随机提示配置
     random_prompts: bool = Field(default=False, description="是否启用随机提示生成")
@@ -159,6 +161,8 @@ def _pydantic_to_loopconfig(pydantic_config: AttackLoopConfig) -> LoopConfig:
         base_url=pydantic_config.base_url,
         success_threshold=pydantic_config.success_threshold,
         max_iterations=pydantic_config.max_iterations,
+        agent_mode=pydantic_config.agent_mode,
+        max_agent_steps=pydantic_config.max_agent_steps,
         random_prompts=pydantic_config.random_prompts,
         random_prompt_templates=pydantic_config.random_prompt_templates,
         random_prompt_count=pydantic_config.random_prompt_count,

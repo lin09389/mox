@@ -137,6 +137,8 @@ class LoopConfig:
     # 攻击配置
     success_threshold: float = 0.6
     max_iterations: int = 5
+    agent_mode: Optional[str] = "langchain"
+    max_agent_steps: int = 5
 
     # 随机提示配置
     random_prompts: bool = False
@@ -339,6 +341,10 @@ class TestStatistics:
     # 最危险的攻击
     top_dangerous_attacks: List[Dict[str, Any]] = field(default_factory=list)
 
+    # Agent / LangChain 执行摘要
+    agent_execution_summary: Dict[str, Any] = field(default_factory=dict)
+    agent_execution_runs: List[Dict[str, Any]] = field(default_factory=list)
+
     # 时间分布
     time_distribution: Dict[str, int] = field(default_factory=dict)
 
@@ -403,6 +409,31 @@ class TestStatistics:
         stats.top_dangerous_attacks = sorted(
             attack_danger_list, key=lambda x: x["success_rate"], reverse=True
         )[:5]
+
+        agent_runs: List[Dict[str, Any]] = []
+        for result in results:
+            agent_exec = result.metadata.get("agent_execution")
+            if agent_exec:
+                agent_runs.append(
+                    {
+                        "test_id": result.test_id,
+                        "model": result.model,
+                        "attack_type": result.attack_type,
+                        "attack_name": result.attack_name,
+                        "success": result.success,
+                        **agent_exec,
+                    }
+                )
+        stats.agent_execution_runs = agent_runs[:100]
+        stats.agent_execution_summary = {
+            "total_with_tools": len(agent_runs),
+            "policy_bypassed": sum(
+                1 for run in agent_runs if run.get("policy_bypassed")
+            ),
+            "langchain_runs": sum(
+                1 for run in agent_runs if run.get("agent_mode") == "langchain"
+            ),
+        }
 
         # 时间分布（按小时）
         for result in results:
@@ -503,10 +534,19 @@ class AttackExecutor:
 
         # 通过主注册表工厂函数创建攻击实例，无需手动处理各攻击的配置类
         try:
+            from mox.routes.services.attack_service import AGENT_MODE_ATTACK_KEYS
+            from mox.evaluation.redteam import extract_agent_execution
+
+            attack_kwargs: Dict[str, Any] = {}
+            if attack_type in AGENT_MODE_ATTACK_KEYS:
+                attack_kwargs["agent_mode"] = self.config.agent_mode or "langchain"
+                attack_kwargs["max_agent_steps"] = self.config.max_agent_steps
+
             attack = create_attack_instance(
                 attack_type=attack_type,
                 llm=llm,
                 max_iterations=self.config.max_iterations,
+                **attack_kwargs,
             )
         except Exception as e:
             return AttackTestResult(
@@ -537,6 +577,14 @@ class AttackExecutor:
             try:
                 outcome = await attack.generate_attack(payload)
 
+                agent_execution = extract_agent_execution(outcome.metadata)
+                result_metadata: Dict[str, Any] = {
+                    "attempt": attempt + 1,
+                    "outcome_metadata": outcome.metadata or {},
+                }
+                if agent_execution:
+                    result_metadata["agent_execution"] = agent_execution
+
                 return AttackTestResult(
                     test_id=test_id,
                     timestamp=datetime.now().isoformat(),
@@ -555,7 +603,7 @@ class AttackExecutor:
                     ),
                     error=None,
                     duration=time.time() - start_time,
-                    metadata={"attempt": attempt + 1},
+                    metadata=result_metadata,
                 )
             except Exception as e:
                 self.logger.warning(

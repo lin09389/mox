@@ -15,9 +15,16 @@ class OWASPRequest(BaseModel):
 
 class RedTeamRequest(BaseModel):
     model: str = "gpt-4"
+    target_model: Optional[str] = None
+    attacker_model: Optional[str] = None
+    judge_model: Optional[str] = None
     techniques: List[str] = []
     use_defense: bool = False
-    judge_mode: str = "pattern"
+    judge_mode: str = "hybrid"
+    max_attempts: Optional[int] = None
+    rag_backend: Optional[str] = None
+    agent_mode: Optional[str] = None
+    max_agent_steps: Optional[int] = None
 
 
 class CodeSecurityRequest(BaseModel):
@@ -167,6 +174,28 @@ def _create_llm(model: str):
     return LLMFactory.create_from_model_name(model)
 
 
+def _llm_model_name(llm) -> str:
+    return str(getattr(llm, "model", llm.__class__.__name__))
+
+
+def resolve_redteam_llms(
+    *,
+    target_model: str,
+    attacker_model: Optional[str] = None,
+    judge_model: Optional[str] = None,
+    judge_mode: str = "hybrid",
+) -> Dict[str, Any]:
+    from mox.evaluation.redteam_llms import resolve_redteam_llms as _resolve
+
+    return _resolve(
+        target_model=target_model,
+        attacker_model=attacker_model,
+        judge_model=judge_model,
+        judge_mode=judge_mode,
+        llm_factory=_create_llm,
+    )
+
+
 @router.get("/stats/overview")
 async def get_stats_overview() -> Dict[str, Any]:
     from mox.core.monitoring_service import get_stats_overview as _overview
@@ -261,15 +290,39 @@ async def run_owasp_tests(request: OWASPRequest) -> Dict[str, Any]:
 async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
     try:
         from mox.evaluation.redteam import RedTeamOrchestrator
+        from mox.evaluation.redteam_llms import resolve_redteam_agent_mode
 
-        llm = _create_llm(request.model)
+        target_model = request.target_model or request.model
+        judge_mode = request.judge_mode or "hybrid"
+        agent_mode = resolve_redteam_agent_mode(
+            request.agent_mode,
+            techniques=request.techniques or None,
+        )
+        llms = resolve_redteam_llms(
+            target_model=target_model,
+            attacker_model=request.attacker_model,
+            judge_model=request.judge_model,
+            judge_mode=judge_mode,
+        )
         if request.use_defense:
             orchestrator = RedTeamOrchestrator.with_defense(
-                llm, llm, judge_mode=request.judge_mode or "hybrid"
+                llms["attacker_llm"],
+                llms["target_llm"],
+                judge_llm=llms["judge_llm"],
+                judge_mode=judge_mode,
+                rag_backend=request.rag_backend,
+                agent_mode=agent_mode,
+                max_agent_steps=request.max_agent_steps,
             )
         else:
             orchestrator = RedTeamOrchestrator(
-                llm, llm, judge_mode=request.judge_mode or "pattern"
+                llms["attacker_llm"],
+                llms["target_llm"],
+                judge_llm=llms["judge_llm"],
+                judge_mode=judge_mode,
+                rag_backend=request.rag_backend,
+                agent_mode=agent_mode,
+                max_agent_steps=request.max_agent_steps,
             )
         scenarios = orchestrator.scenarios
         if request.techniques:
@@ -283,6 +336,7 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
             parallel=True,
             max_concurrency=2,
             scenarios=scenarios,
+            max_attempts=request.max_attempts,
         )
         report = orchestrator.generate_report(results)
         total = report.get("summary", {}).get("total_scenarios") or len(results) or 1
@@ -292,15 +346,16 @@ async def run_redteam(request: RedTeamRequest) -> Dict[str, Any]:
         attack_rate = round(successful / total, 4)
         defense_rate = round(1 - attack_rate, 4)
         report_id = await _persist_platform_report(
-            report_name=f"红队演练报告 ({request.model})",
+            report_name=f"红队演练报告 ({target_model})",
             report_type="redteam",
-            model_name=request.model,
+            model_name=target_model,
             content=report,
             summary={
                 "attack_success_rate": attack_rate,
                 "defense_success_rate": defense_rate,
                 "total_scenarios": total,
                 "successful": successful,
+                "models": llms["models"],
             },
             source="redteam",
         )

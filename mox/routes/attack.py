@@ -27,6 +27,8 @@ class AttackRequest(BaseModel):
     attack_type: str = "prompt_injection"
     model: str = "abab2.5-chat"
     max_iterations: int = Field(default=100, ge=1, le=1000)  # Upper bound to prevent DoS
+    agent_mode: Optional[str] = None
+    max_agent_steps: Optional[int] = Field(default=None, ge=1, le=50)
 
 
 class AdvancedAttackRequest(BaseModel):
@@ -266,6 +268,8 @@ async def run_attack(
             request.prompt,
             target_behavior=request.target_behavior,
             max_iterations=request.max_iterations,
+            agent_mode=request.agent_mode,
+            max_agent_steps=request.max_agent_steps,
         )
 
         result_analysis = _analyze_attack_result(
@@ -591,6 +595,8 @@ class SpecializedAttackRequest(BaseModel):
     max_iterations: int = Field(default=100, ge=1, le=1000)
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
+    agent_mode: Optional[str] = None
+    max_agent_steps: Optional[int] = Field(default=None, ge=1, le=50)
 
 
 @router.post("/agent")
@@ -608,6 +614,8 @@ async def run_agent_attack_v1(
             max_iterations=request.max_iterations,
             use_ollama=request.use_ollama,
             ollama_base_url=request.ollama_base_url,
+            agent_mode=request.agent_mode,
+            max_agent_steps=request.max_agent_steps,
             source="api_v1_agent",
         )
     except ValueError as exc:

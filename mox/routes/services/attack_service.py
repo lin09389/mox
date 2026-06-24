@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional
 
 from mox.core import AttackPayload, AttackType, BaseLLM, AttackOutcome
 from mox.core.agent_runtime import analyze_agent_tool_response
+from mox.attacks.config import resolve_max_iterations
 from mox.attacks.registry import create_attack_instance, has_attack_type
 
 AGENT_RUNTIME_ATTACK_KEYS = frozenset(
@@ -16,6 +17,22 @@ AGENT_RUNTIME_ATTACK_KEYS = frozenset(
         "privilege_escalation",
         "role_confusion",
         "attack_chain",
+    }
+)
+
+AGENT_MODE_ATTACK_KEYS = frozenset(
+    {
+        "tool_abuse",
+        "tool_chaining",
+        "indirect_injection",
+        "privilege_escalation",
+        "data_exfiltration",
+        "agent_tool_manipulation",
+        "agent",
+        "composite",
+        "composite_agent",
+        "tool_confusion",
+        "multi_agent",
     }
 )
 
@@ -47,17 +64,30 @@ async def execute_registry_attack(
     max_iterations: int = 100,
     attacker_llm: Optional[BaseLLM] = None,
     judge_llm: Optional[BaseLLM] = None,
+    rag_backend: Optional[str] = None,
+    agent_mode: Optional[str] = None,
+    max_agent_steps: Optional[int] = None,
 ) -> AttackOutcome:
     """Create and run an attack exclusively via the global registry."""
     if not has_attack_type(attack_type):
         raise ValueError(f"Unknown attack type: {attack_type}")
 
+    extra_kwargs: Dict[str, Any] = {
+        "attacker_llm": attacker_llm or llm,
+        "judge_llm": judge_llm,
+    }
+    if rag_backend and attack_type in ("rag_context_injection", "rag"):
+        extra_kwargs["rag_backend"] = rag_backend
+    if agent_mode and attack_type in AGENT_MODE_ATTACK_KEYS:
+        extra_kwargs["agent_mode"] = agent_mode
+    if max_agent_steps is not None and attack_type in AGENT_MODE_ATTACK_KEYS:
+        extra_kwargs["max_agent_steps"] = max_agent_steps
+
     attack = create_attack_instance(
         attack_type=attack_type,
         llm=llm,
-        max_iterations=max_iterations,
-        attacker_llm=attacker_llm or llm,
-        judge_llm=judge_llm,
+        max_iterations=resolve_max_iterations(attack_type, max_iterations),
+        **extra_kwargs,
     )
     payload = build_attack_payload(attack_type, prompt, target_behavior)
     return await attack.generate_attack(payload)
@@ -95,8 +125,27 @@ async def format_attack_outcome_enriched(
     attack_type: str,
 ) -> Dict[str, Any]:
     """格式化攻击结果，Agent/工具类攻击附加 runtime 分析"""
+    from mox.evaluation.redteam import extract_agent_execution
+
+    agent_execution = extract_agent_execution(outcome.metadata)
     agent_runtime = None
     response_text = getattr(outcome, "model_response", None) or getattr(outcome, "response", "")
-    if attack_type in AGENT_RUNTIME_ATTACK_KEYS or "agent" in attack_type or "tool" in attack_type:
+
+    if agent_execution and agent_execution.get("tool_calls"):
+        tool_names = agent_execution["tool_calls"]
+        violations = agent_execution.get("policy_violations") or []
+        agent_runtime = {
+            "tool_calls_detected": len(tool_names),
+            "tool_names": tool_names,
+            "policy_violations": violations,
+            "any_tool_blocked": bool(violations) or agent_execution.get("policy_bypassed") is False,
+            "agent_mode": agent_execution.get("agent_mode"),
+            "langchain_steps": agent_execution.get("langchain_steps"),
+        }
+    elif attack_type in AGENT_RUNTIME_ATTACK_KEYS or "agent" in attack_type or "tool" in attack_type:
         agent_runtime = await analyze_agent_tool_response(response_text)
-    return format_attack_outcome(outcome, attack_type=attack_type, agent_runtime=agent_runtime)
+
+    payload = format_attack_outcome(outcome, attack_type=attack_type, agent_runtime=agent_runtime)
+    if agent_execution:
+        payload["agent_execution"] = agent_execution
+    return payload

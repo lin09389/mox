@@ -34,6 +34,8 @@ class AgentAttackRequest(BaseModel):
     tools: List[str] = Field(default_factory=lambda: ["read_file", "http_request"])
     use_ollama: bool = False
     ollama_base_url: str = "http://localhost:11434/v1"
+    agent_mode: Optional[str] = None
+    max_agent_steps: Optional[int] = Field(default=None, ge=1, le=50)
 
 
 class MultimodalAttackRequest(BaseModel):
@@ -90,6 +92,8 @@ async def _registry_attack_response(
     target_behavior: Optional[str] = None,
     use_ollama: bool = False,
     ollama_base_url: str = "http://localhost:11434/v1",
+    agent_mode: Optional[str] = None,
+    max_agent_steps: Optional[int] = None,
     source: str,
     max_iterations: int = 100,
 ) -> Dict[str, Any]:
@@ -101,6 +105,8 @@ async def _registry_attack_response(
         max_iterations=max_iterations,
         use_ollama=use_ollama,
         ollama_base_url=ollama_base_url,
+        agent_mode=agent_mode,
+        max_agent_steps=max_agent_steps,
         source=source,
     )
 
@@ -118,6 +124,8 @@ async def run_agent_attack(
             target_behavior=request.target_behavior,
             use_ollama=request.use_ollama,
             ollama_base_url=request.ollama_base_url,
+            agent_mode=request.agent_mode,
+            max_agent_steps=request.max_agent_steps,
             source="api_v2_agent",
         )
     except ValueError as exc:

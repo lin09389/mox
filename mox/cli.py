@@ -88,12 +88,19 @@ async def run_single_attack(args):
     )
 
     try:
-        outcome = await run_registry_attack(
-            args.attack_type,
-            args.model,
+        resolved = resolve_attack_type(args.attack_type)
+        llm = create_llm(args.model)
+        from mox.routes.services.attack_service import execute_registry_attack
+
+        outcome = await execute_registry_attack(
+            resolved,
+            llm,
             args.prompt,
             target_behavior=args.target,
             max_iterations=get_max_iterations(args),
+            rag_backend=getattr(args, "rag_backend", None),
+            agent_mode=getattr(args, "agent_mode", None),
+            max_agent_steps=getattr(args, "max_agent_steps", None),
         )
     except ValueError as exc:
         console.print(f"[bold red]错误:[/bold red] {exc}")
@@ -265,6 +272,107 @@ async def run_safety_cot(args):
     console.print(Panel(result["response"][:500], expand=False))
 
 
+async def run_redteam(args):
+    from mox.evaluation.redteam import RedTeamOrchestrator
+    from mox.evaluation.redteam_llms import resolve_redteam_llms, resolve_redteam_agent_mode
+
+    target_model = getattr(args, "target_model", None) or args.model
+    judge_mode = getattr(args, "judge_mode", "hybrid")
+    scenario_type = getattr(args, "scenario_type", "basic")
+    agent_mode = resolve_redteam_agent_mode(
+        getattr(args, "agent_mode", None),
+        scenario_type=scenario_type,
+        techniques=getattr(args, "techniques", None),
+    )
+
+    console.print(
+        Panel.fit(
+            "[bold blue]Mox 红队演练[/bold blue]\n"
+            f"目标: {target_model}\n"
+            f"攻击者: {getattr(args, 'attacker_model', None) or target_model}\n"
+            f"评判: {getattr(args, 'judge_model', None) or target_model}\n"
+            f"评判模式: {judge_mode}",
+            title="🎯 Red Team",
+        )
+    )
+
+    llms = resolve_redteam_llms(
+        target_model=target_model,
+        attacker_model=getattr(args, "attacker_model", None),
+        judge_model=getattr(args, "judge_model", None),
+        judge_mode=judge_mode,
+        llm_factory=create_llm,
+    )
+
+    if getattr(args, "use_defense", False):
+        orchestrator = RedTeamOrchestrator.with_defense(
+            llms["attacker_llm"],
+            llms["target_llm"],
+            judge_llm=llms["judge_llm"],
+            judge_mode=judge_mode,
+            rag_backend=getattr(args, "rag_backend", None),
+            agent_mode=agent_mode,
+            max_agent_steps=getattr(args, "max_agent_steps", None),
+        )
+    else:
+        orchestrator = RedTeamOrchestrator(
+            llms["attacker_llm"],
+            llms["target_llm"],
+            judge_llm=llms["judge_llm"],
+            judge_mode=judge_mode,
+            rag_backend=getattr(args, "rag_backend", None),
+            agent_mode=agent_mode,
+            max_agent_steps=getattr(args, "max_agent_steps", None),
+        )
+
+    scenarios = RedTeamOrchestrator.create_scenarios(scenario_type)
+    if getattr(args, "techniques", None):
+        allowed = set(args.techniques)
+        scenarios = [s for s in scenarios if s.technique.value in allowed]
+
+    if not scenarios:
+        console.print("[bold red]错误:[/bold red] 没有匹配的红队场景")
+        return
+
+    with Progress() as progress:
+        task = progress.add_task("运行红队场景...", total=len(scenarios))
+
+        def on_progress(scenario, result):
+            progress.advance(task)
+
+        orchestrator.set_progress_callback(on_progress)
+        results = await orchestrator.run_all_scenarios(
+            parallel=not getattr(args, "sequential", False),
+            max_concurrency=getattr(args, "concurrency", 3),
+            scenarios=scenarios,
+            max_attempts=getattr(args, "max_attempts", None),
+        )
+
+    report = orchestrator.generate_report(results)
+    summary = report.get("summary", {})
+
+    table = Table(title="红队结果")
+    table.add_column("指标", style="cyan")
+    table.add_column("值", style="green")
+    table.add_row("场景总数", str(summary.get("total_scenarios", 0)))
+    table.add_row("攻击成功", str(summary.get("successful", 0)))
+    table.add_row("成功率", f"{summary.get('success_rate', 0):.1%}")
+    table.add_row("平均分数", f"{summary.get('avg_score', 0):.2f}")
+    console.print(table)
+
+    console.print("\n[bold]模型配置:[/bold]")
+    for key, value in report.get("models", {}).items():
+        console.print(f"  {key}: {value}")
+
+    console.print("\n[bold]各场景结果:[/bold]")
+    for item in report.get("results", []):
+        status = "[green]✓[/green]" if item.get("success") else "[red]✗[/red]"
+        console.print(
+            f"  {status} {item.get('scenario')} "
+            f"({item.get('technique')}) score={item.get('score', 0):.2f}"
+        )
+
+
 async def run_quick_test(args):
     """快速测试 - 简化的单命令测试"""
     console.print(
@@ -356,6 +464,70 @@ def main():
     attack_parser.add_argument("--prompt", "-p", required=True, help="攻击提示词")
     attack_parser.add_argument("--target", required=True, help="目标行为")
     attack_parser.add_argument("--max-iter", type=int, default=10, help="最大迭代次数")
+    attack_parser.add_argument(
+        "--rag-backend",
+        choices=["memory", "sklearn", "chroma"],
+        default=None,
+        help="RAG 攻击检索后端 (memory/sklearn/chroma)",
+    )
+    attack_parser.add_argument(
+        "--agent-mode",
+        choices=["prompt", "langchain"],
+        default=None,
+        help="Agent 攻击模式 (prompt=单轮提示 / langchain=多步工具循环)",
+    )
+    attack_parser.add_argument(
+        "--max-agent-steps",
+        type=int,
+        default=None,
+        help="LangChain Agent 最大工具循环步数 (默认 5)",
+    )
+
+    redteam_parser = subparsers.add_parser("redteam", help="红队演练 (三模型)")
+    redteam_parser.add_argument("--model", "-m", default="gpt-4", help="目标模型")
+    redteam_parser.add_argument("--target-model", default=None, help="目标模型别名")
+    redteam_parser.add_argument("--attacker-model", default=None, help="攻击者模型 (TAP/PAIR)")
+    redteam_parser.add_argument("--judge-model", default=None, help="评判模型")
+    redteam_parser.add_argument(
+        "--techniques",
+        nargs="*",
+        default=None,
+        help="攻击技术列表，如 tap jailbreak tool_abuse",
+    )
+    redteam_parser.add_argument(
+        "--scenario-type",
+        choices=["basic", "intermediate", "advanced", "agent", "all"],
+        default="basic",
+        help="预设场景组",
+    )
+    redteam_parser.add_argument(
+        "--judge-mode",
+        choices=["pattern", "hybrid", "external", "self"],
+        default="hybrid",
+        help="评判模式",
+    )
+    redteam_parser.add_argument("--use-defense", action="store_true", help="启用防御管道")
+    redteam_parser.add_argument("--max-attempts", type=int, default=None, help="每场景最大迭代")
+    redteam_parser.add_argument("--concurrency", type=int, default=3, help="并行并发数")
+    redteam_parser.add_argument("--sequential", action="store_true", help="顺序执行场景")
+    redteam_parser.add_argument(
+        "--rag-backend",
+        choices=["memory", "sklearn", "chroma"],
+        default=None,
+        help="RAG 场景检索后端",
+    )
+    redteam_parser.add_argument(
+        "--agent-mode",
+        choices=["prompt", "langchain"],
+        default=None,
+        help="Agent 场景模式 (agent 场景组未指定时默认 langchain)",
+    )
+    redteam_parser.add_argument(
+        "--max-agent-steps",
+        type=int,
+        default=None,
+        help="LangChain Agent 最大工具循环步数 (默认 5)",
+    )
 
     defense_parser = subparsers.add_parser("defense", help="运行防御检测")
     defense_parser.add_argument(
@@ -403,6 +575,8 @@ def main():
 
     if args.command == "attack":
         asyncio.run(run_single_attack(args))
+    elif args.command == "redteam":
+        asyncio.run(run_redteam(args))
     elif args.command == "defense":
         asyncio.run(run_defense_scan(args))
     elif args.command == "benchmark":
