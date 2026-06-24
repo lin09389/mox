@@ -120,4 +120,30 @@ describe('API utilities', () => {
     expect(result).toEqual({ success: true })
     expect(axiosMock.instance.post).toHaveBeenCalledWith('/api/v1/attack/agent', payload)
   })
+
+  it('runRedTeam sends three-model and agent options', async () => {
+    axiosMock.instance.post.mockResolvedValue({
+      data: { results: [{ technique: 'tool_chaining', success: false }], report_id: 9 },
+    })
+    const { runRedTeam } = await import('./index.js')
+    const result = await runRedTeam('target-model', ['tool_chaining'], {
+      attackerModel: 'attacker-model',
+      judgeModel: 'judge-model',
+      judgeMode: 'hybrid',
+      agentMode: 'langchain',
+      maxAgentSteps: 6,
+    })
+    expect(result.reportId).toBe(9)
+    expect(axiosMock.instance.post).toHaveBeenCalledWith('/api/v1/redteam/run', {
+      model: 'target-model',
+      target_model: 'target-model',
+      techniques: ['tool_chaining'],
+      judge_mode: 'hybrid',
+      use_defense: false,
+      attacker_model: 'attacker-model',
+      judge_model: 'judge-model',
+      agent_mode: 'langchain',
+      max_agent_steps: 6,
+    })
+  })
 })

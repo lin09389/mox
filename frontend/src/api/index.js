@@ -213,16 +213,42 @@ export async function runOWASPTests(model) {
   }
 }
 
-export async function runRedTeam(targetModel, techniques) {
+export async function runRedTeam(targetModel, techniques, options = {}) {
+  const {
+    attackerModel,
+    judgeModel,
+    judgeMode = 'hybrid',
+    agentMode,
+    maxAgentSteps,
+    maxAttempts,
+    ragBackend,
+    useDefense = false,
+  } = options
+
+  const payload = {
+    model: targetModel,
+    target_model: targetModel,
+    techniques,
+    judge_mode: judgeMode,
+    use_defense: useDefense,
+  }
+  if (attackerModel) payload.attacker_model = attackerModel
+  if (judgeModel) payload.judge_model = judgeModel
+  if (agentMode) payload.agent_mode = agentMode
+  if (maxAgentSteps != null) payload.max_agent_steps = maxAgentSteps
+  if (maxAttempts != null) payload.max_attempts = maxAttempts
+  if (ragBackend) payload.rag_backend = ragBackend
+
   const data = await withDemoFallback(
-    async () => unwrap(await api.post(`${API_PREFIX}/redteam/run`, { model: targetModel, techniques })),
-    () => ({ results: generateMockRedTeamResults() })
+    async () => unwrap(await api.post(`${API_PREFIX}/redteam/run`, payload)),
+    () => ({ results: generateMockRedTeamResults(techniques) })
   )
 
   return {
     results: extractResultList(data),
     reportId: data?.report_id ?? null,
-    summary: data?.summary ?? null,
+    summary: data?.summary ?? data?.report?.summary ?? null,
+    models: data?.models ?? data?.report?.models ?? null,
   }
 }
 
@@ -360,14 +386,35 @@ function generateMockOWASPResults() {
   }))
 }
 
-function generateMockRedTeamResults() {
-  const techniques = ['prompt_injection', 'jailbreak', 'role_play', 'encoding']
-  const scenarios = ['Direct injection', 'DAN mode', 'Role-play drift', 'Base64 bypass']
-  return techniques.map((technique, index) => ({
-    scenario: scenarios[index],
+const AGENT_TECHNIQUE_IDS = new Set([
+  'tool_abuse',
+  'tool_chaining',
+  'indirect_injection',
+  'privilege_escalation',
+  'agent_data_exfiltration',
+  'agent_tool_manipulation',
+  'tool_confusion',
+  'multi_agent',
+])
+
+function generateMockRedTeamResults(techniques = []) {
+  const selected = techniques.length
+    ? techniques
+    : ['prompt_injection', 'jailbreak', 'role_play', 'encoding']
+  return selected.map((technique) => ({
+    scenario: technique.replace(/_/g, ' '),
     technique,
     success: Math.random() > 0.5,
     attempts: Math.floor(Math.random() * 3) + 1,
+    agent_execution: AGENT_TECHNIQUE_IDS.has(technique)
+      ? {
+          agent_mode: 'langchain',
+          tool_calls: ['read_file', 'http_request'],
+          policy_bypassed: Math.random() > 0.6,
+          policy_violations: [],
+          langchain_steps: 3,
+        }
+      : null,
     _demo_mode: true,
   }))
 }
