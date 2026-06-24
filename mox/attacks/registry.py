@@ -290,14 +290,25 @@ def _register_basic_attacks(registry: AttackRegistry):
         aliases=["gcg_basic"],
     )
 
+    def _build_autodan(
+        llm: BaseLLM,
+        max_iterations: int,
+        attacker_llm: Optional[BaseLLM] = None,
+        **_,
+    ) -> AutoDANAttack:
+        return AutoDANAttack(
+            target_llm=llm,
+            attacker_llm=attacker_llm or llm,
+            config=AttackConfig(max_iterations=max_iterations),
+        )
+
     registry.register(
         name="autodan",
-        factory=lambda llm, iter: AutoDANAttack(
-            target_llm=llm, config=AttackConfig(max_iterations=iter)
-        ),
+        factory=_build_autodan,
         category=AttackCategory.BASIC,
         attack_class=AutoDANAttack,
         description="自动DAN攻击",
+        requires_llm=True,
     )
 
 
@@ -305,9 +316,52 @@ def _register_llm_driven_attacks(registry: AttackRegistry):
     """注册 LLM 驱动的自动红队攻击"""
     from .llm_driven import TAPAttack, CrescendoAttack, TAPConfig
 
+    def _build_tap(
+        llm: BaseLLM,
+        max_iterations: int,
+        attacker_llm: Optional[BaseLLM] = None,
+        judge_llm: Optional[BaseLLM] = None,
+        **_,
+    ) -> TAPAttack:
+        return TAPAttack(
+            target_llm=llm,
+            attacker_llm=attacker_llm or llm,
+            judge_llm=judge_llm,
+            config=TAPConfig(max_iterations=max_iterations, max_depth=5, max_breadth=3),
+        )
+
+    def _build_pair(
+        llm: BaseLLM,
+        max_iterations: int,
+        attacker_llm: Optional[BaseLLM] = None,
+        judge_llm: Optional[BaseLLM] = None,
+        **_,
+    ) -> TAPAttack:
+        return TAPAttack(
+            target_llm=llm,
+            attacker_llm=attacker_llm or llm,
+            judge_llm=judge_llm,
+            config=TAPConfig(
+                max_iterations=max_iterations,
+                use_refinement=True,
+                max_depth=1,
+                max_breadth=1,
+            ),
+        )
+
+    def _build_crescendo(
+        llm: BaseLLM,
+        max_iterations: int,
+        **_,
+    ) -> CrescendoAttack:
+        return CrescendoAttack(
+            target_llm=llm,
+            config=AttackConfig(max_iterations=max_iterations),
+        )
+
     registry.register(
         name="tap",
-        factory=lambda llm, iter: TAPAttack(target_llm=llm, config=TAPConfig(max_iterations=iter)),
+        factory=_build_tap,
         category=AttackCategory.BASIC,
         attack_class=TAPAttack,
         config_class=TAPConfig,
@@ -318,10 +372,7 @@ def _register_llm_driven_attacks(registry: AttackRegistry):
 
     registry.register(
         name="pair",
-        factory=lambda llm, iter: TAPAttack(
-            target_llm=llm,
-            config=TAPConfig(max_iterations=iter, use_refinement=True),
-        ),
+        factory=_build_pair,
         category=AttackCategory.BASIC,
         attack_class=TAPAttack,
         config_class=TAPConfig,
@@ -332,9 +383,7 @@ def _register_llm_driven_attacks(registry: AttackRegistry):
 
     registry.register(
         name="crescendo",
-        factory=lambda llm, iter: CrescendoAttack(
-            target_llm=llm, config=AttackConfig(max_iterations=iter)
-        ),
+        factory=_build_crescendo,
         category=AttackCategory.BASIC,
         attack_class=CrescendoAttack,
         description="Crescendo 渐进式多轮越狱",
@@ -347,6 +396,7 @@ def _register_rag_agent_attacks(registry: AttackRegistry):
     """注册 RAG / Agent / 多轮攻击"""
     from .llm_driven import MultiTurnJailbreakAttack, TAPConfig
     from .rag_attacks import RAGContextInjectionAttack, AgentToolManipulationAttack
+    from .agent_attacks import AgentAttackConfig
 
     registry.register(
         name="multi_turn",
@@ -361,22 +411,49 @@ def _register_rag_agent_attacks(registry: AttackRegistry):
         aliases=["multi_turn_jailbreak", "goat"],
     )
 
+    def _build_rag(
+        llm: BaseLLM,
+        max_iterations: int,
+        rag_backend: Optional[str] = None,
+        **_,
+    ) -> RAGContextInjectionAttack:
+        from .rag_attacks import RAGAttackConfig
+
+        config = RAGAttackConfig(
+            max_iterations=max_iterations,
+            rag_backend=rag_backend or "memory",
+        )
+        return RAGContextInjectionAttack(target_llm=llm, config=config)
+
     registry.register(
         name="rag_context_injection",
-        factory=lambda llm, iter: RAGContextInjectionAttack(target_llm=llm),
+        factory=_build_rag,
         category=AttackCategory.NOVEL,
         attack_class=RAGContextInjectionAttack,
         description="RAG 上下文注入攻击",
         aliases=["rag"],
     )
 
+    def _build_agent_tool_manipulation(
+        llm: BaseLLM,
+        max_iterations: int,
+        agent_mode: Optional[str] = None,
+        max_agent_steps: Optional[int] = None,
+        **_,
+    ):
+        config = AgentAttackConfig(
+            max_iterations=max_iterations,
+            agent_mode=agent_mode or "prompt",
+            max_agent_steps=max_agent_steps or 5,
+        )
+        return AgentToolManipulationAttack(target_llm=llm, config=config)
+
     registry.register(
         name="agent_tool_manipulation",
-        factory=lambda llm, iter: AgentToolManipulationAttack(
-            target_llm=llm, config=AttackConfig(max_iterations=iter)
-        ),
+        factory=_build_agent_tool_manipulation,
         category=AttackCategory.AGENT,
         attack_class=AgentToolManipulationAttack,
+        config_class=AgentAttackConfig,
         description="Agent 工具操纵攻击",
         aliases=["agent"],
     )
@@ -767,8 +844,18 @@ def _register_agent_attacks(registry: AttackRegistry):
         AgentAttackConfig,
     )
 
-    def _build_tool_abuse(llm: BaseLLM, max_iterations: int):
-        config = AgentAttackConfig(max_iterations=max_iterations)
+    def _build_tool_abuse(
+        llm: BaseLLM,
+        max_iterations: int,
+        agent_mode: Optional[str] = None,
+        max_agent_steps: Optional[int] = None,
+        **_,
+    ):
+        config = AgentAttackConfig(
+            max_iterations=max_iterations,
+            agent_mode=agent_mode or "prompt",
+            max_agent_steps=max_agent_steps or 5,
+        )
         return ToolAbuseAttack(target_llm=llm, config=config)
 
     def _build_memory_injection(llm: BaseLLM, max_iterations: int):
@@ -848,8 +935,18 @@ def _register_agent_attacks(registry: AttackRegistry):
     )
 
     def _build_agent_advanced(factory_fn):
-        def builder(llm: BaseLLM, max_iterations: int):
-            config = AgentAttackConfig(max_iterations=max_iterations)
+        def builder(
+            llm: BaseLLM,
+            max_iterations: int,
+            agent_mode: Optional[str] = None,
+            max_agent_steps: Optional[int] = None,
+            **_,
+        ):
+            config = AgentAttackConfig(
+                max_iterations=max_iterations,
+                agent_mode=agent_mode or "prompt",
+                max_agent_steps=max_agent_steps or 5,
+            )
             return factory_fn(llm, config)
 
         return builder

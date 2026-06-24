@@ -5,7 +5,7 @@
 """
 
 from dataclasses import dataclass, field
-from typing import List, Dict
+from typing import List, Dict, Optional
 from enum import Enum
 
 from .base import AttackConfig
@@ -176,3 +176,34 @@ def create_config(attack_type: str, **kwargs) -> AttackConfig:
 def get_default_config(attack_type: str) -> AttackConfig:
     """获取指定攻击类型的默认配置"""
     return create_config(attack_type)
+
+
+# Registry / red-team 推荐迭代次数（未显式指定 max_iterations 时使用）
+ATTACK_DEFAULT_ITERATIONS: Dict[str, int] = {
+    "prompt_injection": 8,
+    "jailbreak": 12,
+    "encoding": 6,
+    "tap": 20,
+    "pair": 15,
+    "crescendo": 5,
+    "multi_turn": 10,
+    "autodan": 10,
+    "gcg": 100,
+    "improved_gcg": 50,
+    "gradient_gcg": 100,
+    "tool_abuse": 3,
+    "memory_injection": 3,
+    "rag_context_injection": 5,
+    "attack_chain": 30,
+    "adaptive": 15,
+}
+
+
+def resolve_max_iterations(
+    attack_type: str,
+    max_iterations: Optional[int] = None,
+) -> int:
+    """解析攻击迭代次数：显式传入优先，否则按攻击类型默认值。"""
+    if max_iterations is not None:
+        return max(1, max_iterations)
+    return ATTACK_DEFAULT_ITERATIONS.get(attack_type.lower(), 5)

@@ -59,8 +59,17 @@ class AttackChain:
         start_time = time.time()
 
         results = []
+        current_payload = payload
         for i, attack in enumerate(self.attacks):
-            outcome = await attack.generate_attack(payload)
+            outcome = await attack.generate_attack(current_payload)
+
+            # 将上一步对抗提示传递给下一步（组合攻击链）
+            if outcome.adversarial_prompt and outcome.adversarial_prompt.strip():
+                current_payload = AttackPayload(
+                    attack_type=current_payload.attack_type,
+                    prompt=outcome.adversarial_prompt,
+                    target_behavior=current_payload.target_behavior,
+                )
 
             # 克隆 outcome 以修改
             outcome_dict = {
