@@ -1,12 +1,15 @@
+import { lazy, Suspense } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import { Activity, AlertTriangle, BarChart3, Settings } from 'lucide-react'
+import { Activity, AlertTriangle, BarChart3, Loader2, Settings } from 'lucide-react'
 import { HubPanelIntro } from '../../context/HubContext'
+import { Skeleton } from '../../components/ui/AppFrame'
 import { WorkspacePageShell } from '../../components/workspace'
 import { itemVariants } from '../../utils/animations'
 import AttackLoopConfigPanel from './AttackLoopConfigPanel'
 import AttackLoopProgressPanel from './AttackLoopProgressPanel'
-import AttackLoopResultsPanel from './AttackLoopResultsPanel'
 import AttackLoopToolbar from './AttackLoopToolbar'
+
+const AttackLoopResultsPanel = lazy(() => import('./AttackLoopResultsPanel'))
 import { useAttackLoopTask } from './useAttackLoopTask'
 import { useAttackLoopTypes } from './useAttackLoopTypes'
 
@@ -87,15 +90,25 @@ export default function AttackLoopPage() {
           <AttackLoopProgressPanel progress={task.progress} />
         )}
         {task.activeTab === 'results' && (
-          <AttackLoopResultsPanel
-            results={task.results}
-            reportId={task.reportId}
-            chartMetric={task.chartMetric}
-            setChartMetric={task.setChartMetric}
-            modelChartData={task.modelChartData}
-            attackChartData={task.attackChartData}
-            onDownload={task.handleDownload}
-          />
+          <Suspense
+            fallback={(
+              <div className="card p-8 flex flex-col items-center justify-center gap-3">
+                <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+                <Skeleton className="h-4 w-48" />
+                <Skeleton className="h-[240px] w-full max-w-3xl" />
+              </div>
+            )}
+          >
+            <AttackLoopResultsPanel
+              results={task.results}
+              reportId={task.reportId}
+              chartMetric={task.chartMetric}
+              setChartMetric={task.setChartMetric}
+              modelChartData={task.modelChartData}
+              attackChartData={task.attackChartData}
+              onDownload={task.handleDownload}
+            />
+          </Suspense>
         )}
       </AnimatePresence>
 

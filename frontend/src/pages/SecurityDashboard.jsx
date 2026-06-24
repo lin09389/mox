@@ -21,8 +21,8 @@ import { HeroStat, InfoCallout, InsightList, MetricCard, MetricCardSkeleton, Pan
 import { WorkspacePanelIntro } from '../components/workspace'
 
 const ThreatMap3D = lazy(() => import('../components/ui/ThreatMap3D'))
-import ThreatRadarChart from '../components/ui/ThreatRadarChart'
-import ThreatAreaChart from '../components/ui/ThreatAreaChart'
+const ThreatRadarChart = lazy(() => import('../components/ui/ThreatRadarChart'))
+const ThreatAreaChart = lazy(() => import('../components/ui/ThreatAreaChart'))
 
 function normalizeStats(stats) {
   return {
@@ -197,7 +197,7 @@ export default function SecurityDashboard() {
             </h3>
             <button
               type="button"
-              className="btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold lg:hidden"
+              className="btn-secondary inline-flex items-center gap-1 px-2.5 py-1 text-xs font-bold"
               onClick={() => setChartsOpen((open) => !open)}
               aria-expanded={chartsOpen}
             >
@@ -215,25 +215,29 @@ export default function SecurityDashboard() {
             </button>
           </div>
 
-          <div className={`flex flex-col gap-6 p-4 ${chartsOpen ? 'block' : 'hidden lg:flex'}`}>
-            <div className="card p-5 h-[260px] flex flex-col">
-              <PanelHeader title="24h 攻击与拦截趋势" description="红队与防御机制的对抗烈度" icon={TrendingUp} />
-              <div className="flex-1 mt-2">
-                <ThreatAreaChart series={visualization?.trends?.series} isLoading={vizLoading} />
+          {chartsOpen ? (
+            <div className="flex flex-col gap-6 p-4">
+              <div className="card p-5 h-[260px] flex flex-col">
+                <PanelHeader title="24h 攻击与拦截趋势" description="红队与防御机制的对抗烈度" icon={TrendingUp} />
+                <div className="flex-1 mt-2">
+                  <Suspense fallback={<Skeleton className="h-full w-full" />}>
+                    <ThreatAreaChart series={visualization?.trends?.series} isLoading={vizLoading} />
+                  </Suspense>
+                </div>
+              </div>
+
+              <div className="card p-5 flex-1 flex flex-col">
+                <PanelHeader title="安全漏洞雷达" description="当前系统对各类型攻击的暴露面" icon={ShieldAlert} />
+                <div className="flex-1 mt-2">
+                  <Suspense fallback={<Skeleton className="h-full w-full min-h-[180px]" />}>
+                    <ThreatRadarChart items={visualization?.radar?.items} isLoading={vizLoading} />
+                  </Suspense>
+                </div>
               </div>
             </div>
-
-            <div className="card p-5 flex-1 flex flex-col">
-              <PanelHeader title="安全漏洞雷达" description="当前系统对各类型攻击的暴露面" icon={ShieldAlert} />
-              <div className="flex-1 mt-2">
-                <ThreatRadarChart items={visualization?.radar?.items} isLoading={vizLoading} />
-              </div>
-            </div>
-          </div>
-
-          {!chartsOpen && (
-            <div className="flex min-h-[100px] flex-col justify-center gap-2 px-5 py-4 text-sm text-[var(--text-muted)] lg:hidden">
-              <p>趋势与雷达图默认折叠，减少移动端首屏滚动。</p>
+          ) : (
+            <div className="flex min-h-[140px] flex-col justify-center gap-2 px-5 py-4 text-sm text-[var(--text-muted)]">
+              <p>趋势与雷达图默认折叠，展开后再加载图表资源。</p>
               <div className="flex flex-wrap gap-2 text-xs font-bold">
                 <span className="badge badge-neutral">趋势点 {visualization?.trends?.series?.length ?? 0}</span>
                 <span className="badge badge-neutral">雷达维 {visualization?.radar?.items?.length ?? 0}</span>
