@@ -75,3 +75,126 @@ def test_redteam_run_no_matching_techniques(client: TestClient):
                 json={"model": "test-model", "techniques": ["nonexistent"]},
             )
     assert response.status_code == 400
+
+
+def test_resolve_redteam_llms_three_models():
+    from mox.evaluation.redteam_llms import resolve_redteam_llms
+
+    created = []
+
+    def fake_create(name):
+        llm = type("LLM", (), {"model": name})()
+        created.append(name)
+        return llm
+
+    with patch("mox.evaluation.redteam_llms._default_llm_factory", side_effect=fake_create):
+        bundle = resolve_redteam_llms(
+            target_model="gpt-4",
+            attacker_model="claude-3",
+            judge_model="llama3",
+            judge_mode="hybrid",
+        )
+
+    assert created == ["gpt-4", "claude-3", "llama3"]
+    assert bundle["models"] == {
+        "target": "gpt-4",
+        "attacker": "claude-3",
+        "judge": "llama3",
+    }
+
+
+def test_resolve_redteam_llms_pattern_skips_judge():
+    from mox.evaluation.redteam_llms import resolve_redteam_llms
+
+    with patch(
+        "mox.evaluation.redteam_llms._default_llm_factory",
+        side_effect=lambda n: type("LLM", (), {"model": n})(),
+    ):
+        bundle = resolve_redteam_llms(
+            target_model="gpt-4",
+            attacker_model="gpt-4",
+            judge_mode="pattern",
+        )
+
+    assert bundle["judge_llm"] is None
+    assert bundle["models"]["judge"] is None
+
+
+def test_redteam_run_wires_three_models(client: TestClient):
+    target = type("LLM", (), {"model": "target-model"})()
+    attacker = type("LLM", (), {"model": "attacker-model"})()
+    judge = type("LLM", (), {"model": "judge-model"})()
+
+    with patch(
+        "mox.routes.platform.resolve_redteam_llms",
+        return_value={
+            "target_llm": target,
+            "attacker_llm": attacker,
+            "judge_llm": judge,
+            "models": {
+                "target": "target-model",
+                "attacker": "attacker-model",
+                "judge": "judge-model",
+            },
+        },
+    ):
+        with patch("mox.evaluation.redteam.RedTeamOrchestrator") as mock_orch_cls:
+            mock_orch = mock_orch_cls.return_value
+            mock_orch.scenarios = []
+            client.post(
+                "/api/v1/redteam/run",
+                json={
+                    "model": "target-model",
+                    "attacker_model": "attacker-model",
+                    "judge_model": "judge-model",
+                    "techniques": ["nonexistent"],
+                },
+            )
+            mock_orch_cls.assert_called_once_with(
+                attacker,
+                target,
+                judge_llm=judge,
+                judge_mode="hybrid",
+                rag_backend=None,
+                agent_mode=None,
+                max_agent_steps=None,
+            )
+
+
+def test_redteam_run_defaults_agent_mode_for_agent_techniques(client: TestClient):
+    target = type("LLM", (), {"model": "target-model"})()
+    attacker = type("LLM", (), {"model": "attacker-model"})()
+    judge = type("LLM", (), {"model": "judge-model"})()
+
+    with patch(
+        "mox.routes.platform.resolve_redteam_llms",
+        return_value={
+            "target_llm": target,
+            "attacker_llm": attacker,
+            "judge_llm": judge,
+            "models": {
+                "target": "target-model",
+                "attacker": "attacker-model",
+                "judge": "judge-model",
+            },
+        },
+    ):
+        with patch("mox.evaluation.redteam.RedTeamOrchestrator") as mock_orch_cls:
+            mock_orch = mock_orch_cls.return_value
+            mock_orch.scenarios = []
+            client.post(
+                "/api/v1/redteam/run",
+                json={
+                    "model": "target-model",
+                    "techniques": ["tool_chaining"],
+                },
+            )
+            mock_orch_cls.assert_called_once_with(
+                attacker,
+                target,
+                judge_llm=judge,
+                judge_mode="hybrid",
+                rag_backend=None,
+                agent_mode="langchain",
+                max_agent_steps=None,
+            )
